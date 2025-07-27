@@ -54,6 +54,12 @@ export function Appointments() {
         toast({ title: "Cita cancelada" });
     }
 
+    const formatTime = (date: Date) => {
+        const hours = String(date.getHours()).padStart(2, '0');
+        const minutes = String(date.getMinutes()).padStart(2, '0');
+        return `${hours}:${minutes}`;
+    }
+
     return (
         <Card>
             <CardHeader>
@@ -95,31 +101,37 @@ export function Appointments() {
                                 <Label htmlFor="specialty">Especialidad</Label>
                                 <Input id="specialty" placeholder="ej., Cardiología" defaultValue={selectedAppointment?.specialty} />
                             </div>
-                            <div className="grid gap-2">
-                                <Label>Fecha</Label>
-                                <Popover>
-                                    <PopoverTrigger asChild>
-                                        <Button
-                                        variant={"outline"}
-                                        className={cn(
-                                            "w-full justify-start text-left font-normal",
-                                            !date && "text-muted-foreground"
-                                        )}
-                                        >
-                                        <CalendarIcon className="mr-2 h-4 w-4" />
-                                        {date ? format(date, "PPP", { locale: es }) : <span>Elige una fecha</span>}
-                                        </Button>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-auto p-0">
-                                        <Calendar
-                                        mode="single"
-                                        selected={date}
-                                        onSelect={setDate}
-                                        initialFocus
-                                        locale={es}
-                                        />
-                                    </PopoverContent>
-                                </Popover>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="grid gap-2">
+                                    <Label>Fecha</Label>
+                                    <Popover>
+                                        <PopoverTrigger asChild>
+                                            <Button
+                                            variant={"outline"}
+                                            className={cn(
+                                                "w-full justify-start text-left font-normal",
+                                                !date && "text-muted-foreground"
+                                            )}
+                                            >
+                                            <CalendarIcon className="mr-2 h-4 w-4" />
+                                            {date ? format(date, "PPP", { locale: es }) : <span>Elige una fecha</span>}
+                                            </Button>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="w-auto p-0">
+                                            <Calendar
+                                            mode="single"
+                                            selected={date}
+                                            onSelect={setDate}
+                                            initialFocus
+                                            locale={es}
+                                            />
+                                        </PopoverContent>
+                                    </Popover>
+                                </div>
+                                 <div className="grid gap-2">
+                                    <Label htmlFor="appointment-time">Hora</Label>
+                                    <Input id="appointment-time" type="time" defaultValue={selectedAppointment ? formatTime(selectedAppointment.date) : '10:00'} />
+                                </div>
                             </div>
                         </div>
                         <DialogFooter>
