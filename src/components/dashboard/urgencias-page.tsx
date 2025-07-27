@@ -56,7 +56,7 @@ export function UrgenciasPage() {
                                             <div key={provider.name} className="flex items-center justify-between rounded-lg border p-3">
                                                 <div className="flex items-center gap-4">
                                                     {provider.logo && (
-                                                        <Image src={provider.logo} alt={`${provider.name} logo`} width={40} height={40} data-ai-hint="company logo" />
+                                                        <Image src={provider.logo} alt={`${provider.name} logo`} width={40} height={40} className="rounded-full" data-ai-hint="company logo" />
                                                     )}
                                                     <div>
                                                         <p className="font-semibold">{provider.name}</p>
