@@ -5,7 +5,7 @@ import { Siren, Phone, Home, Star } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogClose, DialogFooter } from "@/components/ui/dialog";
 
 const homeCareProviders = [
-    { name: 'familymed', phone: '221234567', logo: 'https://www.familymed.cl/wp-content/uploads/2021/11/logo-familymed-2-e1637941384393.png', rating: 4.5, reviews: 120 },
+    { name: 'familymed', phone: '221234567', logo: 'https://storage.googleapis.com/monorepo-prod-project-resources/465d6830-1bfa-4458-8926-b07283626a57/familymed-logo.png', rating: 4.5, reviews: 120 },
     { name: 'Red de Salud UC CHRISTUS', phone: '226767000' },
     { name: 'Help Asistencia', phone: '6006004444' },
     { name: 'Clínica Alemana', phone: '229101111' },
@@ -55,7 +55,9 @@ export function UrgenciasPage() {
                                             <div key={provider.name} className="flex items-center justify-between rounded-lg border p-3">
                                                 <div className="flex items-center gap-4">
                                                     {provider.logo && (
-                                                        <img src={provider.logo} alt={`${provider.name} logo`} width="40" height="40" className="rounded-full object-contain" data-ai-hint="company logo" />
+                                                        <div className="w-10 h-10 flex-shrink-0">
+                                                            <img src={provider.logo} alt={`${provider.name} logo`} className="w-full h-full rounded-full object-contain" data-ai-hint="company logo" />
+                                                        </div>
                                                     )}
                                                     <div>
                                                         <p className="font-semibold">{provider.name}</p>
