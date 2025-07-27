@@ -11,7 +11,7 @@ export default function HeroSection() {
             alt="Logo de My Home Doctor App con una doctora sonriente"
             width={800}
             height={600}
-            className="max-w-sm md:max-w-md lg:max-w-lg h-auto"
+            className="max-w-md md:max-w-lg lg:max-w-xl h-auto"
             data-ai-hint="app logo"
             priority
           />
