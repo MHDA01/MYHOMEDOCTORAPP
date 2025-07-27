@@ -12,6 +12,7 @@ export type Appointment = {
   specialty: string;
   date: Date;
   status: 'Upcoming' | 'Past';
+  reminder?: string;
 };
 
 export type Medication = {

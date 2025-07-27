@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Calendar as CalendarIcon, CalendarClock, PlusCircle, MoreVertical, FilePenLine, Trash2 } from "lucide-react";
+import { Calendar as CalendarIcon, CalendarClock, PlusCircle, MoreVertical, FilePenLine, Trash2, Bell } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { format } from "date-fns";
 import { es } from 'date-fns/locale';
 import { cn } from "@/lib/utils";
@@ -19,8 +20,8 @@ import { useToast } from "@/hooks/use-toast";
 
 
 const mockAppointments: Appointment[] = [
-  { id: '1', doctor: 'Dra. Evelyn Reed', specialty: 'Cardióloga', date: new Date('2024-08-15T10:00:00'), status: 'Upcoming' },
-  { id: '2', doctor: 'Dr. Ben Carter', specialty: 'Dermatólogo', date: new Date('2024-08-22T14:30:00'), status: 'Upcoming' },
+  { id: '1', doctor: 'Dra. Evelyn Reed', specialty: 'Cardióloga', date: new Date('2024-08-15T10:00:00'), status: 'Upcoming', reminder: '24h' },
+  { id: '2', doctor: 'Dr. Ben Carter', specialty: 'Dermatólogo', date: new Date('2024-08-22T14:30:00'), status: 'Upcoming', reminder: '2h' },
   { id: '3', doctor: 'Dra. Olivia Chen', specialty: 'Médico General', date: new Date('2024-07-05T09:00:00'), status: 'Past' },
 ];
 
@@ -60,6 +61,18 @@ export function Appointments() {
         return `${hours}:${minutes}`;
     }
 
+    const getReminderLabel = (reminderKey?: string) => {
+        if (!reminderKey) return 'Sin recordatorio';
+        const labels: {[key: string]: string} = {
+            '1h': '1 hora antes',
+            '2h': '2 horas antes',
+            '24h': '24 horas antes',
+            '2d': '2 días antes',
+        };
+        return labels[reminderKey] || 'Personalizado';
+    }
+
+
     return (
         <Card>
             <CardHeader>
@@ -76,7 +89,7 @@ export function Appointments() {
                         <TabsTrigger value="past">Pasadas</TabsTrigger>
                     </TabsList>
                     <TabsContent value="upcoming">
-                        <AppointmentList appointments={upcomingAppointments} onEdit={(app) => handleOpenDialog('edit', app)} onDelete={handleDelete} />
+                        <AppointmentList appointments={upcomingAppointments} onEdit={(app) => handleOpenDialog('edit', app)} onDelete={handleDelete} getReminderLabel={getReminderLabel}/>
                     </TabsContent>
                     <TabsContent value="past">
                         <AppointmentList appointments={pastAppointments} onEdit={(app) => handleOpenDialog('edit', app)} onDelete={handleDelete} isPast />
@@ -133,6 +146,21 @@ export function Appointments() {
                                     <Input id="appointment-time" type="time" defaultValue={selectedAppointment ? formatTime(selectedAppointment.date) : '10:00'} />
                                 </div>
                             </div>
+                            <div className="grid gap-2">
+                                <Label htmlFor="reminder">Recordatorio</Label>
+                                <Select defaultValue={selectedAppointment?.reminder || '24h'}>
+                                    <SelectTrigger id="reminder">
+                                        <SelectValue placeholder="Selecciona un recordatorio" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="1h">1 hora antes</SelectItem>
+                                        <SelectItem value="2h">2 horas antes</SelectItem>
+                                        <SelectItem value="24h">24 horas antes (por defecto)</SelectItem>
+                                        <SelectItem value="2d">2 días antes</SelectItem>
+                                        <SelectItem value="none">Sin recordatorio</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
                         </div>
                         <DialogFooter>
                              <DialogClose asChild>
@@ -149,17 +177,23 @@ export function Appointments() {
     );
 }
 
-function AppointmentList({ appointments, onEdit, onDelete, isPast = false }: { appointments: Appointment[], onEdit: (appointment: Appointment) => void, onDelete: (id: string) => void, isPast?: boolean }) {
+function AppointmentList({ appointments, onEdit, onDelete, isPast = false, getReminderLabel }: { appointments: Appointment[], onEdit: (appointment: Appointment) => void, onDelete: (id: string) => void, isPast?: boolean, getReminderLabel?: (key?: string) => string }) {
     if (appointments.length === 0) {
         return <p className="text-center text-muted-foreground py-8">No se encontraron citas.</p>;
     }
     return (
         <div className="space-y-4 pt-4">
             {appointments.map(app => (
-                <div key={app.id} className="flex items-center justify-between rounded-lg border p-3">
-                    <div>
+                <div key={app.id} className="flex items-start justify-between rounded-lg border p-3">
+                    <div className="flex-1">
                         <p className="font-semibold">{app.doctor}</p>
                         <p className="text-sm text-muted-foreground">{app.specialty}</p>
+                        {!isPast && getReminderLabel && app.reminder && app.reminder !== 'none' && (
+                             <div className="flex items-center text-xs text-muted-foreground mt-2">
+                                <Bell className="h-3 w-3 mr-1" />
+                                <span>{getReminderLabel(app.reminder)}</span>
+                            </div>
+                        )}
                     </div>
                     <div className="flex items-center gap-2">
                         <div className="text-right">
