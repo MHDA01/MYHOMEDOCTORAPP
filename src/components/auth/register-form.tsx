@@ -47,7 +47,7 @@ export function RegisterForm() {
       <CardFooter className="justify-center text-sm">
         <p>
           ¿Ya tienes una cuenta?{' '}
-          <Link href="/" className="font-semibold text-primary underline-offset-4 hover:underline">
+          <Link href="/login" className="font-semibold text-primary underline-offset-4 hover:underline">
             Iniciar Sesión
           </Link>
         </p>
