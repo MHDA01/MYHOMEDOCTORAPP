@@ -2,6 +2,13 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Siren, Phone, Home } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from "@/components/ui/dialog";
+
+const homeCareProviders = [
+    { name: 'Red de Salud UC CHRISTUS', phone: '226767000' },
+    { name: 'Help Asistencia', phone: '6006004444' },
+    { name: 'Clínica Alemana', phone: '229101111' },
+];
 
 export function UrgenciasPage() {
     return (
@@ -31,9 +38,34 @@ export function UrgenciasPage() {
                             <CardDescription>Contacta a nuestros proveedores para coordinar una visita médica en casa.</CardDescription>
                         </CardHeader>
                         <CardFooter>
-                             <Button>
-                                <Phone className="mr-2" /> Contactar Proveedor
-                            </Button>
+                            <Dialog>
+                                <DialogTrigger asChild>
+                                    <Button>
+                                        <Phone className="mr-2" /> Contactar Proveedor
+                                    </Button>
+                                </DialogTrigger>
+                                <DialogContent>
+                                    <DialogHeader>
+                                        <DialogTitle>Seleccionar Proveedor</DialogTitle>
+                                        <DialogDescription>Elige un proveedor de atención domiciliaria para contactar.</DialogDescription>
+                                    </DialogHeader>
+                                    <div className="space-y-4 py-4">
+                                        {homeCareProviders.map((provider) => (
+                                            <div key={provider.name} className="flex items-center justify-between rounded-lg border p-3">
+                                                <p className="font-semibold">{provider.name}</p>
+                                                <Button size="sm" onClick={() => window.location.href = `tel:${provider.phone}`}>
+                                                    <Phone className="mr-2 h-4 w-4" /> Contactar
+                                                </Button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <DialogFooter>
+                                        <DialogClose asChild>
+                                            <Button variant="outline">Cerrar</Button>
+                                        </DialogClose>
+                                    </DialogFooter>
+                                </DialogContent>
+                            </Dialog>
                         </CardFooter>
                    </Card>
                 </div>
