@@ -19,7 +19,7 @@ export function LoginForm() {
   return (
     <Card className="w-full">
       <CardHeader className="text-center">
-        <CardTitle className="text-2xl font-headline">Bienvenido de Nuevo</CardTitle>
+        <CardTitle className="text-2xl font-headline">Bienvenido</CardTitle>
         <CardDescription>Ingresa tus credenciales para acceder a tu cuenta.</CardDescription>
       </CardHeader>
       <CardContent>

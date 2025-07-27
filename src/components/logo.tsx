@@ -3,8 +3,8 @@ import Image from 'next/image';
 export function Logo({ className }: { className?: string }) {
   return (
     <Image 
-      src="https://storage.googleapis.com/monorepo-prod-project-resources/465d6830-1bfa-4458-8926-b07283626a57/my-home-doctor-logo.png" 
-      alt="MyHome DoctorApp Logo" 
+      src="https://i.postimg.cc/J7N5r89y/LOGO-1.png" 
+      alt="MiDoctorDeCasaApp Logo" 
       width={200} 
       height={150} 
       className={className}
