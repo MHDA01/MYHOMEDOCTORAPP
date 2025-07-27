@@ -10,6 +10,7 @@ export function Logo({ className }: { className?: string }) {
         width={200} 
         height={150} 
         data-ai-hint="app logo"
+        priority
       />
     </div>
   );
