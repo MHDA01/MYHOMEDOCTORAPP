@@ -35,6 +35,7 @@ const mainNavItems = [
 ];
 
 const secondaryNavItems = [
+  { href: '/dashboard#personal-info', icon: User, label: 'Información Personal' },
   { href: '/dashboard#health-record', icon: ShieldAlert, label: 'Antecedentes y contactos' },
   { href: '/dashboard#documents', icon: FileText, label: 'Documentos' },
   { href: '/dashboard#appointments', icon: CalendarClock, label: 'Citas' },

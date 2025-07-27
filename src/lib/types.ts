@@ -37,3 +37,12 @@ export type HealthInfo = {
   medications: string[];
   emergencyContacts: EmergencyContact[];
 };
+
+export type PersonalInfo = {
+  firstName: string;
+  lastName: string;
+  sex: 'male' | 'female' | 'other';
+  dateOfBirth: Date;
+  insuranceProvider: 'Fonasa' | 'Isapre';
+  isapreName?: string;
+}

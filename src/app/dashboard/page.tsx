@@ -1,4 +1,5 @@
 import { DashboardHeader } from "@/components/dashboard/header";
+import { PersonalInfo } from "@/components/dashboard/personal-info";
 import { EmergencyCard } from "@/components/dashboard/emergency-card";
 import { DocumentList } from "@/components/dashboard/document-list";
 import { Appointments } from "@/components/dashboard/appointments";
@@ -10,6 +11,9 @@ export default function DashboardPage() {
       <DashboardHeader />
       <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
         <div className="mx-auto max-w-4xl w-full space-y-8">
+            <div id="personal-info" className="scroll-mt-20">
+                <PersonalInfo />
+            </div>
             <div id="health-record" className="scroll-mt-20">
                 <EmergencyCard />
             </div>
