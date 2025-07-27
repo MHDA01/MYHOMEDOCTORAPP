@@ -7,7 +7,7 @@ export default function Header() {
       <nav className="container mx-auto px-6 py-3 flex justify-between items-center">
         <Link href="#" className="flex items-center">
           <Image
-            src="https://i.postimg.cc/pVd97Wb6/LOGO-2.png"
+            src="https://i.postimg.cc/MTjtbjPt/LOGO.png"
             alt="My Home Doctor App Logo"
             width={180}
             height={40}
