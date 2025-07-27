@@ -1,4 +1,4 @@
-export function ProblemSection() {
+export default function ProblemSection() {
   return (
     <section className="py-12">
       <div className="container mx-auto text-center">

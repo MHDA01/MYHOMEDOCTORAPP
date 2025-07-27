@@ -1,4 +1,4 @@
-export function DownloadSection() {
+export default function DownloadSection() {
   return (
     <section id="download-section" className="py-16 md:py-24 bg-white text-center">
       <div className="container mx-auto px-6">

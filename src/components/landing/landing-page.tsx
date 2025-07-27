@@ -1,11 +1,11 @@
 
-import { DownloadSection } from "./download-section";
-import { Footer } from "./footer";
-import { Header } from "./header";
-import { HeroSection } from "./hero-section";
-import { ProblemSection } from "./problem-section";
-import { SecuritySection } from "./security-section";
-import { SolutionSection } from "./solution-section";
+import DownloadSection from "./download-section";
+import Footer from "./footer";
+import Header from "./header";
+import HeroSection from "./hero-section";
+import ProblemSection from "./problem-section";
+import SecuritySection from "./security-section";
+import SolutionSection from "./solution-section";
 
 export function LandingPage() {
   return (

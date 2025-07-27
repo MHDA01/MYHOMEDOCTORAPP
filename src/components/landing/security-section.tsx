@@ -1,4 +1,4 @@
-export function SecuritySection() {
+export default function SecuritySection() {
   return (
     <section className="py-12 bg-gray-100">
       <div className="container mx-auto text-center">
