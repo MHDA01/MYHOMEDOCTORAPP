@@ -3,7 +3,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Button } from "@/components/ui/button";
 import { Siren, Phone, Home, Star } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogClose, DialogFooter } from "@/components/ui/dialog";
-import Image from "next/image";
 
 const homeCareProviders = [
     { name: 'familymed', phone: '221234567', logo: 'https://placehold.co/40x40.png', rating: 4.5, reviews: 120 },
@@ -56,7 +55,7 @@ export function UrgenciasPage() {
                                             <div key={provider.name} className="flex items-center justify-between rounded-lg border p-3">
                                                 <div className="flex items-center gap-4">
                                                     {provider.logo && (
-                                                        <Image src={provider.logo} alt={`${provider.name} logo`} width={40} height={40} className="rounded-full" data-ai-hint="company logo" />
+                                                        <img src={provider.logo} alt={`${provider.name} logo`} width="40" height="40" className="rounded-full" data-ai-hint="company logo" />
                                                     )}
                                                     <div>
                                                         <p className="font-semibold">{provider.name}</p>
