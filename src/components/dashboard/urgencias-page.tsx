@@ -1,11 +1,12 @@
 'use client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Siren, Phone, Home } from "lucide-react";
+import { Siren, Phone, Home, Star } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogClose, DialogFooter } from "@/components/ui/dialog";
+import Image from "next/image";
 
 const homeCareProviders = [
-    { name: 'familymed', phone: '221234567' },
+    { name: 'familymed', phone: '221234567', logo: 'https://placehold.co/40x40.png', rating: 4.5, reviews: 120 },
     { name: 'Red de Salud UC CHRISTUS', phone: '226767000' },
     { name: 'Help Asistencia', phone: '6006004444' },
     { name: 'Clínica Alemana', phone: '229101111' },
@@ -53,7 +54,21 @@ export function UrgenciasPage() {
                                     <div className="space-y-4 py-4">
                                         {homeCareProviders.map((provider) => (
                                             <div key={provider.name} className="flex items-center justify-between rounded-lg border p-3">
-                                                <p className="font-semibold">{provider.name}</p>
+                                                <div className="flex items-center gap-4">
+                                                    {provider.logo && (
+                                                        <Image src={provider.logo} alt={`${provider.name} logo`} width={40} height={40} data-ai-hint="company logo" />
+                                                    )}
+                                                    <div>
+                                                        <p className="font-semibold">{provider.name}</p>
+                                                        {provider.rating && (
+                                                            <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                                                                <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
+                                                                <span>{provider.rating.toFixed(1)}</span>
+                                                                <span className="text-xs">({provider.reviews} reseñas)</span>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
                                                 <Button size="sm" onClick={() => window.location.href = `tel:${provider.phone}`}>
                                                     <Phone className="mr-2 h-4 w-4" /> Contactar
                                                 </Button>
