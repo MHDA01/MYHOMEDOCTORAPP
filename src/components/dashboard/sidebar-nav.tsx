@@ -39,7 +39,7 @@ export function SidebarNav() {
 
   return (
     <>
-      <SidebarHeader>
+      <SidebarHeader className="items-center">
         <Logo />
       </SidebarHeader>
       <SidebarContent className="p-2">
