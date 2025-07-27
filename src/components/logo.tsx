@@ -1,5 +1,4 @@
 import Image from 'next/image';
-import { cn } from '@/lib/utils';
 
 export function Logo({ className }: { className?: string }) {
   return (
@@ -8,7 +7,7 @@ export function Logo({ className }: { className?: string }) {
       alt="MyHome DoctorApp Logo" 
       width={200} 
       height={150} 
-      className={cn(className)}
+      className={className}
       data-ai-hint="app logo"
       priority
     />
