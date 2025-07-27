@@ -27,7 +27,7 @@ import {
 } from 'lucide-react';
 
 const navItems = [
-  { href: '#', icon: LayoutDashboard, label: 'Panel de Control' },
+  { href: '#', icon: LayoutDashboard, label: 'Mi Historial' },
   { href: '#emergency-card', icon: ShieldAlert, label: 'Tarjeta de Emergencia' },
   { href: '#documents', icon: FileText, label: 'Documentos' },
   { href: '#appointments', icon: CalendarClock, label: 'Citas' },

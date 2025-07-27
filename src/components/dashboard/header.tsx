@@ -7,7 +7,7 @@ export function DashboardHeader() {
         <SidebarTrigger />
       </div>
       <div className="flex-1">
-        <h1 className="text-xl font-semibold md:text-2xl font-headline">Panel de Control</h1>
+        <h1 className="text-xl font-semibold md:text-2xl font-headline">Mi Historial</h1>
       </div>
     </header>
   );
