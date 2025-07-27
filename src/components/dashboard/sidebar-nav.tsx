@@ -24,18 +24,27 @@ import {
   Settings,
   LogOut,
   User,
+  Video,
+  Siren,
 } from 'lucide-react';
 
-const navItems = [
-  { href: '#', icon: LayoutDashboard, label: 'Mi Historial' },
-  { href: '#health-record', icon: ShieldAlert, label: 'Antecedentes y contactos' },
-  { href: '#documents', icon: FileText, label: 'Documentos' },
-  { href: '#appointments', icon: CalendarClock, label: 'Citas' },
-  { href: '#medications', icon: Pill, label: 'Medicamentos' },
+const mainNavItems = [
+  { href: '/dashboard', icon: LayoutDashboard, label: 'Mi Historial' },
+  { href: '/dashboard/teleconsulta', icon: Video, label: 'Teleconsulta' },
+  { href: '/dashboard/urgencias', icon: Siren, label: 'Urgencias y Domicilio' },
+];
+
+const secondaryNavItems = [
+  { href: '/dashboard#health-record', icon: ShieldAlert, label: 'Antecedentes y contactos' },
+  { href: '/dashboard#documents', icon: FileText, label: 'Documentos' },
+  { href: '/dashboard#appointments', icon: CalendarClock, label: 'Citas' },
+  { href: '/dashboard#medications', icon: Pill, label: 'Medicamentos' },
 ];
 
 export function SidebarNav() {
   const pathname = usePathname();
+
+  const isDashboardPage = pathname === '/dashboard';
 
   return (
     <>
@@ -44,17 +53,35 @@ export function SidebarNav() {
       </SidebarHeader>
       <SidebarContent className="p-2">
         <SidebarMenu>
-          {navItems.map((item) => (
+          {mainNavItems.map((item) => (
             <SidebarMenuItem key={item.label}>
               <SidebarMenuButton asChild isActive={pathname === item.href}>
-                <a href={item.href}>
+                <Link href={item.href}>
                   <item.icon />
                   <span>{item.label}</span>
-                </a>
+                </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
           ))}
         </SidebarMenu>
+        {isDashboardPage && (
+          <>
+            <Separator className='my-4'/>
+            <p className='px-4 mb-2 text-xs text-muted-foreground'>Secciones del Historial</p>
+            <SidebarMenu>
+            {secondaryNavItems.map((item) => (
+                <SidebarMenuItem key={item.label}>
+                <SidebarMenuButton asChild>
+                    <a href={item.href}>
+                    <item.icon />
+                    <span>{item.label}</span>
+                    </a>
+                </SidebarMenuButton>
+                </SidebarMenuItem>
+            ))}
+            </SidebarMenu>
+          </>
+        )}
       </SidebarContent>
       <SidebarFooter>
         <Separator className="my-2" />
