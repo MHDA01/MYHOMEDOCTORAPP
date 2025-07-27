@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -14,11 +14,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import type { Medication } from '@/lib/types';
 import { useToast } from "@/hooks/use-toast";
 
-
 const mockMedications: Medication[] = [
-  { id: '1', name: 'Lisinopril', dosage: '10mg', frequency: 'Diario', time: ['09:00'], active: true },
-  { id: '2', name: 'Metformina', dosage: '500mg', frequency: 'Dos veces al día', time: ['08:00', '20:00'], active: true },
-  { id: '3', name: 'Atorvastatina', dosage: '20mg', frequency: 'Diario', time: ['21:00'], active: false },
+  { id: '1', name: 'Lisinopril', dosage: '10mg', frequency: 24, administrationPeriod: 'Permanente', time: ['09:00'], active: true },
+  { id: '2', name: 'Metformina', dosage: '500mg', frequency: 12, administrationPeriod: 'Permanente', time: ['08:00', '20:00'], active: true },
+  { id: '3', name: 'Atorvastatina', dosage: '20mg', frequency: 24, administrationPeriod: 'Permanente', time: ['21:00'], active: false },
 ];
 
 type DialogMode = 'add' | 'edit';
@@ -28,16 +27,39 @@ export function MedicationReminders() {
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [dialogMode, setDialogMode] = useState<DialogMode>('add');
     const [selectedMed, setSelectedMed] = useState<Medication | null>(null);
-    const [timeInputs, setTimeInputs] = useState<string[]>(['']);
+    const [timeInputs, setTimeInputs] = useState<string[]>(['09:00']);
+    const [frequency, setFrequency] = useState<number>(24);
     const { toast } = useToast();
+
+    useEffect(() => {
+        if (!isDialogOpen) return;
+    
+        const numTimes = frequency > 0 ? Math.floor(24 / frequency) : 1;
+        
+        if (selectedMed && selectedMed.frequency === frequency) {
+            setTimeInputs(selectedMed.time);
+            return;
+        }
+
+        const newTimes = Array.from({ length: numTimes }, (_, i) => {
+            const hour = 9 + (i * frequency);
+            return `${String(hour % 24).padStart(2, '0')}:00`;
+        });
+
+        setTimeInputs(newTimes);
+
+      }, [frequency, isDialogOpen, selectedMed]);
+
 
     const handleOpenDialog = (mode: DialogMode, medication?: Medication) => {
         setDialogMode(mode);
         if (mode === 'edit' && medication) {
             setSelectedMed(medication);
+            setFrequency(medication.frequency);
             setTimeInputs(medication.time);
         } else {
             setSelectedMed(null);
+            setFrequency(24);
             setTimeInputs(['09:00']);
         }
         setIsDialogOpen(true);
@@ -53,9 +75,6 @@ export function MedicationReminders() {
         newTimes[index] = value;
         setTimeInputs(newTimes);
     };
-
-    const addTimeInput = () => setTimeInputs([...timeInputs, '']);
-    const removeTimeInput = (index: number) => setTimeInputs(timeInputs.filter((_, i) => i !== index));
 
     const formatTime12h = (time: string) => {
         if (!time) return '';
@@ -80,8 +99,8 @@ export function MedicationReminders() {
                     <div key={med.id} className="flex items-center justify-between rounded-lg border p-3">
                         <div>
                             <p className="font-semibold">{med.name} <span className="text-sm font-normal text-muted-foreground">{med.dosage}</span></p>
-                            <p className="text-sm text-muted-foreground">{med.frequency}</p>
-                            <div className="flex items-center gap-2 mt-1">
+                            <p className="text-sm text-muted-foreground">Cada {med.frequency} horas - {med.administrationPeriod}</p>
+                            <div className="flex items-center gap-2 mt-1 flex-wrap">
                                 {med.time.map(t => <Badge key={t} variant="outline">{formatTime12h(t)}</Badge>)}
                             </div>
                         </div>
@@ -116,7 +135,7 @@ export function MedicationReminders() {
                         <DialogHeader>
                             <DialogTitle>{dialogMode === 'add' ? 'Añadir Nuevo Medicamento' : 'Editar Medicamento'}</DialogTitle>
                         </DialogHeader>
-                         <div className="grid gap-4 py-4">
+                         <div className="grid gap-4 py-4 max-h-[60vh] overflow-y-auto pr-2">
                             <div className="grid gap-2">
                                 <Label htmlFor="med-name">Nombre del Medicamento</Label>
                                 <Input id="med-name" placeholder="ej., Ibuprofeno" defaultValue={selectedMed?.name} />
@@ -127,15 +146,28 @@ export function MedicationReminders() {
                             </div>
                              <div className="grid gap-2">
                                 <Label>Frecuencia</Label>
-                                <Select defaultValue={selectedMed?.frequency}>
+                                <Select onValueChange={(value) => setFrequency(Number(value))} defaultValue={String(selectedMed?.frequency || 24)}>
                                   <SelectTrigger>
                                     <SelectValue placeholder="Selecciona la frecuencia" />
                                   </SelectTrigger>
                                   <SelectContent>
-                                    <SelectItem value="Diario">Diario</SelectItem>
-                                    <SelectItem value="Dos veces al día">Dos veces al día</SelectItem>
-                                    <SelectItem value="Semanal">Semanal</SelectItem>
-                                    <SelectItem value="Mensual">Mensual</SelectItem>
+                                    <SelectItem value="24">Cada 24 horas (1 vez al día)</SelectItem>
+                                    <SelectItem value="12">Cada 12 horas (2 veces al día)</SelectItem>
+                                    <SelectItem value="8">Cada 8 horas (3 veces al día)</SelectItem>
+                                    <SelectItem value="6">Cada 6 horas (4 veces al día)</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                            </div>
+                             <div className="grid gap-2">
+                                <Label>Período de Administración</Label>
+                                <Select defaultValue={selectedMed?.administrationPeriod || 'Permanente'}>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Selecciona el período" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="7 días">7 días</SelectItem>
+                                    <SelectItem value="14 días">14 días</SelectItem>
+                                    <SelectItem value="30 días">30 días</SelectItem>
                                     <SelectItem value="Permanente">Permanente</SelectItem>
                                   </SelectContent>
                                 </Select>
@@ -145,10 +177,8 @@ export function MedicationReminders() {
                                 {timeInputs.map((time, index) => (
                                     <div key={index} className="flex items-center gap-2">
                                         <Input type="time" value={time} onChange={(e) => handleTimeChange(index, e.target.value)} />
-                                        {index > 0 && <Button variant="ghost" size="icon" className="text-destructive" onClick={() => removeTimeInput(index)}><Trash2 className="h-4 w-4"/></Button>}
                                     </div>
                                 ))}
-                                <Button variant="outline" size="sm" onClick={addTimeInput} className="mt-2">Añadir otra hora</Button>
                             </div>
                         </div>
                         <DialogFooter>

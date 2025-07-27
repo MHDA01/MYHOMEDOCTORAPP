@@ -19,7 +19,8 @@ export type Medication = {
   id: string;
   name: string;
   dosage: string;
-  frequency: string;
+  frequency: number; // Interval in hours, e.g., 24 for daily, 12 for twice a day
+  administrationPeriod: string; // e.g., '7 days', 'Permanent'
   time: string[];
   active: boolean;
 };
