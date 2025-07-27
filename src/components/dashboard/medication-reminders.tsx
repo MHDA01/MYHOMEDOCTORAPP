@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from "react";
@@ -180,6 +181,9 @@ export function MedicationReminders() {
                                     <SelectValue placeholder="Selecciona el período" />
                                   </SelectTrigger>
                                   <SelectContent>
+                                    <SelectItem value="Dosis única">Dosis única</SelectItem>
+                                    <SelectItem value="1 día">1 día</SelectItem>
+                                    <SelectItem value="3 días">3 días</SelectItem>
                                     <SelectItem value="7 días">7 días</SelectItem>
                                     <SelectItem value="14 días">14 días</SelectItem>
                                     <SelectItem value="30 días">30 días</SelectItem>
