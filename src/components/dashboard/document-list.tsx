@@ -12,34 +12,46 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { Document } from '@/lib/types';
+import { format } from "date-fns";
+import { es } from 'date-fns/locale';
 
 const mockDocuments: Document[] = [
-  { id: '1', name: 'Blood Test Results', category: 'Lab Result', uploadedAt: new Date('2023-10-26'), url: '#' },
-  { id: '2', name: 'Chest X-Ray', category: 'Imaging Report', uploadedAt: new Date('2023-10-20'), url: '#' },
-  { id: '3', name: 'Amoxicillin Prescription', category: 'Prescription', uploadedAt: new Date('2023-09-15'), url: '#' },
+  { id: '1', name: 'Resultados de Análisis de Sangre', category: 'Lab Result', uploadedAt: new Date('2023-10-26'), url: '#' },
+  { id: '2', name: 'Radiografía de Tórax', category: 'Imaging Report', uploadedAt: new Date('2023-10-20'), url: '#' },
+  { id: '3', name: 'Receta de Amoxicilina', category: 'Prescription', uploadedAt: new Date('2023-09-15'), url: '#' },
 ];
 
 export function DocumentList() {
     const [documents, setDocuments] = useState<Document[]>(mockDocuments);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
 
+    const getCategoryLabel = (category: Document['category']) => {
+        switch (category) {
+            case 'Lab Result': return 'Resultado de Laboratorio';
+            case 'Imaging Report': return 'Informe de Imagen';
+            case 'Prescription': return 'Receta';
+            case 'Other': return 'Otro';
+            default: return category;
+        }
+    };
+
     return (
         <Card>
             <CardHeader>
                 <div className="flex items-center gap-3">
                     <FileText className="h-6 w-6 text-primary" />
-                    <CardTitle className="font-headline text-xl">Medical Documents</CardTitle>
+                    <CardTitle className="font-headline text-xl">Documentos Médicos</CardTitle>
                 </div>
-                <CardDescription>Upload, view, and manage your medical records.</CardDescription>
+                <CardDescription>Sube, visualiza y gestiona tus expedientes médicos.</CardDescription>
             </CardHeader>
             <CardContent>
                 <Table>
                     <TableHeader>
                         <TableRow>
-                            <TableHead>Name</TableHead>
-                            <TableHead>Category</TableHead>
-                            <TableHead>Uploaded</TableHead>
-                            <TableHead className="text-right">Actions</TableHead>
+                            <TableHead>Nombre</TableHead>
+                            <TableHead>Categoría</TableHead>
+                            <TableHead>Subido</TableHead>
+                            <TableHead className="text-right">Acciones</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -47,9 +59,9 @@ export function DocumentList() {
                             <TableRow key={doc.id}>
                                 <TableCell className="font-medium">{doc.name}</TableCell>
                                 <TableCell>
-                                    <Badge variant="secondary">{doc.category}</Badge>
+                                    <Badge variant="secondary">{getCategoryLabel(doc.category)}</Badge>
                                 </TableCell>
-                                <TableCell>{doc.uploadedAt.toLocaleDateString()}</TableCell>
+                                <TableCell>{format(doc.uploadedAt, 'PP', { locale: es })}</TableCell>
                                 <TableCell className="text-right">
                                     <DropdownMenu>
                                         <DropdownMenuTrigger asChild>
@@ -58,9 +70,9 @@ export function DocumentList() {
                                             </Button>
                                         </DropdownMenuTrigger>
                                         <DropdownMenuContent align="end">
-                                            <DropdownMenuItem><View className="mr-2 h-4 w-4" /> View</DropdownMenuItem>
+                                            <DropdownMenuItem><View className="mr-2 h-4 w-4" /> Ver</DropdownMenuItem>
                                             <DropdownMenuItem className="text-destructive">
-                                                <Trash2 className="mr-2 h-4 w-4" /> Delete
+                                                <Trash2 className="mr-2 h-4 w-4" /> Eliminar
                                             </DropdownMenuItem>
                                         </DropdownMenuContent>
                                     </DropdownMenu>
@@ -73,39 +85,39 @@ export function DocumentList() {
             <CardFooter>
                 <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                     <DialogTrigger asChild>
-                        <Button><Upload className="mr-2"/>Upload Document</Button>
+                        <Button><Upload className="mr-2"/>Subir Documento</Button>
                     </DialogTrigger>
                     <DialogContent>
                         <DialogHeader>
-                            <DialogTitle>Upload New Document</DialogTitle>
+                            <DialogTitle>Subir Nuevo Documento</DialogTitle>
                         </DialogHeader>
                         <div className="grid gap-4 py-4">
                             <div className="grid gap-2">
-                                <Label htmlFor="doc-name">Document Name</Label>
-                                <Input id="doc-name" placeholder="e.g., Blood Test Results" />
+                                <Label htmlFor="doc-name">Nombre del Documento</Label>
+                                <Input id="doc-name" placeholder="ej., Resultados de Análisis de Sangre" />
                             </div>
                              <div className="grid gap-2">
-                                <Label htmlFor="doc-category">Category</Label>
+                                <Label htmlFor="doc-category">Categoría</Label>
                                 <Select>
                                     <SelectTrigger id="doc-category">
-                                        <SelectValue placeholder="Select a category" />
+                                        <SelectValue placeholder="Selecciona una categoría" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="lab">Lab Result</SelectItem>
-                                        <SelectItem value="prescription">Prescription</SelectItem>
-                                        <SelectItem value="imaging">Imaging Report</SelectItem>
-                                        <SelectItem value="other">Other</SelectItem>
+                                        <SelectItem value="lab">Resultado de Laboratorio</SelectItem>
+                                        <SelectItem value="prescription">Receta</SelectItem>
+                                        <SelectItem value="imaging">Informe de Imagen</SelectItem>
+                                        <SelectItem value="other">Otro</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
                             <div className="grid gap-2">
-                                <Label htmlFor="doc-file">File</Label>
+                                <Label htmlFor="doc-file">Archivo</Label>
                                 <Input id="doc-file" type="file" />
                             </div>
                         </div>
                         <DialogFooter>
                            <DialogClose asChild>
-                             <Button type="submit" onClick={() => setIsDialogOpen(false)}>Upload</Button>
+                             <Button type="submit" onClick={() => setIsDialogOpen(false)}>Subir</Button>
                            </DialogClose>
                         </DialogFooter>
                     </DialogContent>

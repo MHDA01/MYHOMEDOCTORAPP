@@ -13,9 +13,9 @@ import type { Medication } from '@/lib/types';
 
 
 const mockMedications: Medication[] = [
-  { id: '1', name: 'Lisinopril', dosage: '10mg', frequency: 'Daily', time: ['9:00 AM'], active: true },
-  { id: '2', name: 'Metformin', dosage: '500mg', frequency: 'Twice a day', time: ['8:00 AM', '8:00 PM'], active: true },
-  { id: '3', name: 'Atorvastatin', dosage: '20mg', frequency: 'Daily', time: ['9:00 PM'], active: false },
+  { id: '1', name: 'Lisinopril', dosage: '10mg', frequency: 'Diario', time: ['9:00 AM'], active: true },
+  { id: '2', name: 'Metformina', dosage: '500mg', frequency: 'Dos veces al día', time: ['8:00 AM', '8:00 PM'], active: true },
+  { id: '3', name: 'Atorvastatina', dosage: '20mg', frequency: 'Diario', time: ['9:00 PM'], active: false },
 ];
 
 export function MedicationReminders() {
@@ -27,9 +27,9 @@ export function MedicationReminders() {
             <CardHeader>
                 <div className="flex items-center gap-3">
                     <BellRing className="h-6 w-6 text-primary" />
-                    <CardTitle className="font-headline text-xl">Medication Reminders</CardTitle>
+                    <CardTitle className="font-headline text-xl">Recordatorios de Medicamentos</CardTitle>
                 </div>
-                <CardDescription>Stay on track with your medication schedule.</CardDescription>
+                <CardDescription>Mantente al día con tu horario de medicación.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
                 {medications.map((med) => (
@@ -49,29 +49,29 @@ export function MedicationReminders() {
             <CardFooter>
                  <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                     <DialogTrigger asChild>
-                        <Button><PlusCircle className="mr-2"/>Add Medication</Button>
+                        <Button><PlusCircle className="mr-2"/>Añadir Medicamento</Button>
                     </DialogTrigger>
                     <DialogContent>
                         <DialogHeader>
-                            <DialogTitle>Add New Medication</DialogTitle>
+                            <DialogTitle>Añadir Nuevo Medicamento</DialogTitle>
                         </DialogHeader>
                          <div className="grid gap-4 py-4">
                             <div className="grid gap-2">
-                                <Label htmlFor="med-name">Medication Name</Label>
-                                <Input id="med-name" placeholder="e.g., Ibuprofen" />
+                                <Label htmlFor="med-name">Nombre del Medicamento</Label>
+                                <Input id="med-name" placeholder="ej., Ibuprofeno" />
                             </div>
                              <div className="grid gap-2">
-                                <Label htmlFor="dosage">Dosage</Label>
-                                <Input id="dosage" placeholder="e.g., 200mg" />
+                                <Label htmlFor="dosage">Dosis</Label>
+                                <Input id="dosage" placeholder="ej., 200mg" />
                             </div>
                             <div className="grid gap-2">
-                                <Label htmlFor="time">Reminder Times (comma separated)</Label>
-                                <Input id="time" placeholder="e.g., 9:00 AM, 5:00 PM" />
+                                <Label htmlFor="time">Horas de Recordatorio (separadas por comas)</Label>
+                                <Input id="time" placeholder="ej., 9:00 AM, 5:00 PM" />
                             </div>
                         </div>
                         <DialogFooter>
                             <DialogClose asChild>
-                                <Button type="submit" onClick={() => setIsDialogOpen(false)}>Add Reminder</Button>
+                                <Button type="submit" onClick={() => setIsDialogOpen(false)}>Añadir Recordatorio</Button>
                             </DialogClose>
                         </DialogFooter>
                     </DialogContent>

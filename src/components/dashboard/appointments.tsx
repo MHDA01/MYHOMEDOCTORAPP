@@ -11,14 +11,15 @@ import { Label } from "@/components/ui/label";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { format } from "date-fns";
+import { es } from 'date-fns/locale';
 import { cn } from "@/lib/utils";
 import type { Appointment } from '@/lib/types';
 
 
 const mockAppointments: Appointment[] = [
-  { id: '1', doctor: 'Dr. Evelyn Reed', specialty: 'Cardiologist', date: new Date('2024-08-15T10:00:00'), status: 'Upcoming' },
-  { id: '2', doctor: 'Dr. Ben Carter', specialty: 'Dermatologist', date: new Date('2024-08-22T14:30:00'), status: 'Upcoming' },
-  { id: '3', doctor: 'Dr. Olivia Chen', specialty: 'General Practitioner', date: new Date('2024-07-05T09:00:00'), status: 'Past' },
+  { id: '1', doctor: 'Dra. Evelyn Reed', specialty: 'Cardióloga', date: new Date('2024-08-15T10:00:00'), status: 'Upcoming' },
+  { id: '2', doctor: 'Dr. Ben Carter', specialty: 'Dermatólogo', date: new Date('2024-08-22T14:30:00'), status: 'Upcoming' },
+  { id: '3', doctor: 'Dra. Olivia Chen', specialty: 'Médico General', date: new Date('2024-07-05T09:00:00'), status: 'Past' },
 ];
 
 export function Appointments() {
@@ -33,15 +34,15 @@ export function Appointments() {
             <CardHeader>
                 <div className="flex items-center gap-3">
                     <CalendarClock className="h-6 w-6 text-primary" />
-                    <CardTitle className="font-headline text-xl">Appointments</CardTitle>
+                    <CardTitle className="font-headline text-xl">Citas</CardTitle>
                 </div>
-                <CardDescription>Manage your upcoming and past appointments.</CardDescription>
+                <CardDescription>Gestiona tus citas próximas y pasadas.</CardDescription>
             </CardHeader>
             <CardContent>
                 <Tabs defaultValue="upcoming">
                     <TabsList className="grid w-full grid-cols-2">
-                        <TabsTrigger value="upcoming">Upcoming</TabsTrigger>
-                        <TabsTrigger value="past">Past</TabsTrigger>
+                        <TabsTrigger value="upcoming">Próximas</TabsTrigger>
+                        <TabsTrigger value="past">Pasadas</TabsTrigger>
                     </TabsList>
                     <TabsContent value="upcoming">
                         <AppointmentList appointments={upcomingAppointments} />
@@ -54,23 +55,23 @@ export function Appointments() {
             <CardFooter>
                  <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                     <DialogTrigger asChild>
-                        <Button><PlusCircle className="mr-2"/>Schedule Appointment</Button>
+                        <Button><PlusCircle className="mr-2"/>Programar Cita</Button>
                     </DialogTrigger>
                     <DialogContent>
                         <DialogHeader>
-                            <DialogTitle>Schedule New Appointment</DialogTitle>
+                            <DialogTitle>Programar Nueva Cita</DialogTitle>
                         </DialogHeader>
                          <div className="grid gap-4 py-4">
                             <div className="grid gap-2">
-                                <Label htmlFor="doctor-name">Doctor's Name</Label>
-                                <Input id="doctor-name" placeholder="e.g., Dr. Smith" />
+                                <Label htmlFor="doctor-name">Nombre del Doctor</Label>
+                                <Input id="doctor-name" placeholder="ej., Dr. Smith" />
                             </div>
                              <div className="grid gap-2">
-                                <Label htmlFor="specialty">Specialty</Label>
-                                <Input id="specialty" placeholder="e.g., Cardiology" />
+                                <Label htmlFor="specialty">Especialidad</Label>
+                                <Input id="specialty" placeholder="ej., Cardiología" />
                             </div>
                             <div className="grid gap-2">
-                                <Label>Date</Label>
+                                <Label>Fecha</Label>
                                 <Popover>
                                     <PopoverTrigger asChild>
                                         <Button
@@ -81,7 +82,7 @@ export function Appointments() {
                                         )}
                                         >
                                         <CalendarIcon className="mr-2 h-4 w-4" />
-                                        {date ? format(date, "PPP") : <span>Pick a date</span>}
+                                        {date ? format(date, "PPP", { locale: es }) : <span>Elige una fecha</span>}
                                         </Button>
                                     </PopoverTrigger>
                                     <PopoverContent className="w-auto p-0">
@@ -90,6 +91,7 @@ export function Appointments() {
                                         selected={date}
                                         onSelect={setDate}
                                         initialFocus
+                                        locale={es}
                                         />
                                     </PopoverContent>
                                 </Popover>
@@ -97,7 +99,7 @@ export function Appointments() {
                         </div>
                         <DialogFooter>
                             <DialogClose asChild>
-                                <Button type="submit" onClick={() => setIsDialogOpen(false)}>Schedule</Button>
+                                <Button type="submit" onClick={() => setIsDialogOpen(false)}>Programar</Button>
                             </DialogClose>
                         </DialogFooter>
                     </DialogContent>
@@ -109,7 +111,7 @@ export function Appointments() {
 
 function AppointmentList({ appointments }: { appointments: Appointment[] }) {
     if (appointments.length === 0) {
-        return <p className="text-center text-muted-foreground py-8">No appointments found.</p>;
+        return <p className="text-center text-muted-foreground py-8">No se encontraron citas.</p>;
     }
     return (
         <div className="space-y-4 pt-4">
@@ -120,7 +122,7 @@ function AppointmentList({ appointments }: { appointments: Appointment[] }) {
                         <p className="text-sm text-muted-foreground">{app.specialty}</p>
                     </div>
                     <div className="text-right">
-                        <p className="text-sm font-medium">{format(app.date, "EEE, MMM d")}</p>
+                        <p className="text-sm font-medium">{format(app.date, "EEE, d MMM", { locale: es })}</p>
                         <p className="text-xs text-muted-foreground">{format(app.date, "h:mm a")}</p>
                     </div>
                 </div>

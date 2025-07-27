@@ -11,11 +11,11 @@ import { ShieldAlert, Pill, Phone, UserPlus, FilePenLine } from "lucide-react";
 import type { HealthInfo } from '@/lib/types';
 
 const initialHealthInfo: HealthInfo = {
-  allergies: ['Peanuts', 'Penicillin'],
-  medications: ['Lisinopril 10mg', 'Metformin 500mg'],
+  allergies: ['Cacahuetes', 'Penicilina'],
+  medications: ['Lisinopril 10mg', 'Metformina 500mg'],
   emergencyContacts: [
-    { name: 'Jane Doe', phone: '123-456-7890', relationship: 'Spouse' },
-    { name: 'Dr. Smith', phone: '098-765-4321', relationship: 'Primary Doctor' },
+    { name: 'Jane Doe', phone: '123-456-7890', relationship: 'Esposa' },
+    { name: 'Dr. Smith', phone: '098-765-4321', relationship: 'Médico de cabecera' },
   ],
 };
 
@@ -28,20 +28,20 @@ export function EmergencyCard() {
       <CardHeader>
         <div className="flex items-center gap-3">
             <ShieldAlert className="h-6 w-6 text-destructive" />
-            <CardTitle className="font-headline text-xl">Emergency Health Card</CardTitle>
+            <CardTitle className="font-headline text-xl">Tarjeta de Salud de Emergencia</CardTitle>
         </div>
-        <CardDescription>Critical information for emergency responders.</CardDescription>
+        <CardDescription>Información crítica para los servicios de emergencia.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
         <div>
-          <h4 className="font-semibold text-md mb-2 flex items-center gap-2"><Pill className="h-5 w-5 text-primary"/>Allergies & Current Medications</h4>
+          <h4 className="font-semibold text-md mb-2 flex items-center gap-2"><Pill className="h-5 w-5 text-primary"/>Alergias y Medicamentos Actuales</h4>
           <div className="pl-7 space-y-1 text-sm text-muted-foreground">
-            <p><strong>Allergies:</strong> {healthInfo.allergies.join(', ')}</p>
-            <p><strong>Medications:</strong> {healthInfo.medications.join(', ')}</p>
+            <p><strong>Alergias:</strong> {healthInfo.allergies.join(', ')}</p>
+            <p><strong>Medicamentos:</strong> {healthInfo.medications.join(', ')}</p>
           </div>
         </div>
         <div>
-          <h4 className="font-semibold text-md mb-2 flex items-center gap-2"><Phone className="h-5 w-5 text-primary"/>Emergency Contacts</h4>
+          <h4 className="font-semibold text-md mb-2 flex items-center gap-2"><Phone className="h-5 w-5 text-primary"/>Contactos de Emergencia</h4>
           <ul className="pl-7 space-y-2 text-sm text-muted-foreground">
             {healthInfo.emergencyContacts.map((contact) => (
               <li key={contact.name}>
@@ -56,39 +56,39 @@ export function EmergencyCard() {
           <DialogTrigger asChild>
             <Button>
               <FilePenLine className="mr-2" />
-              Edit Information
+              Editar Información
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-[425px]">
             <DialogHeader>
-              <DialogTitle>Edit Emergency Information</DialogTitle>
+              <DialogTitle>Editar Información de Emergencia</DialogTitle>
             </DialogHeader>
             <div className="grid gap-4 py-4">
               <div className="grid gap-2">
-                <Label htmlFor="allergies">Allergies (comma separated)</Label>
+                <Label htmlFor="allergies">Alergias (separadas por comas)</Label>
                 <Textarea id="allergies" defaultValue={healthInfo.allergies.join(', ')} />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="medications">Current Medications (comma separated)</Label>
+                <Label htmlFor="medications">Medicamentos Actuales (separados por comas)</Label>
                 <Textarea id="medications" defaultValue={healthInfo.medications.join(', ')} />
               </div>
                <div className="grid gap-2">
-                <Label>Emergency Contacts</Label>
+                <Label>Contactos de Emergencia</Label>
                 {healthInfo.emergencyContacts.map((contact, index) => (
                   <div key={index} className="grid grid-cols-3 gap-2">
-                    <Input defaultValue={contact.name} placeholder="Name" />
-                    <Input defaultValue={contact.phone} placeholder="Phone" />
-                    <Input defaultValue={contact.relationship} placeholder="Relationship" />
+                    <Input defaultValue={contact.name} placeholder="Nombre" />
+                    <Input defaultValue={contact.phone} placeholder="Teléfono" />
+                    <Input defaultValue={contact.relationship} placeholder="Relación" />
                   </div>
                 ))}
                  <Button variant="outline" size="sm" className="mt-2">
-                   <UserPlus className="mr-2 h-4 w-4" /> Add Contact
+                   <UserPlus className="mr-2 h-4 w-4" /> Añadir Contacto
                  </Button>
               </div>
             </div>
             <DialogFooter>
               <DialogClose asChild>
-                <Button type="submit" onClick={() => setIsDialogOpen(false)}>Save Changes</Button>
+                <Button type="submit" onClick={() => setIsDialogOpen(false)}>Guardar Cambios</Button>
               </DialogClose>
             </DialogFooter>
           </DialogContent>

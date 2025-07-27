@@ -27,11 +27,11 @@ import {
 } from 'lucide-react';
 
 const navItems = [
-  { href: '#', icon: LayoutDashboard, label: 'Dashboard' },
-  { href: '#emergency-card', icon: ShieldAlert, label: 'Emergency Card' },
-  { href: '#documents', icon: FileText, label: 'Documents' },
-  { href: '#appointments', icon: CalendarClock, label: 'Appointments' },
-  { href: '#medications', icon: Pill, label: 'Medications' },
+  { href: '#', icon: LayoutDashboard, label: 'Panel de Control' },
+  { href: '#emergency-card', icon: ShieldAlert, label: 'Tarjeta de Emergencia' },
+  { href: '#documents', icon: FileText, label: 'Documentos' },
+  { href: '#appointments', icon: CalendarClock, label: 'Citas' },
+  { href: '#medications', icon: Pill, label: 'Medicamentos' },
 ];
 
 export function SidebarNav() {
@@ -83,17 +83,17 @@ export function SidebarNav() {
                 <DropdownMenuSeparator />
                 <DropdownMenuItem>
                     <User className="mr-2 h-4 w-4" />
-                    <span>Profile</span>
+                    <span>Perfil</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem>
                     <Settings className="mr-2 h-4 w-4" />
-                    <span>Settings</span>
+                    <span>Configuración</span>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                  <Link href="/">
                     <DropdownMenuItem>
                         <LogOut className="mr-2 h-4 w-4" />
-                        <span>Log out</span>
+                        <span>Cerrar Sesión</span>
                     </DropdownMenuItem>
                 </Link>
             </DropdownMenuContent>

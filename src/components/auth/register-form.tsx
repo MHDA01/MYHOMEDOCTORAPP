@@ -18,37 +18,37 @@ export function RegisterForm() {
   return (
     <Card>
       <CardHeader className="text-center">
-        <CardTitle className="text-2xl font-headline">Create an Account</CardTitle>
-        <CardDescription>Fill in the details below to get started.</CardDescription>
+        <CardTitle className="text-2xl font-headline">Crear una Cuenta</CardTitle>
+        <CardDescription>Completa los siguientes datos para comenzar.</CardDescription>
       </CardHeader>
       <CardContent>
         <form className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="name">Full Name</Label>
+            <Label htmlFor="name">Nombre Completo</Label>
             <Input id="name" type="text" placeholder="John Doe" required />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
-            <Input id="email" type="email" placeholder="name@example.com" required />
+            <Label htmlFor="email">Correo Electrónico</Label>
+            <Input id="email" type="email" placeholder="nombre@ejemplo.com" required />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
+            <Label htmlFor="password">Contraseña</Label>
             <Input id="password" type="password" required />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="confirm-password">Confirm Password</Label>
+            <Label htmlFor="confirm-password">Confirmar Contraseña</Label>
             <Input id="confirm-password" type="password" required />
           </div>
           <Button type="submit" className="w-full" onClick={handleRegister}>
-            Sign Up
+            Registrarse
           </Button>
         </form>
       </CardContent>
       <CardFooter className="justify-center text-sm">
         <p>
-          Already have an account?{' '}
+          ¿Ya tienes una cuenta?{' '}
           <Link href="/" className="font-semibold text-primary underline-offset-4 hover:underline">
-            Sign In
+            Iniciar Sesión
           </Link>
         </p>
       </CardFooter>
