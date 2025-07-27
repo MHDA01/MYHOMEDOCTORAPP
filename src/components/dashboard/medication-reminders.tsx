@@ -34,7 +34,7 @@ export function MedicationReminders() {
     useEffect(() => {
         if (!isDialogOpen) return;
     
-        const numTimes = frequency > 0 ? Math.floor(24 / frequency) : 1;
+        const numTimes = frequency > 0 && frequency <= 24 ? Math.floor(24 / frequency) : 1;
         
         if (selectedMed && selectedMed.frequency === frequency) {
             setTimeInputs(selectedMed.time);
@@ -42,6 +42,9 @@ export function MedicationReminders() {
         }
 
         const newTimes = Array.from({ length: numTimes }, (_, i) => {
+            if (frequency > 24) {
+                return '09:00';
+            }
             const hour = 9 + (i * frequency);
             return `${String(hour % 24).padStart(2, '0')}:00`;
         });
@@ -85,6 +88,15 @@ export function MedicationReminders() {
         return `${String(formattedHour).padStart(2, '0')}:${minute} ${ampm}`;
     }
 
+    const formatFrequencyLabel = (freq: number) => {
+        if (freq < 24) return `Cada ${freq} horas`;
+        if (freq === 24) return `Cada 24 horas`;
+        if (freq === 48) return `Cada 48 horas`;
+        if (freq === 72) return `Cada 72 horas`;
+        if (freq === 168) return `Cada 7 días`;
+        return `Cada ${freq} horas`;
+    }
+
     return (
         <Card>
             <CardHeader>
@@ -99,7 +111,7 @@ export function MedicationReminders() {
                     <div key={med.id} className="flex items-center justify-between rounded-lg border p-3">
                         <div>
                             <p className="font-semibold">{med.name} <span className="text-sm font-normal text-muted-foreground">{med.dosage}</span></p>
-                            <p className="text-sm text-muted-foreground">Cada {med.frequency} horas - {med.administrationPeriod}</p>
+                            <p className="text-sm text-muted-foreground">{formatFrequencyLabel(med.frequency)} - {med.administrationPeriod}</p>
                             <div className="flex items-center gap-2 mt-1 flex-wrap">
                                 {med.time.map(t => <Badge key={t} variant="outline">{formatTime12h(t)}</Badge>)}
                             </div>
@@ -155,6 +167,9 @@ export function MedicationReminders() {
                                     <SelectItem value="12">Cada 12 horas (2 veces al día)</SelectItem>
                                     <SelectItem value="8">Cada 8 horas (3 veces al día)</SelectItem>
                                     <SelectItem value="6">Cada 6 horas (4 veces al día)</SelectItem>
+                                    <SelectItem value="48">Cada 48 horas (cada 2 días)</SelectItem>
+                                    <SelectItem value="72">Cada 72 horas (cada 3 días)</SelectItem>
+                                    <SelectItem value="168">Cada 7 días (semanal)</SelectItem>
                                   </SelectContent>
                                 </Select>
                             </div>
