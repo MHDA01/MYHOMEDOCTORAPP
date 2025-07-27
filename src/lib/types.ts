@@ -23,8 +23,15 @@ export type Medication = {
   active: boolean;
 };
 
+export type EmergencyContact = {
+  id: string;
+  name: string;
+  phone: string;
+  relationship: string;
+}
+
 export type HealthInfo = {
   allergies: string[];
   medications: string[];
-  emergencyContacts: { name: string; phone: string; relationship: string }[];
+  emergencyContacts: EmergencyContact[];
 };

@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { MoreVertical, Upload, FileText, View, Trash2, Camera } from "lucide-react";
+import { MoreVertical, Upload, FileText, View, Trash2, Camera, FilePenLine } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -25,16 +25,20 @@ const mockDocuments: Document[] = [
   { id: '3', name: 'Receta de Amoxicilina', category: 'Prescription', uploadedAt: new Date('2023-09-15'), url: '#' },
 ];
 
+type DialogMode = 'add' | 'edit';
+
 export function DocumentList() {
     const [documents, setDocuments] = useState<Document[]>(mockDocuments);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
+    const [dialogMode, setDialogMode] = useState<DialogMode>('add');
+    const [selectedDoc, setSelectedDoc] = useState<Document | null>(null);
     const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
     const videoRef = useRef<HTMLVideoElement>(null);
     const { toast } = useToast();
 
 
     useEffect(() => {
-        if (isDialogOpen) {
+        if (isDialogOpen && dialogMode === 'add') {
             const getCameraPermission = async () => {
               try {
                 const stream = await navigator.mediaDevices.getUserMedia({video: true});
@@ -55,14 +59,27 @@ export function DocumentList() {
             };
 
             getCameraPermission();
-        } else {
-            if (videoRef.current && videoRef.current.srcObject) {
-                const stream = videoRef.current.srcObject as MediaStream;
-                stream.getTracks().forEach(track => track.stop());
-                videoRef.current.srcObject = null;
-            }
+        } else if (!isDialogOpen && videoRef.current && videoRef.current.srcObject) {
+            const stream = videoRef.current.srcObject as MediaStream;
+            stream.getTracks().forEach(track => track.stop());
+            videoRef.current.srcObject = null;
         }
-      }, [isDialogOpen, toast]);
+      }, [isDialogOpen, dialogMode, toast]);
+
+    const handleOpenDialog = (mode: DialogMode, doc?: Document) => {
+        setDialogMode(mode);
+        if(mode === 'edit' && doc) {
+            setSelectedDoc(doc);
+        } else {
+            setSelectedDoc(null);
+        }
+        setIsDialogOpen(true);
+    };
+
+    const handleDelete = (docId: string) => {
+        setDocuments(docs => docs.filter(doc => doc.id !== docId));
+        toast({ title: "Documento eliminado" });
+    }
 
     const getCategoryLabel = (category: Document['category']) => {
         switch (category) {
@@ -73,6 +90,16 @@ export function DocumentList() {
             default: return category;
         }
     };
+    
+    const getCategoryValue = (category: Document['category']) => {
+        switch (category) {
+            case 'Lab Result': return 'lab';
+            case 'Imaging Report': return 'imaging';
+            case 'Prescription': return 'prescription';
+            case 'Other': return 'other';
+            default: return 'other';
+        }
+    }
 
     return (
         <Card>
@@ -110,7 +137,8 @@ export function DocumentList() {
                                         </DropdownMenuTrigger>
                                         <DropdownMenuContent align="end">
                                             <DropdownMenuItem><View className="mr-2 h-4 w-4" /> Ver</DropdownMenuItem>
-                                            <DropdownMenuItem className="text-destructive">
+                                            <DropdownMenuItem onClick={() => handleOpenDialog('edit', doc)}><FilePenLine className="mr-2 h-4 w-4" /> Editar</DropdownMenuItem>
+                                            <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(doc.id)}>
                                                 <Trash2 className="mr-2 h-4 w-4" /> Eliminar
                                             </DropdownMenuItem>
                                         </DropdownMenuContent>
@@ -124,31 +152,33 @@ export function DocumentList() {
             <CardFooter>
                 <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                     <DialogTrigger asChild>
-                        <Button><Camera className="mr-2"/>Tomar Foto de Documento</Button>
+                        <Button onClick={() => handleOpenDialog('add')}><Camera className="mr-2"/>Tomar Foto de Documento</Button>
                     </DialogTrigger>
                     <DialogContent>
                         <DialogHeader>
-                            <DialogTitle>Capturar Nuevo Documento</DialogTitle>
+                            <DialogTitle>{dialogMode === 'add' ? 'Capturar Nuevo Documento' : 'Editar Documento'}</DialogTitle>
                         </DialogHeader>
                         <div className="grid gap-4 py-4">
-                            <video ref={videoRef} className="w-full aspect-video rounded-md bg-muted" autoPlay muted />
-                            
-                            { hasCameraPermission === false && (
-                                <Alert variant="destructive">
-                                          <AlertTitle>Se requiere acceso a la cámara</AlertTitle>
-                                          <AlertDescription>
-                                            Por favor, permite el acceso a la cámara para usar esta función.
-                                          </AlertDescription>
-                                  </Alert>
+                            {dialogMode === 'add' && (
+                                <>
+                                 <video ref={videoRef} className="w-full aspect-video rounded-md bg-muted" autoPlay muted />
+                                 { hasCameraPermission === false && (
+                                     <Alert variant="destructive">
+                                               <AlertTitle>Se requiere acceso a la cámara</AlertTitle>
+                                               <AlertDescription>
+                                                 Por favor, permite el acceso a la cámara para usar esta función.
+                                               </AlertDescription>
+                                       </Alert>
+                                 )}
+                                </>
                             )}
-
                             <div className="grid gap-2">
                                 <Label htmlFor="doc-name">Nombre del Documento</Label>
-                                <Input id="doc-name" placeholder="ej., Resultados de Análisis de Sangre" />
+                                <Input id="doc-name" placeholder="ej., Resultados de Análisis de Sangre" defaultValue={selectedDoc?.name} />
                             </div>
                              <div className="grid gap-2">
                                 <Label htmlFor="doc-category">Categoría</Label>
-                                <Select>
+                                <Select defaultValue={selectedDoc ? getCategoryValue(selectedDoc.category) : undefined}>
                                     <SelectTrigger id="doc-category">
                                         <SelectValue placeholder="Selecciona una categoría" />
                                     </SelectTrigger>
@@ -163,7 +193,10 @@ export function DocumentList() {
                         </div>
                         <DialogFooter>
                            <DialogClose asChild>
-                             <Button type="submit" disabled={!hasCameraPermission} onClick={() => setIsDialogOpen(false)}>Guardar Documento</Button>
+                               <Button variant="outline">Cancelar</Button>
+                           </DialogClose>
+                           <DialogClose asChild>
+                             <Button type="submit" disabled={dialogMode === 'add' && !hasCameraPermission} onClick={() => setIsDialogOpen(false)}>Guardar Documento</Button>
                            </DialogClose>
                         </DialogFooter>
                     </DialogContent>
