@@ -68,7 +68,7 @@ export function PersonalInfo() {
             <User className="h-6 w-6 text-primary" />
             <CardTitle className="font-headline text-xl">Información Personal</CardTitle>
         </div>
-        <CardDescription>Tus datos personales y de previsión.</CardDescription>
+        <CardDescription>Tus datos personales y previsión.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
