@@ -17,8 +17,8 @@ export function UrgenciasPage() {
                             <CardDescription>En caso de emergencia médica, solicita una ambulancia de inmediato.</CardDescription>
                         </CardHeader>
                         <CardFooter>
-                            <Button variant="destructive">
-                                <Phone className="mr-2" /> Llamar al 911
+                            <Button variant="destructive" onClick={() => window.location.href = 'tel:131'}>
+                                <Phone className="mr-2" /> Llamar al SAMU
                             </Button>
                         </CardFooter>
                    </Card>
