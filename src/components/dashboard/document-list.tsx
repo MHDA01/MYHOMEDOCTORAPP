@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { MoreVertical, Upload, FileText, View, Trash2 } from "lucide-react";
+import { MoreVertical, Upload, FileText, View, Trash2, Camera } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -85,7 +85,7 @@ export function DocumentList() {
             <CardFooter>
                 <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                     <DialogTrigger asChild>
-                        <Button><Upload className="mr-2"/>Subir Documento</Button>
+                        <Button><Camera className="mr-2"/>Subir Documento</Button>
                     </DialogTrigger>
                     <DialogContent>
                         <DialogHeader>
