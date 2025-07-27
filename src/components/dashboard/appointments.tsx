@@ -138,7 +138,7 @@ export function Appointments() {
                                             initialFocus
                                             locale={es}
                                             captionLayout="dropdown-buttons"
-                                            fromYear={1920}
+                                            fromYear={new Date().getFullYear()}
                                             toYear={new Date().getFullYear() + 5}
                                             />
                                         </PopoverContent>
