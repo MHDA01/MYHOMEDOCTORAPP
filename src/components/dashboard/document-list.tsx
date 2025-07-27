@@ -1,6 +1,7 @@
+
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -14,6 +15,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import type { Document } from '@/lib/types';
 import { format } from "date-fns";
 import { es } from 'date-fns/locale';
+import { useToast } from "@/hooks/use-toast";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+
 
 const mockDocuments: Document[] = [
   { id: '1', name: 'Resultados de Análisis de Sangre', category: 'Lab Result', uploadedAt: new Date('2023-10-26'), url: '#' },
@@ -24,6 +28,41 @@ const mockDocuments: Document[] = [
 export function DocumentList() {
     const [documents, setDocuments] = useState<Document[]>(mockDocuments);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
+    const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
+    const videoRef = useRef<HTMLVideoElement>(null);
+    const { toast } = useToast();
+
+
+    useEffect(() => {
+        if (isDialogOpen) {
+            const getCameraPermission = async () => {
+              try {
+                const stream = await navigator.mediaDevices.getUserMedia({video: true});
+                setHasCameraPermission(true);
+
+                if (videoRef.current) {
+                  videoRef.current.srcObject = stream;
+                }
+              } catch (error) {
+                console.error('Error accessing camera:', error);
+                setHasCameraPermission(false);
+                toast({
+                  variant: 'destructive',
+                  title: 'Acceso a la cámara denegado',
+                  description: 'Por favor, activa los permisos de la cámara en la configuración de tu navegador para usar esta función.',
+                });
+              }
+            };
+
+            getCameraPermission();
+        } else {
+            if (videoRef.current && videoRef.current.srcObject) {
+                const stream = videoRef.current.srcObject as MediaStream;
+                stream.getTracks().forEach(track => track.stop());
+                videoRef.current.srcObject = null;
+            }
+        }
+      }, [isDialogOpen, toast]);
 
     const getCategoryLabel = (category: Document['category']) => {
         switch (category) {
@@ -85,13 +124,24 @@ export function DocumentList() {
             <CardFooter>
                 <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                     <DialogTrigger asChild>
-                        <Button><Camera className="mr-2"/>Subir Documento</Button>
+                        <Button><Camera className="mr-2"/>Tomar Foto de Documento</Button>
                     </DialogTrigger>
                     <DialogContent>
                         <DialogHeader>
-                            <DialogTitle>Subir Nuevo Documento</DialogTitle>
+                            <DialogTitle>Capturar Nuevo Documento</DialogTitle>
                         </DialogHeader>
                         <div className="grid gap-4 py-4">
+                            <video ref={videoRef} className="w-full aspect-video rounded-md bg-muted" autoPlay muted />
+                            
+                            { hasCameraPermission === false && (
+                                <Alert variant="destructive">
+                                          <AlertTitle>Se requiere acceso a la cámara</AlertTitle>
+                                          <AlertDescription>
+                                            Por favor, permite el acceso a la cámara para usar esta función.
+                                          </AlertDescription>
+                                  </Alert>
+                            )}
+
                             <div className="grid gap-2">
                                 <Label htmlFor="doc-name">Nombre del Documento</Label>
                                 <Input id="doc-name" placeholder="ej., Resultados de Análisis de Sangre" />
@@ -110,14 +160,10 @@ export function DocumentList() {
                                     </SelectContent>
                                 </Select>
                             </div>
-                            <div className="grid gap-2">
-                                <Label htmlFor="doc-file">Archivo</Label>
-                                <Input id="doc-file" type="file" />
-                            </div>
                         </div>
                         <DialogFooter>
                            <DialogClose asChild>
-                             <Button type="submit" onClick={() => setIsDialogOpen(false)}>Subir</Button>
+                             <Button type="submit" disabled={!hasCameraPermission} onClick={() => setIsDialogOpen(false)}>Guardar Documento</Button>
                            </DialogClose>
                         </DialogFooter>
                     </DialogContent>
