@@ -5,6 +5,7 @@ import { Siren, Phone, Home } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogClose, DialogFooter } from "@/components/ui/dialog";
 
 const homeCareProviders = [
+    { name: 'familymed', phone: '221234567' },
     { name: 'Red de Salud UC CHRISTUS', phone: '226767000' },
     { name: 'Help Asistencia', phone: '6006004444' },
     { name: 'Clínica Alemana', phone: '229101111' },
