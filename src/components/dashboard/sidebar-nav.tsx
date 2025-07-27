@@ -28,7 +28,7 @@ import {
 
 const navItems = [
   { href: '#', icon: LayoutDashboard, label: 'Mi Historial' },
-  { href: '#emergency-card', icon: ShieldAlert, label: 'Tarjeta de Emergencia' },
+  { href: '#health-record', icon: ShieldAlert, label: 'Antecedentes y contactos' },
   { href: '#documents', icon: FileText, label: 'Documentos' },
   { href: '#appointments', icon: CalendarClock, label: 'Citas' },
   { href: '#medications', icon: Pill, label: 'Medicamentos' },

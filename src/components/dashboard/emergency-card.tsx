@@ -56,9 +56,9 @@ export function EmergencyCard() {
       <CardHeader>
         <div className="flex items-center gap-3">
             <ShieldAlert className="h-6 w-6 text-destructive" />
-            <CardTitle className="font-headline text-xl">Tarjeta de Salud de Emergencia</CardTitle>
+            <CardTitle className="font-headline text-xl">Antecedentes y contactos</CardTitle>
         </div>
-        <CardDescription>Información crítica para los servicios de emergencia.</CardDescription>
+        <CardDescription>Información sobre tus antecedentes médicos y contactos de emergencia.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
         <div>

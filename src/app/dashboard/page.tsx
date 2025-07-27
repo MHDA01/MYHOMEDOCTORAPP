@@ -10,7 +10,7 @@ export default function DashboardPage() {
       <DashboardHeader />
       <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
         <div className="mx-auto max-w-4xl w-full space-y-8">
-            <div id="emergency-card" className="scroll-mt-20">
+            <div id="health-record" className="scroll-mt-20">
                 <EmergencyCard />
             </div>
             <div id="documents" className="scroll-mt-20">
