@@ -1,6 +1,7 @@
+
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Calendar as CalendarIcon, CalendarClock, PlusCircle, MoreVertical, FilePenLine, Trash2, Bell } from "lucide-react";
@@ -35,8 +36,18 @@ export function Appointments() {
     const [date, setDate] = useState<Date | undefined>();
     const { toast } = useToast();
     
-    const upcomingAppointments = appointments.filter(a => new Date(a.date) >= new Date()).map(a => ({...a, status: 'Upcoming' as const}));
-    const pastAppointments = appointments.filter(a => new Date(a.date) < new Date()).map(a => ({...a, status: 'Past' as const}));
+    const [upcomingAppointments, setUpcomingAppointments] = useState<Appointment[]>([]);
+    const [pastAppointments, setPastAppointments] = useState<Appointment[]>([]);
+
+    useEffect(() => {
+        const now = new Date();
+        setUpcomingAppointments(
+            appointments.filter(a => new Date(a.date) >= now).map(a => ({...a, status: 'Upcoming' as const}))
+        );
+        setPastAppointments(
+            appointments.filter(a => new Date(a.date) < now).map(a => ({...a, status: 'Past' as const}))
+        );
+    }, [appointments]);
 
     const handleOpenDialog = (mode: DialogMode, appointment?: Appointment) => {
         setDialogMode(mode);

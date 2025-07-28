@@ -13,17 +13,16 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { User, FilePenLine, Calendar as CalendarIcon, HeartPulse, Hospital, Loader2 } from "lucide-react";
 import type { PersonalInfo as PersonalInfoType } from '@/lib/types';
-import { format, differenceInYears, differenceInMonths, subYears } from 'date-fns';
+import { format, differenceInYears, differenceInMonths, subYears, isValid } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { cn } from "@/lib/utils";
 import { UserContext } from '@/context/user-context';
 import { Skeleton } from '@/components/ui/skeleton';
 
-const calculateAge = (dob: Date) => {
-    if (!dob) return '';
+const calculateAge = (dob: Date | undefined): string => {
+    if (!dob || !isValid(dob)) return '';
     const today = new Date();
     const years = differenceInYears(today, dob);
-    if (isNaN(years)) return '';
     
     const months = differenceInMonths(today, subYears(today, years)) - differenceInMonths(dob, subYears(dob, years));
     const correctedMonths = months < 0 ? months + 12 : months;
@@ -46,16 +45,11 @@ export function PersonalInfo() {
 
   useEffect(() => {
     if (context?.personalInfo) {
-      setEditableInfo(context.personalInfo);
+      const info = { ...context.personalInfo, dateOfBirth: new Date(context.personalInfo.dateOfBirth) };
+      setEditableInfo(info);
+      setAge(calculateAge(info.dateOfBirth));
     }
   }, [context?.personalInfo]);
-  
-  useEffect(() => {
-    if (context?.personalInfo?.dateOfBirth) {
-        const dob = new Date(context.personalInfo.dateOfBirth);
-        setAge(calculateAge(dob));
-    }
-  }, [context?.personalInfo?.dateOfBirth]);
 
   if (!context) {
     throw new Error('PersonalInfo must be used within a UserProvider');
@@ -65,7 +59,7 @@ export function PersonalInfo() {
 
   const handleEditClick = () => {
     if (personalInfo) {
-      setEditableInfo(JSON.parse(JSON.stringify(personalInfo)));
+      setEditableInfo({ ...personalInfo, dateOfBirth: new Date(personalInfo.dateOfBirth) });
       setIsDialogOpen(true);
     }
   }
@@ -124,7 +118,7 @@ export function PersonalInfo() {
             <div><strong>Sexo:</strong><p className="text-muted-foreground capitalize">{personalInfo.sex === 'male' ? 'Masculino' : personalInfo.sex === 'female' ? 'Femenino' : 'Indeterminado'}</p></div>
             <div>
                 <strong>Fecha de Nacimiento:</strong>
-                <p className="text-muted-foreground">{format(personalInfo.dateOfBirth, "d 'de' MMMM 'de' yyyy", { locale: es })} ({age || 'Calculando...'})</p>
+                <p className="text-muted-foreground">{format(new Date(personalInfo.dateOfBirth), "d 'de' MMMM 'de' yyyy", { locale: es })} ({age || 'Calculando...'})</p>
             </div>
             <div>
                 <strong>Previsión:</strong>
