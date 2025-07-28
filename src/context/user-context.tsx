@@ -2,7 +2,7 @@
 "use client";
 
 import { createContext, useState, useEffect, ReactNode } from 'react';
-import type { PersonalInfo, HealthInfo, EmergencyContact } from '@/lib/types';
+import type { PersonalInfo, HealthInfo } from '@/lib/types';
 import { auth, db } from '@/lib/firebase';
 import { onAuthStateChanged, User, signInAnonymously } from 'firebase/auth';
 import { doc, getDoc, setDoc, Timestamp } from 'firebase/firestore';
