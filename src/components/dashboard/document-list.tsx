@@ -54,7 +54,7 @@ export function DocumentList() {
         if (dialogMode !== 'add' || !isDialogOpen) return;
 
         try {
-            // Get available video devices
+            // Enumerate devices first to ensure the UI updates with the switch button
             const devices = await navigator.mediaDevices.enumerateDevices();
             const videoInputs = devices.filter(device => device.kind === 'videoinput');
             setVideoDevices(videoInputs);
