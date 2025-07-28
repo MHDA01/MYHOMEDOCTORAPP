@@ -35,6 +35,9 @@ export type EmergencyContact = {
 export type HealthInfo = {
   allergies: string[];
   medications: string[];
+  pathologicalHistory: string;
+  surgicalHistory: string;
+  gynecologicalHistory: string;
   emergencyContacts: EmergencyContact[];
 };
 

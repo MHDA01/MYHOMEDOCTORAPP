@@ -1,125 +1,138 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useContext, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from '@/components/ui/textarea';
-import { ShieldAlert, Pill, Phone, UserPlus, FilePenLine, Trash2 } from "lucide-react";
-import type { HealthInfo, EmergencyContact } from '@/lib/types';
+import { Phone, UserPlus, FilePenLine, Trash2, Loader2 } from "lucide-react";
+import type { EmergencyContact } from '@/lib/types';
+import { UserContext } from '@/context/user-context';
+import { Skeleton } from '@/components/ui/skeleton';
 
-const initialHealthInfo: HealthInfo = {
-  allergies: ['Cacahuetes', 'Penicilina'],
-  medications: ['Lisinopril 10mg', 'Metformina 500mg'],
-  emergencyContacts: [
-    { id: '1', name: 'Jane Doe', phone: '123-456-7890', relationship: 'Esposa' },
-    { id: '2', name: 'Dr. Smith', phone: '098-765-4321', relationship: 'Médico de cabecera' },
-  ],
-};
 
-export function EmergencyCard() {
-  const [healthInfo, setHealthInfo] = useState<HealthInfo>(initialHealthInfo);
+export function EmergencyContactsCard() {
+  const context = useContext(UserContext);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  
-  const [editableInfo, setEditableInfo] = useState<HealthInfo>(initialHealthInfo);
+  const [isSaving, setIsSaving] = useState(false);
+  const [editableContacts, setEditableContacts] = useState<EmergencyContact[]>([]);
 
-  const handleEditClick = () => {
-    setEditableInfo(JSON.parse(JSON.stringify(healthInfo)));
-    setIsDialogOpen(true);
+  useEffect(() => {
+    if (context?.healthInfo) {
+        setEditableContacts(context.healthInfo.emergencyContacts);
+    }
+  }, [context?.healthInfo]);
+
+  if (!context) {
+    throw new Error('EmergencyContactsCard must be used within a UserProvider');
   }
 
-  const handleSave = () => {
-    setHealthInfo(editableInfo);
-    setIsDialogOpen(false);
+  const { healthInfo, updateHealthInfo, loading } = context;
+
+  const handleEditClick = () => {
+    if (healthInfo) {
+      setEditableContacts(JSON.parse(JSON.stringify(healthInfo.emergencyContacts)));
+      setIsDialogOpen(true);
+    }
+  }
+
+  const handleSave = async () => {
+    if (healthInfo) {
+        setIsSaving(true);
+        await updateHealthInfo({ ...healthInfo, emergencyContacts: editableContacts });
+        setIsSaving(false);
+        setIsDialogOpen(false);
+    }
   }
 
   const handleContactChange = (index: number, field: keyof EmergencyContact, value: string) => {
-    const updatedContacts = [...editableInfo.emergencyContacts];
+    const updatedContacts = [...editableContacts];
     updatedContacts[index] = { ...updatedContacts[index], [field]: value };
-    setEditableInfo({ ...editableInfo, emergencyContacts: updatedContacts });
+    setEditableContacts(updatedContacts);
   };
 
   const addContact = () => {
     const newContact: EmergencyContact = { id: Date.now().toString(), name: '', phone: '', relationship: '' };
-    setEditableInfo({ ...editableInfo, emergencyContacts: [...editableInfo.emergencyContacts, newContact] });
+    setEditableContacts([...editableContacts, newContact]);
   };
 
   const removeContact = (id: string) => {
-    setEditableInfo({ ...editableInfo, emergencyContacts: editableInfo.emergencyContacts.filter(c => c.id !== id) });
+    setEditableContacts(editableContacts.filter(c => c.id !== id));
   };
-
+  
+  if (loading || !healthInfo) {
+    return (
+        <Card>
+            <CardHeader>
+                <Skeleton className="h-8 w-3/4" />
+                <Skeleton className="h-4 w-1/2" />
+            </CardHeader>
+            <CardContent>
+                <div className="space-y-2">
+                    <Skeleton className="h-6 w-full" />
+                    <Skeleton className="h-6 w-full" />
+                </div>
+            </CardContent>
+             <CardFooter>
+                 <Skeleton className="h-10 w-32" />
+            </CardFooter>
+        </Card>
+    )
+  }
 
   return (
     <Card>
       <CardHeader>
         <div className="flex items-center gap-3">
-            <ShieldAlert className="h-6 w-6 text-destructive" />
-            <CardTitle className="font-headline text-xl">Antecedentes y contactos</CardTitle>
+            <Phone className="h-6 w-6 text-primary"/>
+            <CardTitle className="font-headline text-xl">Contactos de Emergencia</CardTitle>
         </div>
-        <CardDescription>Información sobre tus antecedentes médicos y contactos de emergencia.</CardDescription>
+        <CardDescription>Personas a contactar en caso de una emergencia médica.</CardDescription>
       </CardHeader>
-      <CardContent className="space-y-6">
-        <div>
-          <h4 className="font-semibold text-md mb-2 flex items-center gap-2"><Pill className="h-5 w-5 text-primary"/>Alergias y Medicamentos Actuales</h4>
-          <div className="pl-7 space-y-1 text-sm text-muted-foreground">
-            <p><strong>Alergias:</strong> {healthInfo.allergies.join(', ')}</p>
-            <p><strong>Medicamentos:</strong> {healthInfo.medications.join(', ')}</p>
-          </div>
-        </div>
-        <div>
-          <h4 className="font-semibold text-md mb-2 flex items-center gap-2"><Phone className="h-5 w-5 text-primary"/>Contactos de Emergencia</h4>
-          <ul className="pl-7 space-y-2 text-sm text-muted-foreground">
+      <CardContent>
+          <ul className="space-y-2 text-sm">
             {healthInfo.emergencyContacts.map((contact) => (
-              <li key={contact.id}>
+              <li key={contact.id} className="text-muted-foreground">
                 <strong>{contact.name}</strong> ({contact.relationship}) - {contact.phone}
               </li>
             ))}
           </ul>
-        </div>
       </CardContent>
       <CardFooter>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
             <Button onClick={handleEditClick}>
               <FilePenLine className="mr-2" />
-              Editar Información
+              Editar Contactos
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[480px]">
+          <DialogContent className="sm:max-w-xl">
             <DialogHeader>
-              <DialogTitle>Editar Información de Emergencia</DialogTitle>
+              <DialogTitle>Editar Contactos de Emergencia</DialogTitle>
             </DialogHeader>
-            <div className="grid gap-4 py-4 max-h-[60vh] overflow-y-auto pr-2">
-              <div className="grid gap-2">
-                <Label htmlFor="allergies">Alergias (separadas por comas)</Label>
-                <Textarea id="allergies" value={editableInfo.allergies.join(', ')} onChange={(e) => setEditableInfo({...editableInfo, allergies: e.target.value.split(',').map(s => s.trim())})}/>
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="medications">Medicamentos Actuales (separados por comas)</Label>
-                <Textarea id="medications" value={editableInfo.medications.join(', ')} onChange={(e) => setEditableInfo({...editableInfo, medications: e.target.value.split(',').map(s => s.trim())})}/>
-              </div>
-               <div className="grid gap-2">
-                <Label>Contactos de Emergencia</Label>
-                {editableInfo.emergencyContacts.map((contact, index) => (
+            <div className="grid gap-4 py-4 max-h-[60vh] overflow-y-auto pr-4">
+              <Label>Contactos</Label>
+                {editableContacts.map((contact, index) => (
                   <div key={contact.id} className="grid grid-cols-[1fr_1fr_1fr_auto] gap-2 items-center">
-                    <Input value={contact.name} onChange={(e) => handleContactChange(index, 'name', e.target.value)} placeholder="Nombre" />
-                    <Input value={contact.phone} onChange={(e) => handleContactChange(index, 'phone', e.target.value)} placeholder="Teléfono" />
-                    <Input value={contact.relationship} onChange={(e) => handleContactChange(index, 'relationship', e.target.value)} placeholder="Relación" />
-                    <Button variant="ghost" size="icon" className="text-destructive" onClick={() => removeContact(contact.id)}><Trash2 className="h-4 w-4"/></Button>
+                    <Input value={contact.name} onChange={(e) => handleContactChange(index, 'name', e.target.value)} placeholder="Nombre" aria-label="Nombre del contacto"/>
+                    <Input value={contact.phone} onChange={(e) => handleContactChange(index, 'phone', e.target.value)} placeholder="Teléfono" aria-label="Teléfono del contacto"/>
+                    <Input value={contact.relationship} onChange={(e) => handleContactChange(index, 'relationship', e.target.value)} placeholder="Relación" aria-label="Relación del contacto"/>
+                    <Button variant="ghost" size="icon" className="text-destructive" onClick={() => removeContact(contact.id)} aria-label="Eliminar contacto"><Trash2 className="h-4 w-4"/></Button>
                   </div>
                 ))}
                  <Button variant="outline" size="sm" className="mt-2" onClick={addContact}>
                    <UserPlus className="mr-2 h-4 w-4" /> Añadir Contacto
                  </Button>
-              </div>
             </div>
             <DialogFooter>
               <DialogClose asChild>
-                <Button variant="outline">Cancelar</Button>
+                <Button variant="outline" disabled={isSaving}>Cancelar</Button>
               </DialogClose>
-              <Button type="submit" onClick={handleSave}>Guardar Cambios</Button>
+              <Button type="submit" onClick={handleSave} disabled={isSaving}>
+                {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Guardar Cambios
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>

@@ -48,7 +48,7 @@ export function PersonalInfo() {
     throw new Error('PersonalInfo must be used within a UserProvider');
   }
 
-  const { personalInfo, setPersonalInfo, loading } = context;
+  const { personalInfo, updatePersonalInfo, loading } = context;
 
   const handleEditClick = () => {
     if (personalInfo) {
@@ -60,7 +60,7 @@ export function PersonalInfo() {
   const handleSave = async () => {
     if (editableInfo) {
       setIsSaving(true);
-      await setPersonalInfo(editableInfo);
+      await updatePersonalInfo(editableInfo);
       setIsSaving(false);
       setIsDialogOpen(false);
     }
