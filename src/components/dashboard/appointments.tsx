@@ -38,6 +38,8 @@ export function Appointments() {
     
     const [upcomingAppointments, setUpcomingAppointments] = useState<Appointment[]>([]);
     const [pastAppointments, setPastAppointments] = useState<Appointment[]>([]);
+    const [isPopoverOpen, setIsPopoverOpen] = useState(false);
+
 
     useEffect(() => {
         // Defer date-sensitive logic to useEffect to prevent hydration mismatch
@@ -84,6 +86,13 @@ export function Appointments() {
         return labels[reminderKey] || 'Personalizado';
     }
 
+     const handleDateSelect = (selectedDate: Date | undefined) => {
+        if (selectedDate) {
+            setDate(selectedDate);
+            setIsPopoverOpen(false); // Close popover after selection
+        }
+    }
+
 
     return (
         <Card>
@@ -109,7 +118,7 @@ export function Appointments() {
                 </Tabs>
             </CardContent>
             <CardFooter>
-                 <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                 <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen} modal={true}>
                     <DialogTrigger asChild>
                         <Button onClick={() => handleOpenDialog('add')}><PlusCircle className="mr-2"/>Programar Cita</Button>
                     </DialogTrigger>
@@ -129,7 +138,7 @@ export function Appointments() {
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="grid gap-2">
                                     <Label>Fecha</Label>
-                                    <Popover>
+                                    <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
                                         <PopoverTrigger asChild>
                                             <Button
                                             variant={"outline"}
@@ -142,11 +151,11 @@ export function Appointments() {
                                             {date ? format(date, "PPP", { locale: es }) : <span>Elige una fecha</span>}
                                             </Button>
                                         </PopoverTrigger>
-                                        <PopoverContent className="w-auto p-0">
+                                        <PopoverContent className="w-auto p-0" portal={false}>
                                             <Calendar
                                             mode="single"
                                             selected={date}
-                                            onSelect={setDate}
+                                            onSelect={handleDateSelect}
                                             initialFocus
                                             locale={es}
                                             captionLayout="dropdown-buttons"
@@ -236,5 +245,3 @@ function AppointmentList({ appointments, onEdit, onDelete, isPast = false, getRe
         </div>
     );
 }
-
-    

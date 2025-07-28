@@ -251,7 +251,3 @@ export function PersonalInfo() {
     </Card>
   );
 }
-
-    
-
-    
