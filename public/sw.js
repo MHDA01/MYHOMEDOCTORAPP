@@ -1,21 +1,24 @@
-
-// This basic service worker is used to show push notifications.
-
-self.addEventListener('push', (event) => {
-  const data = event.data.json();
-  const title = data.title;
-  const options = {
-    body: data.body,
-    icon: data.icon,
-    badge: data.badge,
-  };
-
-  event.waitUntil(self.registration.showNotification(title, options));
+self.addEventListener('install', (event) => {
+  event.waitUntil(self.skipWaiting());
 });
 
-self.addEventListener('notificationclick', (event) => {
-  event.notification.close();
+self.addEventListener('activate', (event) => {
+  event.waitUntil(self.clients.claim());
+});
 
+self.addEventListener('push', function (event) {
+  const data = event.data ? event.data.json() : {};
+  event.waitUntil(
+    self.registration.showNotification(data.title, {
+      body: data.body,
+      icon: data.icon,
+      badge: data.badge,
+    })
+  );
+});
+
+self.addEventListener('notificationclick', function (event) {
+  event.notification.close();
   event.waitUntil(
     clients.openWindow('/')
   );

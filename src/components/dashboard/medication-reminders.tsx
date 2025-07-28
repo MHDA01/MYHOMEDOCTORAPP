@@ -21,22 +21,51 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 type DialogMode = 'add' | 'edit';
 
-async function showNotification(title: string, options: NotificationOptions) {
-  if (!('serviceWorker' in navigator)) {
-    console.warn('Push notifications are not supported.');
-    return;
-  }
-  try {
+async function scheduleMedicationNotifications(medication: Omit<Medication, 'id'>) {
+    if (typeof window === 'undefined' || !('serviceWorker' in navigator) || !('Notification' in window) || Notification.permission !== 'granted') {
+        return;
+    }
+     if (!medication.active) return;
+    
     const registration = await navigator.serviceWorker.getRegistration();
     if (!registration) {
-      console.error('Service Worker not registered.');
-      return;
+        console.error('Service Worker not registered.');
+        return;
     }
-    await registration.showNotification(title, options);
-  } catch (error) {
-    console.error('Error showing notification:', error);
-  }
+    
+    const title = '¡Hora de tu medicina!';
+    const options = {
+        body: `${medication.name} ${medication.dosage}`,
+        icon: '/icons/icon-192x192.png',
+        badge: '/icons/icon-72x72.png',
+        tag: `medication-reminder-${medication.name.replace(/\s/g, '-')}` // Use a tag to group notifications
+    };
+
+    // For simplicity, we schedule for the next occurrence of each time.
+    // A more robust solution would handle complex schedules (e.g., across days).
+    for (const time of medication.time) {
+        const [hours, minutes] = time.split(':').map(Number);
+        const now = new Date();
+        let notificationTime = new Date();
+        notificationTime.setHours(hours, minutes, 0, 0);
+
+        if (notificationTime.getTime() < now.getTime()) {
+             // If the time has already passed today, schedule for the next interval
+            notificationTime.setTime(notificationTime.getTime() + medication.frequency * 60 * 60 * 1000);
+        }
+        
+        try {
+            await registration.showNotification(title, {
+                ...options,
+                timestamp: notificationTime.getTime(),
+                showTrigger: new (window as any).TimestampTrigger(notificationTime.getTime()),
+            });
+        } catch (e) {
+            console.error("Error scheduling medication notification: ", e);
+        }
+    }
 }
+
 
 export function MedicationReminders() {
     const context = useContext(UserContext);
@@ -67,8 +96,8 @@ export function MedicationReminders() {
     }, []);
     
     const requestNotificationPermission = async () => {
+        setShowPermissionRequest(false);
         if (typeof window !== 'undefined' && 'Notification' in window) {
-            setShowPermissionRequest(false);
             const permission = await Notification.requestPermission();
             setNotificationPermission(permission);
             if (permission === 'denied') {
@@ -86,33 +115,6 @@ export function MedicationReminders() {
         }
     };
     
-    const checkReminders = useCallback(() => {
-        if (typeof window === 'undefined' || !('Notification' in window) || Notification.permission !== 'granted') return;
-
-        const now = new Date();
-        const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-        
-        medications.forEach(med => {
-            if(med.active && med.time.includes(currentTime)) {
-                showNotification(`¡Hora de tu medicina!`, {
-                    body: `${med.name} ${med.dosage}`,
-                    icon: '/icons/icon-192x192.png',
-                    badge: '/icons/icon-72x72.png',
-                });
-            }
-        });
-
-    }, [medications]);
-
-    useEffect(() => {
-        const interval = setInterval(() => {
-            checkReminders();
-        }, 60000); // Check every minute
-
-        return () => clearInterval(interval);
-    }, [checkReminders]);
-
-
     useEffect(() => {
         if (!isDialogOpen) return;
     
@@ -179,9 +181,11 @@ export function MedicationReminders() {
 
         if (dialogMode === 'add') {
             await addMedication(medData);
+            await scheduleMedicationNotifications(medData);
             toast({ title: 'Recordatorio añadido' });
         } else if (selectedMed) {
             await updateMedication(selectedMed.id, medData);
+            await scheduleMedicationNotifications(medData);
             toast({ title: 'Recordatorio actualizado' });
         }
 
@@ -190,7 +194,9 @@ export function MedicationReminders() {
     };
 
     const handleToggleActive = async (med: Medication) => {
+        const updatedMed = { ...med, active: !med.active };
         await updateMedication(med.id, { active: !med.active });
+        await scheduleMedicationNotifications(updatedMed);
     }
 
     const formatTime12h = (time: string) => {
