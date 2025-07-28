@@ -2,7 +2,7 @@
   "name": "functions",
   "description": "Cloud Functions for Firebase",
   "scripts": {
-    "lint": "npm run lint:fix",
+    "lint": "eslint --ext .js,.ts . --fix",
     "lint:fix": "eslint --ext .js,.ts . --fix",
     "build": "npm run lint && tsc",
     "build:watch": "tsc --watch",
