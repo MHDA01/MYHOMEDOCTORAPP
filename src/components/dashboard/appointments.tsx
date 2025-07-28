@@ -35,8 +35,8 @@ export function Appointments() {
     const [date, setDate] = useState<Date | undefined>();
     const { toast } = useToast();
     
-    const upcomingAppointments = appointments.filter(a => a.status === 'Upcoming');
-    const pastAppointments = appointments.filter(a => a.status === 'Past');
+    const upcomingAppointments = appointments.filter(a => new Date(a.date) >= new Date()).map(a => ({...a, status: 'Upcoming' as const}));
+    const pastAppointments = appointments.filter(a => new Date(a.date) < new Date()).map(a => ({...a, status: 'Past' as const}));
 
     const handleOpenDialog = (mode: DialogMode, appointment?: Appointment) => {
         setDialogMode(mode);

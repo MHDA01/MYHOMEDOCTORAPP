@@ -20,9 +20,9 @@ import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 
 
 const mockDocuments: Document[] = [
-  { id: '1', name: 'Resultados de Análisis de Sangre', category: 'Lab Result', uploadedAt: new Date('2023-10-26'), url: '#' },
-  { id: '2', name: 'Radiografía de Tórax', category: 'Imaging Report', uploadedAt: new Date('2023-10-20'), url: '#' },
-  { id: '3', name: 'Receta de Amoxicilina', category: 'Prescription', uploadedAt: new Date('2023-09-15'), url: '#' },
+  { id: '1', name: 'Resultados de Análisis de Sangre', category: 'Lab Result', uploadedAt: new Date('2023-10-26T12:00:00'), url: '#' },
+  { id: '2', name: 'Radiografía de Tórax', category: 'Imaging Report', uploadedAt: new Date('2023-10-20T12:00:00'), url: '#' },
+  { id: '3', name: 'Receta de Amoxicilina', category: 'Prescription', uploadedAt: new Date('2023-09-15T12:00:00'), url: '#' },
 ];
 
 type DialogMode = 'add' | 'edit';
