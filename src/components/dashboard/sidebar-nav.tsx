@@ -156,7 +156,7 @@ export function SidebarNav() {
                     <span>Configuración</span>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                 <Link href="/">
+                <Link href="/">
                     <DropdownMenuItem>
                         <LogOut className="mr-2 h-4 w-4" />
                         <span>Cerrar Sesión</span>
