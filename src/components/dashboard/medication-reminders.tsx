@@ -22,16 +22,20 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 type DialogMode = 'add' | 'edit';
 
 async function showNotification(title: string, options: NotificationOptions) {
-  if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+  if (!('serviceWorker' in navigator)) {
     console.warn('Push notifications are not supported.');
     return;
   }
-  const registration = await navigator.serviceWorker.getRegistration();
-  if (!registration) {
-    console.error('Service Worker not registered.');
-    return;
+  try {
+    const registration = await navigator.serviceWorker.getRegistration();
+    if (!registration) {
+      console.error('Service Worker not registered.');
+      return;
+    }
+    await registration.showNotification(title, options);
+  } catch (error) {
+    console.error('Error showing notification:', error);
   }
-  await registration.showNotification(title, options);
 }
 
 export function MedicationReminders() {
@@ -41,6 +45,7 @@ export function MedicationReminders() {
     const [dialogMode, setDialogMode] = useState<DialogMode>('add');
     const [selectedMed, setSelectedMed] = useState<Medication | null>(null);
     const [notificationPermission, setNotificationPermission] = useState('default');
+    const [showPermissionRequest, setShowPermissionRequest] = useState(true);
 
     // Form State
     const [name, setName] = useState('');
@@ -63,6 +68,7 @@ export function MedicationReminders() {
     
     const requestNotificationPermission = async () => {
         if (typeof window !== 'undefined' && 'Notification' in window) {
+            setShowPermissionRequest(false);
             const permission = await Notification.requestPermission();
             setNotificationPermission(permission);
             if (permission === 'denied') {
@@ -241,7 +247,7 @@ export function MedicationReminders() {
                         </AlertDescription>
                     </Alert>
                 )}
-                 {notificationPermission === 'default' && (
+                 {notificationPermission === 'default' && showPermissionRequest && (
                     <Alert>
                         <BellPlus className="h-4 w-4" />
                         <AlertTitle>Activa los Recordatorios</AlertTitle>
