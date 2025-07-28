@@ -43,10 +43,17 @@ export function MedicationReminders() {
     const { medications, addMedication, updateMedication, deleteMedication, loading } = context;
 
     useEffect(() => {
-        setNotificationPermission(Notification.permission);
+        // This code runs only on the client
+        if (typeof window !== 'undefined' && 'Notification' in window) {
+            setNotificationPermission(Notification.permission);
+        }
     }, []);
 
     const requestNotificationPermission = async () => {
+         if (typeof window === 'undefined' || !('Notification' in window)) {
+            toast({ variant: 'destructive', title: 'Navegador no compatible', description: 'Tu navegador no soporta notificaciones.' });
+            return;
+        }
         const permission = await Notification.requestPermission();
         setNotificationPermission(permission);
         if (permission === 'granted') {
@@ -57,7 +64,7 @@ export function MedicationReminders() {
     }
     
     const checkReminders = useCallback(() => {
-        if (Notification.permission !== 'granted') return;
+        if (typeof window === 'undefined' || !('Notification' in window) || Notification.permission !== 'granted') return;
 
         const now = new Date();
         const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
