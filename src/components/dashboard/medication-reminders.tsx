@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { Pill, PlusCircle, BellRing, MoreVertical, FilePenLine, Trash2, Loader2, BellPlus } from "lucide-react";
+import { Pill, PlusCircle, BellRing, MoreVertical, FilePenLine, Trash2, Loader2 } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -49,23 +49,18 @@ export function MedicationReminders() {
 
     useEffect(() => {
         if (typeof window !== 'undefined' && 'Notification' in window) {
-            setNotificationPermission(Notification.permission);
+            const checkPermission = async () => {
+                const currentPermission = Notification.permission;
+                if (currentPermission === 'default') {
+                    const permission = await Notification.requestPermission();
+                    setNotificationPermission(permission);
+                } else {
+                    setNotificationPermission(currentPermission);
+                }
+            }
+            checkPermission();
         }
     }, []);
-
-    const requestNotificationPermission = async () => {
-         if (typeof window === 'undefined' || !('Notification' in window) || !('serviceWorker' in navigator)) {
-            toast({ variant: 'destructive', title: 'Navegador no compatible', description: 'Tu navegador no soporta notificaciones o service workers.' });
-            return;
-        }
-        const permission = await Notification.requestPermission();
-        setNotificationPermission(permission);
-        if (permission === 'granted') {
-            toast({ title: '¡Notificaciones activadas!', description: 'Recibirás recordatorios para tus medicamentos.' });
-        } else if (permission === 'denied') {
-            toast({ variant: 'destructive', title: 'Notificaciones bloqueadas', description: 'Por favor, habilita las notificaciones en la configuración de tu navegador.' });
-        }
-    }
     
     const checkReminders = useCallback(() => {
         if (typeof window === 'undefined' || !('Notification' in window) || Notification.permission !== 'granted') return;
@@ -219,16 +214,12 @@ export function MedicationReminders() {
                 <CardDescription>Mantente al día con tu horario de medicación.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-                {notificationPermission !== 'granted' && (
-                    <Alert>
-                        <AlertTitle>Activar Notificaciones</AlertTitle>
+                 {notificationPermission === 'denied' && (
+                    <Alert variant="destructive">
+                        <AlertTitle>Notificaciones Bloqueadas</AlertTitle>
                         <AlertDescription>
-                            Para recibir recordatorios, permite que la aplicación te envíe notificaciones.
+                            Has bloqueado las notificaciones. Para recibir recordatorios, por favor habilítalas en la configuración de tu navegador.
                         </AlertDescription>
-                         <Button className="mt-4" size="sm" onClick={requestNotificationPermission}>
-                            <BellPlus className="mr-2" />
-                            Activar Notificaciones
-                        </Button>
                     </Alert>
                 )}
                 {medications.length === 0 && <p className="text-center text-muted-foreground pt-4">No has añadido ningún medicamento.</p>}
