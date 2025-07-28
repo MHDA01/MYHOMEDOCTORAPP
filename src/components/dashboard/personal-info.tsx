@@ -24,14 +24,25 @@ const calculateAge = (dob: Date | undefined): string => {
     const today = new Date();
     const years = differenceInYears(today, dob);
     
-    const months = differenceInMonths(today, subYears(today, years)) - differenceInMonths(dob, subYears(dob, years));
-    const correctedMonths = months < 0 ? months + 12 : months;
+    if (years < 0) return ''; // Handle future dates
+
+    const dobThisYear = new Date(today.getFullYear(), dob.getMonth(), dob.getDate());
+    const months = differenceInMonths(today, dobThisYear);
     
     let ageString = `${years} años`;
-    if (years > 0 && correctedMonths > 0) {
-      ageString += ` y ${correctedMonths} ${correctedMonths === 1 ? 'mes' : 'meses'}`;
-    } else if (years === 0) {
-      ageString = `${correctedMonths} ${correctedMonths === 1 ? 'mes' : 'meses'}`;
+    if (years > 0 && months > 0) {
+      ageString += ` y ${months} ${months === 1 ? 'mes' : 'meses'}`;
+    } else if (years === 0 && months >= 0) {
+      ageString = `${months} ${months === 1 ? 'mes' : 'meses'}`;
+    } else if (years > 0 && months < 0) {
+        // This case handles when the birthday hasn't occurred yet this year.
+        const correctedYears = years -1;
+        const correctedMonths = differenceInMonths(today, subYears(today, 1)) - differenceInMonths(dob, subYears(dob,1));
+        const finalMonths = correctedMonths < 0 ? correctedMonths + 12 : correctedMonths;
+        ageString = `${correctedYears} años`;
+        if(finalMonths > 0) {
+            ageString += ` y ${finalMonths} ${finalMonths === 1 ? 'mes' : 'meses'}`;
+        }
     }
     return ageString;
 };
@@ -39,6 +50,7 @@ const calculateAge = (dob: Date | undefined): string => {
 export function PersonalInfo() {
   const context = useContext(UserContext);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isPopoverOpen, setIsPopoverOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [editableInfo, setEditableInfo] = useState<PersonalInfoType | null>(null);
   const [age, setAge] = useState<string>('');
@@ -47,7 +59,6 @@ export function PersonalInfo() {
     if (context?.personalInfo) {
       const info = { ...context.personalInfo, dateOfBirth: new Date(context.personalInfo.dateOfBirth) };
       setEditableInfo(info);
-      // Move age calculation to useEffect to prevent hydration errors
       setAge(calculateAge(info.dateOfBirth));
     }
   }, [context?.personalInfo]);
@@ -77,6 +88,7 @@ export function PersonalInfo() {
   const handleDateSelect = (date: Date | undefined) => {
     if (date && editableInfo) {
         setEditableInfo({ ...editableInfo, dateOfBirth: date });
+        setIsPopoverOpen(false); // Close popover after selection
     }
   }
 
@@ -134,7 +146,7 @@ export function PersonalInfo() {
         </div>
       </CardContent>
       <CardFooter>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen} modal={true}>
           <DialogTrigger asChild>
             <Button onClick={handleEditClick}>
               <FilePenLine className="mr-2" />
@@ -180,7 +192,7 @@ export function PersonalInfo() {
                     </div>
                     <div className="grid gap-2">
                         <Label>Fecha de Nacimiento</Label>
-                        <Popover>
+                        <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
                             <PopoverTrigger asChild>
                                 <Button
                                 variant={"outline"}
@@ -190,7 +202,7 @@ export function PersonalInfo() {
                                 {editableInfo.dateOfBirth ? format(new Date(editableInfo.dateOfBirth), "PPP", { locale: es }) : <span>Elige una fecha</span>}
                                 </Button>
                             </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0">
+                            <PopoverContent className="w-auto p-0" side="bottom" align="start" avoidCollisions={true} portal={false}>
                                 <Calendar
                                 mode="single"
                                 selected={new Date(editableInfo.dateOfBirth)}
@@ -239,5 +251,7 @@ export function PersonalInfo() {
     </Card>
   );
 }
+
+    
 
     
