@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect, useContext } from 'react';
+import { useState, useEffect, useContext, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Calendar as CalendarIcon, CalendarClock, PlusCircle, MoreVertical, FilePenLine, Trash2, Bell, Loader2 } from "lucide-react";
@@ -13,7 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { format } from "date-fns";
+import { format, differenceInMinutes } from "date-fns";
 import { es } from 'date-fns/locale';
 import { cn } from "@/lib/utils";
 import type { Appointment } from '@/lib/types';
@@ -46,6 +46,46 @@ export function Appointments() {
     
     const [upcomingAppointments, setUpcomingAppointments] = useState<Appointment[]>([]);
     const [pastAppointments, setPastAppointments] = useState<Appointment[]>([]);
+    
+    const checkAppointmentReminders = useCallback(() => {
+        if (typeof window === 'undefined' || !('Notification' in window) || Notification.permission !== 'granted') return;
+
+        const now = new Date();
+        upcomingAppointments.forEach(app => {
+            if (!app.reminder || app.reminder === 'none' || app.notified) return;
+
+            const reminderMinutes: { [key: string]: number } = {
+                '1h': 60,
+                '2h': 120,
+                '24h': 1440,
+                '2d': 2880,
+            };
+
+            const reminderValue = reminderMinutes[app.reminder];
+            if (!reminderValue) return;
+
+            const diff = differenceInMinutes(app.date, now);
+
+            if (diff > 0 && diff <= reminderValue && diff > (reminderValue - 5)) { // Check within a 5-minute window to avoid missing it
+                 new Notification('Recordatorio de Cita', {
+                    body: `Tu cita con ${app.doctor} (${app.specialty}) es en ${getReminderLabel(app.reminder, true)}.`,
+                    icon: '/icon-192x192.png'
+                });
+                // Mark as notified to prevent multiple notifications
+                updateAppointment(app.id, { notified: true });
+            }
+        });
+    }, [upcomingAppointments, updateAppointment]);
+
+    useEffect(() => {
+        // Run check on initial load
+        checkAppointmentReminders(); 
+        // Then check every 5 minutes
+        const interval = setInterval(checkAppointmentReminders, 300000); 
+
+        return () => clearInterval(interval);
+    }, [checkAppointmentReminders]);
+
 
     useEffect(() => {
         const now = new Date();
@@ -104,6 +144,7 @@ export function Appointments() {
             date: finalDate,
             status: 'Upcoming' as 'Upcoming',
             reminder,
+            notified: false, // Reset notification status on update
         };
 
         if (dialogMode === 'add') {
@@ -118,15 +159,22 @@ export function Appointments() {
         setIsDialogOpen(false);
     }
 
-    const getReminderLabel = (reminderKey?: string) => {
-        if (!reminderKey) return 'Sin recordatorio';
+    const getReminderLabel = (reminderKey?: string, forNotification = false) => {
+        if (!reminderKey) return forNotification ? 'pronto' : 'Sin recordatorio';
         const labels: {[key: string]: string} = {
-            '1h': '1 hora antes',
+            '1h': '1 hora',
+            '2h': '2 horas',
+            '24h': '24 horas',
+            '2d': '2 días',
+        };
+        const displayLabels: {[key: string]: string} = {
+             '1h': '1 hora antes',
             '2h': '2 horas antes',
             '24h': '24 horas antes',
             '2d': '2 días antes',
         };
-        return labels[reminderKey] || 'Personalizado';
+        if(forNotification) return labels[reminderKey] || 'pronto';
+        return displayLabels[reminderKey] || 'Personalizado';
     }
 
      const handleDateSelect = (selectedDate: Date | undefined) => {

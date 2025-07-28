@@ -13,6 +13,7 @@ export type Appointment = {
   date: Date;
   status: 'Upcoming' | 'Past';
   reminder?: string;
+  notified?: boolean;
 };
 
 export type Medication = {
