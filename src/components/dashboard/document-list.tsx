@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { MoreVertical, Upload, FileText, View, Trash2, Camera, FilePenLine } from "lucide-react";
+import { MoreVertical, FileText, View, Trash2, Camera, FilePenLine, RefreshCcw } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -33,36 +33,41 @@ export function DocumentList() {
     const [dialogMode, setDialogMode] = useState<DialogMode>('add');
     const [selectedDoc, setSelectedDoc] = useState<Document | null>(null);
     const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
+    const [capturedImage, setCapturedImage] = useState<string | null>(null);
     const videoRef = useRef<HTMLVideoElement>(null);
+    const canvasRef = useRef<HTMLCanvasElement>(null);
     const { toast } = useToast();
 
 
     useEffect(() => {
-        if (isDialogOpen && dialogMode === 'add') {
-            const getCameraPermission = async () => {
-              try {
-                const stream = await navigator.mediaDevices.getUserMedia({video: true});
-                setHasCameraPermission(true);
+        const getCameraPermission = async () => {
+          if (isDialogOpen && dialogMode === 'add') {
+            try {
+              const stream = await navigator.mediaDevices.getUserMedia({video: true});
+              setHasCameraPermission(true);
 
-                if (videoRef.current) {
-                  videoRef.current.srcObject = stream;
-                }
-              } catch (error) {
-                console.error('Error accessing camera:', error);
-                setHasCameraPermission(false);
-                toast({
-                  variant: 'destructive',
-                  title: 'Acceso a la cámara denegado',
-                  description: 'Por favor, activa los permisos de la cámara en la configuración de tu navegador para usar esta función.',
-                });
+              if (videoRef.current) {
+                videoRef.current.srcObject = stream;
               }
-            };
-
-            getCameraPermission();
-        } else if (!isDialogOpen && videoRef.current && videoRef.current.srcObject) {
-            const stream = videoRef.current.srcObject as MediaStream;
-            stream.getTracks().forEach(track => track.stop());
-            videoRef.current.srcObject = null;
+            } catch (error) {
+              console.error('Error accessing camera:', error);
+              setHasCameraPermission(false);
+              toast({
+                variant: 'destructive',
+                title: 'Acceso a la cámara denegado',
+                description: 'Por favor, activa los permisos de la cámara en la configuración de tu navegador para usar esta función.',
+              });
+            }
+          }
+        };
+        getCameraPermission();
+        
+        return () => {
+             if (videoRef.current && videoRef.current.srcObject) {
+                const stream = videoRef.current.srcObject as MediaStream;
+                stream.getTracks().forEach(track => track.stop());
+                videoRef.current.srcObject = null;
+            }
         }
       }, [isDialogOpen, dialogMode, toast]);
 
@@ -72,9 +77,37 @@ export function DocumentList() {
             setSelectedDoc(doc);
         } else {
             setSelectedDoc(null);
+            setCapturedImage(null);
         }
         setIsDialogOpen(true);
     };
+
+    const handleCapture = () => {
+        if (videoRef.current && canvasRef.current) {
+            const video = videoRef.current;
+            const canvas = canvasRef.current;
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            const context = canvas.getContext('2d');
+            if(context) {
+                context.drawImage(video, 0, 0, video.videoWidth, video.videoHeight);
+                const dataUrl = canvas.toDataURL('image/png');
+                setCapturedImage(dataUrl);
+
+                // Stop video stream after capture
+                if (video.srcObject) {
+                    const stream = video.srcObject as MediaStream;
+                    stream.getTracks().forEach(track => track.stop());
+                    video.srcObject = null;
+                }
+            }
+        }
+    };
+
+    const handleRetake = () => {
+        setCapturedImage(null);
+    };
+
 
     const handleDelete = (docId: string) => {
         setDocuments(docs => docs.filter(doc => doc.id !== docId));
@@ -158,19 +191,35 @@ export function DocumentList() {
                         <DialogHeader>
                             <DialogTitle>{dialogMode === 'add' ? 'Capturar Nuevo Documento' : 'Editar Documento'}</DialogTitle>
                         </DialogHeader>
-                        <div className="grid gap-4 py-4 max-h-[60vh] overflow-y-auto pr-4">
+                        <div className="grid gap-4 py-4 max-h-[70vh] overflow-y-auto pr-4">
                             {dialogMode === 'add' && (
-                                <>
-                                 <video ref={videoRef} className="w-full aspect-video rounded-md bg-muted" autoPlay muted playsInline />
-                                 { hasCameraPermission === false && (
-                                     <Alert variant="destructive">
-                                               <AlertTitle>Se requiere acceso a la cámara</AlertTitle>
-                                               <AlertDescription>
-                                                 Por favor, permite el acceso a la cámara para usar esta función.
-                                               </AlertDescription>
-                                       </Alert>
+                                <div className="space-y-4">
+                                 {capturedImage ? (
+                                     <div className="space-y-4 text-center">
+                                         <img src={capturedImage} alt="Documento capturado" className="rounded-md w-full" />
+                                         <Button variant="outline" onClick={handleRetake}>
+                                             <RefreshCcw className="mr-2 h-4 w-4" />
+                                             Tomar de Nuevo
+                                         </Button>
+                                     </div>
+                                 ) : (
+                                     <div className="space-y-4 text-center">
+                                         <video ref={videoRef} className="w-full aspect-video rounded-md bg-muted" autoPlay muted playsInline />
+                                         {hasCameraPermission === false && (
+                                             <Alert variant="destructive">
+                                                       <AlertTitle>Se requiere acceso a la cámara</AlertTitle>
+                                                       <AlertDescription>
+                                                         Por favor, permite el acceso a la cámara para usar esta función.
+                                                       </AlertDescription>
+                                               </Alert>
+                                         )}
+                                          <Button onClick={handleCapture} disabled={hasCameraPermission !== true}>
+                                                <Camera className="mr-2" /> Tomar Foto
+                                            </Button>
+                                     </div>
                                  )}
-                                </>
+                                 <canvas ref={canvasRef} className="hidden" />
+                                </div>
                             )}
                             <div className="grid gap-2">
                                 <Label htmlFor="doc-name">Nombre del Documento</Label>
@@ -196,7 +245,7 @@ export function DocumentList() {
                                <Button variant="outline">Cancelar</Button>
                            </DialogClose>
                            <DialogClose asChild>
-                             <Button type="submit" disabled={dialogMode === 'add' && !hasCameraPermission} onClick={() => setIsDialogOpen(false)}>Guardar Documento</Button>
+                             <Button type="submit" disabled={dialogMode === 'add' && !capturedImage} onClick={() => setIsDialogOpen(false)}>Guardar Documento</Button>
                            </DialogClose>
                         </DialogFooter>
                     </DialogContent>
@@ -205,5 +254,7 @@ export function DocumentList() {
         </Card>
     );
 }
+
+    
 
     
