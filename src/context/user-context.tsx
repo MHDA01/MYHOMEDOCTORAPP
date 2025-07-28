@@ -63,10 +63,15 @@ async function getUserDocument(userId: string): Promise<{ personalInfo: Personal
 async function updateUserDocument(userId: string, data: { personalInfo: PersonalInfo, healthInfo: HealthInfo }): Promise<void> {
   try {
     const docRef = doc(db, 'users', userId);
+    // Ensure dateOfBirth is a Date object before converting to Timestamp
+    const dob = data.personalInfo.dateOfBirth instanceof Date 
+        ? data.personalInfo.dateOfBirth 
+        : new Date(data.personalInfo.dateOfBirth);
+
     const serializableData: UserDocument = {
         personalInfo: {
             ...data.personalInfo,
-            dateOfBirth: Timestamp.fromDate(data.personalInfo.dateOfBirth),
+            dateOfBirth: Timestamp.fromDate(dob),
         },
         healthInfo: data.healthInfo
     };
