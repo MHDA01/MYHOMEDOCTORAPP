@@ -1,12 +1,12 @@
 
 'use client';
 
-import { useState, useEffect, useContext } from "react";
+import { useState, useEffect, useContext, useCallback } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { Pill, PlusCircle, BellRing, MoreVertical, FilePenLine, Trash2, Loader2 } from "lucide-react";
+import { Pill, PlusCircle, BellRing, MoreVertical, FilePenLine, Trash2, Loader2, BellPlus } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -16,6 +16,8 @@ import type { Medication } from '@/lib/types';
 import { useToast } from "@/hooks/use-toast";
 import { UserContext } from '@/context/user-context';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+
 
 type DialogMode = 'add' | 'edit';
 
@@ -25,6 +27,7 @@ export function MedicationReminders() {
     const [isSaving, setIsSaving] = useState(false);
     const [dialogMode, setDialogMode] = useState<DialogMode>('add');
     const [selectedMed, setSelectedMed] = useState<Medication | null>(null);
+    const [notificationPermission, setNotificationPermission] = useState('default');
 
     // Form State
     const [name, setName] = useState('');
@@ -38,6 +41,46 @@ export function MedicationReminders() {
 
     if (!context) throw new Error("MedicationReminders must be used within a UserProvider");
     const { medications, addMedication, updateMedication, deleteMedication, loading } = context;
+
+    useEffect(() => {
+        setNotificationPermission(Notification.permission);
+    }, []);
+
+    const requestNotificationPermission = async () => {
+        const permission = await Notification.requestPermission();
+        setNotificationPermission(permission);
+        if (permission === 'granted') {
+            toast({ title: '¡Notificaciones activadas!', description: 'Recibirás recordatorios para tus medicamentos.' });
+        } else if (permission === 'denied') {
+            toast({ variant: 'destructive', title: 'Notificaciones bloqueadas', description: 'Por favor, habilita las notificaciones en la configuración de tu navegador.' });
+        }
+    }
+    
+    const checkReminders = useCallback(() => {
+        if (Notification.permission !== 'granted') return;
+
+        const now = new Date();
+        const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+        
+        medications.forEach(med => {
+            if(med.active && med.time.includes(currentTime)) {
+                new Notification(`¡Hora de tu medicina!`, {
+                    body: `${med.name} ${med.dosage}`,
+                    icon: '/icon-192x192.png' 
+                });
+            }
+        });
+
+    }, [medications]);
+
+    useEffect(() => {
+        const interval = setInterval(() => {
+            checkReminders();
+        }, 60000); // Check every minute
+
+        return () => clearInterval(interval);
+    }, [checkReminders]);
+
 
     useEffect(() => {
         if (!isDialogOpen) return;
@@ -166,6 +209,19 @@ export function MedicationReminders() {
                 <CardDescription>Mantente al día con tu horario de medicación.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+                {notificationPermission !== 'granted' && (
+                    <Alert>
+                        <AlertTitle>Activar Notificaciones</AlertTitle>
+                        <AlertDescription>
+                            Para recibir recordatorios, permite que la aplicación te envíe notificaciones.
+                        </AlertDescription>
+                         <Button className="mt-4" size="sm" onClick={requestNotificationPermission}>
+                            <BellPlus className="mr-2" />
+                            Activar Notificaciones
+                        </Button>
+                    </Alert>
+                )}
+                {medications.length === 0 && <p className="text-center text-muted-foreground pt-4">No has añadido ningún medicamento.</p>}
                 {medications.map((med) => (
                     <div key={med.id} className="flex items-center justify-between rounded-lg border p-3">
                         <div>
@@ -176,7 +232,7 @@ export function MedicationReminders() {
                             </div>
                         </div>
                         <div className="flex items-center gap-2">
-                             <Switch checked={med.active} onCheckedChange={() => handleToggleActive(med)} />
+                             <Switch checked={med.active} onCheckedChange={() => handleToggleActive(med)} aria-label={`Activar o desactivar recordatorio para ${med.name}`}/>
                              <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
                                     <Button variant="ghost" size="icon">
@@ -271,3 +327,5 @@ export function MedicationReminders() {
         </Card>
     );
 }
+
+    
