@@ -9,13 +9,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
-import { User, FilePenLine, Calendar as CalendarIcon, HeartPulse, Hospital, Loader2 } from "lucide-react";
+import { User, FilePenLine, HeartPulse, Hospital, Loader2 } from "lucide-react";
 import type { PersonalInfo as PersonalInfoType } from '@/lib/types';
-import { format, differenceInYears, isValid, parseISO } from 'date-fns';
+import { format, differenceInYears, isValid, parse, set } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { cn } from "@/lib/utils";
 import { UserContext } from '@/context/user-context';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -28,20 +25,22 @@ const calculateAge = (dob: Date | undefined): string => {
     return `${years} años`;
 };
 
+const getValidDate = (date: string | Date | undefined): Date | undefined => {
+    if (!date) return undefined;
+    const d = date instanceof Date ? date : new Date(date);
+    return isValid(d) ? d : undefined;
+}
 
 export function PersonalInfo() {
   const context = useContext(UserContext);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [isPopoverOpen, setIsPopoverOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [editableInfo, setEditableInfo] = useState<PersonalInfoType | null>(null);
   const [age, setAge] = useState<string>('');
-
-  const getValidDate = (date: string | Date | undefined): Date | undefined => {
-    if (!date) return undefined;
-    const d = date instanceof Date ? date : parseISO(date as string);
-    return isValid(d) ? d : undefined;
-  }
+  
+  const [day, setDay] = useState('');
+  const [month, setMonth] = useState('');
+  const [year, setYear] = useState('');
 
   useEffect(() => {
     if (context?.personalInfo?.dateOfBirth) {
@@ -55,9 +54,13 @@ export function PersonalInfo() {
 
   useEffect(() => {
     if (context?.personalInfo) {
+      setEditableInfo(context.personalInfo);
       const dob = getValidDate(context.personalInfo.dateOfBirth);
-      const info = { ...context.personalInfo, dateOfBirth: dob || new Date() };
-      setEditableInfo(info);
+      if (dob) {
+        setDay(format(dob, 'dd'));
+        setMonth(format(dob, 'MM'));
+        setYear(format(dob, 'yyyy'));
+      }
     }
   }, [context?.personalInfo, isDialogOpen]);
 
@@ -69,8 +72,7 @@ export function PersonalInfo() {
 
   const handleEditClick = () => {
     if (personalInfo) {
-      const dob = getValidDate(personalInfo.dateOfBirth);
-      setEditableInfo({ ...personalInfo, dateOfBirth: dob || new Date() });
+      setEditableInfo({ ...personalInfo });
       setIsDialogOpen(true);
     }
   }
@@ -78,19 +80,19 @@ export function PersonalInfo() {
   const handleSave = async () => {
     if (editableInfo) {
       setIsSaving(true);
-      await updatePersonalInfo(editableInfo);
+      const newDate = parse(`${year}-${month}-${day}`, 'yyyy-MM-dd', new Date());
+      
+      const updatedInfo: PersonalInfoType = {
+          ...editableInfo,
+          dateOfBirth: isValid(newDate) ? newDate : editableInfo.dateOfBirth,
+      };
+
+      await updatePersonalInfo(updatedInfo);
       setIsSaving(false);
       setIsDialogOpen(false);
     }
   }
   
-  const handleDateSelect = (date: Date | undefined) => {
-    if (date && editableInfo) {
-        setEditableInfo({ ...editableInfo, dateOfBirth: date });
-        setIsPopoverOpen(false);
-    }
-  }
-
   const displayDob = getValidDate(personalInfo?.dateOfBirth);
 
   if (loading || !personalInfo) {
@@ -193,30 +195,29 @@ export function PersonalInfo() {
                     </div>
                     <div className="grid gap-2">
                         <Label>Fecha de Nacimiento</Label>
-                        <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
-                            <PopoverTrigger asChild>
-                                <Button
-                                variant={"outline"}
-                                className={cn("w-full justify-start text-left font-normal", !editableInfo.dateOfBirth && "text-muted-foreground")}
-                                >
-                                <CalendarIcon className="mr-2 h-4 w-4" />
-                                {editableInfo.dateOfBirth && isValid(getValidDate(editableInfo.dateOfBirth)) ? format(getValidDate(editableInfo.dateOfBirth) as Date, "PPP", { locale: es }) : <span>Elige una fecha</span>}
-                                </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0" align="start" portal={false}>
-                                <Calendar
-                                    mode="single"
-                                    selected={getValidDate(editableInfo.dateOfBirth)}
-                                    onSelect={handleDateSelect}
-                                    locale={es}
-                                    captionLayout="dropdown-buttons"
-                                    fromYear={1920}
-                                    toYear={new Date().getFullYear()}
-                                    disabled={(date) => date > new Date() || date < new Date("1900-01-01")}
-                                    initialFocus
-                                />
-                            </PopoverContent>
-                        </Popover>
+                        <div className="flex items-center gap-2">
+                            <Input
+                                type="number"
+                                value={day}
+                                onChange={(e) => setDay(e.target.value)}
+                                placeholder="DD"
+                                aria-label="Día de nacimiento"
+                            />
+                            <Input
+                                type="number"
+                                value={month}
+                                onChange={(e) => setMonth(e.target.value)}
+                                placeholder="MM"
+                                aria-label="Mes de nacimiento"
+                            />
+                            <Input
+                                type="number"
+                                value={year}
+                                onChange={(e) => setYear(e.target.value)}
+                                placeholder="AAAA"
+                                aria-label="Año de nacimiento"
+                            />
+                        </div>
                     </div>
                     <div className="grid gap-2">
                         <Label>Previsión</Label>
