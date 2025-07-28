@@ -1,12 +1,12 @@
 
 'use client';
 
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, useContext } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { MoreVertical, FileText, View, Trash2, Camera, FilePenLine, RefreshCcw, SwitchCamera } from "lucide-react";
+import { MoreVertical, FileText, View, Trash2, Camera, FilePenLine, RefreshCcw, SwitchCamera, Loader2 } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -17,19 +17,16 @@ import { format } from "date-fns";
 import { es } from 'date-fns/locale';
 import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import { UserContext } from '@/context/user-context';
+import { Skeleton } from '@/components/ui/skeleton';
 
-
-const mockDocuments: Document[] = [
-  { id: '1', name: 'Resultados de Análisis de Sangre', category: 'Lab Result', uploadedAt: new Date('2023-10-26T12:00:00'), url: '#' },
-  { id: '2', name: 'Radiografía de Tórax', category: 'Imaging Report', uploadedAt: new Date('2023-10-20T12:00:00'), url: '#' },
-  { id: '3', name: 'Receta de Amoxicilina', category: 'Prescription', uploadedAt: new Date('2023-09-15T12:00:00'), url: '#' },
-];
 
 type DialogMode = 'add' | 'edit';
 
 export function DocumentList() {
-    const [documents, setDocuments] = useState<Document[]>(mockDocuments);
+    const context = useContext(UserContext);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
+    const [isSaving, setIsSaving] = useState(false);
     const [dialogMode, setDialogMode] = useState<DialogMode>('add');
     const [selectedDoc, setSelectedDoc] = useState<Document | null>(null);
     const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
@@ -37,10 +34,17 @@ export function DocumentList() {
     const [videoDevices, setVideoDevices] = useState<MediaDeviceInfo[]>([]);
     const [currentDeviceIndex, setCurrentDeviceIndex] = useState(0);
 
+    // Form state
+    const [docName, setDocName] = useState('');
+    const [docCategory, setDocCategory] = useState<Document['category']>('Other');
+
     const videoRef = useRef<HTMLVideoElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const streamRef = useRef<MediaStream | null>(null);
     const { toast } = useToast();
+
+    if (!context) throw new Error("DocumentList must be used within a UserProvider");
+    const { documents, addDocument, updateDocument, deleteDocument, loading } = context;
 
     const stopStream = useCallback(() => {
         if (streamRef.current) {
@@ -76,22 +80,18 @@ export function DocumentList() {
 
     const initializeCamera = useCallback(async () => {
         if (dialogMode !== 'add' || !isDialogOpen) return;
-        stopStream(); // Ensure any previous stream is stopped
+        stopStream(); 
 
         try {
-            // Get permission and initial stream to trigger the prompt
             const initialStream = await navigator.mediaDevices.getUserMedia({ video: true });
             setHasCameraPermission(true);
-
-            // Now enumerate devices
+            
             const devices = await navigator.mediaDevices.enumerateDevices();
             const videoInputs = devices.filter(device => device.kind === 'videoinput');
             setVideoDevices(videoInputs);
 
-            // Stop the initial generic stream
             initialStream.getTracks().forEach(track => track.stop());
 
-            // Start the stream with the selected device
             const selectedDeviceId = videoInputs.length > 0 ? videoInputs[currentDeviceIndex].deviceId : undefined;
             await startStream(selectedDeviceId);
 
@@ -113,9 +113,7 @@ export function DocumentList() {
             stopStream();
         }
         
-        return () => {
-            stopStream();
-        }
+        return () => stopStream();
     }, [isDialogOpen, dialogMode, capturedImage, initializeCamera, stopStream]);
     
      useEffect(() => {
@@ -125,15 +123,22 @@ export function DocumentList() {
         }
     }, [currentDeviceIndex, videoDevices, isDialogOpen, dialogMode, capturedImage, startStream]);
 
+    const resetForm = () => {
+        setDocName('');
+        setDocCategory('Other');
+        setCapturedImage(null);
+        setCurrentDeviceIndex(0);
+    };
 
     const handleOpenDialog = (mode: DialogMode, doc?: Document) => {
         setDialogMode(mode);
         if(mode === 'edit' && doc) {
             setSelectedDoc(doc);
+            setDocName(doc.name);
+            setDocCategory(doc.category);
         } else {
             setSelectedDoc(null);
-            setCapturedImage(null);
-            setCurrentDeviceIndex(0);
+            resetForm();
         }
         setIsDialogOpen(true);
     };
@@ -156,7 +161,6 @@ export function DocumentList() {
 
     const handleRetake = () => {
         setCapturedImage(null);
-        // initializeCamera will be called by the useEffect dependency change
     };
 
     const handleCameraSwitch = () => {
@@ -165,8 +169,40 @@ export function DocumentList() {
         }
     };
 
-    const handleDelete = (docId: string) => {
-        setDocuments(docs => docs.filter(doc => doc.id !== docId));
+    const handleSubmit = async () => {
+        if (!docName || !docCategory) {
+            toast({ variant: "destructive", title: "Por favor complete todos los campos" });
+            return;
+        }
+        if (dialogMode === 'add' && !capturedImage) {
+            toast({ variant: "destructive", title: "Por favor, capture una foto del documento." });
+            return;
+        }
+        
+        setIsSaving(true);
+        const docData = {
+            name: docName,
+            category: docCategory,
+            // In a real app, you would upload the image to a storage service and get a URL.
+            // For now, we'll store the data URI but this is not recommended for production.
+            url: capturedImage || selectedDoc?.url || '#',
+            uploadedAt: new Date(),
+        };
+
+        if (dialogMode === 'add') {
+            await addDocument(docData);
+            toast({ title: "Documento guardado con éxito" });
+        } else if (selectedDoc) {
+            await updateDocument(selectedDoc.id, { name: docName, category: docCategory });
+            toast({ title: "Documento actualizado" });
+        }
+        
+        setIsSaving(false);
+        setIsDialogOpen(false);
+    };
+
+    const handleDelete = async (docId: string) => {
+        await deleteDocument(docId);
         toast({ title: "Documento eliminado" });
     }
 
@@ -179,15 +215,24 @@ export function DocumentList() {
             default: return category;
         }
     };
-    
-    const getCategoryValue = (category: Document['category']) => {
-        switch (category) {
-            case 'Lab Result': return 'lab';
-            case 'Imaging Report': return 'imaging';
-            case 'Prescription': return 'prescription';
-            case 'Other': return 'other';
-            default: return 'other';
-        }
+
+    if (loading) {
+         return (
+            <Card>
+                <CardHeader>
+                    <Skeleton className="h-8 w-3/4" />
+                    <Skeleton className="h-4 w-1/2" />
+                </CardHeader>
+                <CardContent className="space-y-2">
+                    <Skeleton className="h-12 w-full" />
+                    <Skeleton className="h-12 w-full" />
+                    <Skeleton className="h-12 w-full" />
+                </CardContent>
+                 <CardFooter>
+                     <Skeleton className="h-10 w-52" />
+                </CardFooter>
+            </Card>
+        )
     }
 
     return (
@@ -286,30 +331,31 @@ export function DocumentList() {
                             )}
                             <div className="grid gap-2">
                                 <Label htmlFor="doc-name">Nombre del Documento</Label>
-                                <Input id="doc-name" placeholder="ej., Resultados de Análisis de Sangre" defaultValue={selectedDoc?.name} />
+                                <Input id="doc-name" placeholder="ej., Resultados de Análisis de Sangre" value={docName} onChange={e => setDocName(e.target.value)} />
                             </div>
                              <div className="grid gap-2">
                                 <Label htmlFor="doc-category">Categoría</Label>
-                                <Select defaultValue={selectedDoc ? getCategoryValue(selectedDoc.category) : undefined}>
+                                <Select value={docCategory} onValueChange={(value) => setDocCategory(value as Document['category'])}>
                                     <SelectTrigger id="doc-category">
                                         <SelectValue placeholder="Selecciona una categoría" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="lab">Resultado de Laboratorio</SelectItem>
-                                        <SelectItem value="prescription">Receta</SelectItem>
-                                        <SelectItem value="imaging">Informe de Imagen</SelectItem>
-                                        <SelectItem value="other">Otro</SelectItem>
+                                        <SelectItem value="Lab Result">Resultado de Laboratorio</SelectItem>
+                                        <SelectItem value="Prescription">Receta</SelectItem>
+                                        <SelectItem value="Imaging Report">Informe de Imagen</SelectItem>
+                                        <SelectItem value="Other">Otro</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
                         </div>
                         <DialogFooter>
                            <DialogClose asChild>
-                               <Button variant="outline">Cancelar</Button>
+                               <Button variant="outline" disabled={isSaving}>Cancelar</Button>
                            </DialogClose>
-                           <DialogClose asChild>
-                             <Button type="submit" disabled={dialogMode === 'add' && !capturedImage} onClick={() => setIsDialogOpen(false)}>Guardar Documento</Button>
-                           </DialogClose>
+                             <Button type="submit" onClick={handleSubmit} disabled={isSaving || (dialogMode === 'add' && !capturedImage)}>
+                                {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                Guardar Documento
+                            </Button>
                         </DialogFooter>
                     </DialogContent>
                 </Dialog>

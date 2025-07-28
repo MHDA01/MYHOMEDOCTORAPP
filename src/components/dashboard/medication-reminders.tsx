@@ -1,12 +1,12 @@
 
 'use client';
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useContext } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { Pill, PlusCircle, BellRing, MoreVertical, FilePenLine, Trash2 } from "lucide-react";
+import { Pill, PlusCircle, BellRing, MoreVertical, FilePenLine, Trash2, Loader2 } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -14,63 +14,79 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { Medication } from '@/lib/types';
 import { useToast } from "@/hooks/use-toast";
-
-const mockMedications: Medication[] = [
-  { id: '1', name: 'Lisinopril', dosage: '10mg', frequency: 24, administrationPeriod: 'Permanente', time: ['09:00'], active: true },
-  { id: '2', name: 'Metformina', dosage: '500mg', frequency: 12, administrationPeriod: 'Permanente', time: ['08:00', '20:00'], active: true },
-  { id: '3', name: 'Atorvastatina', dosage: '20mg', frequency: 24, administrationPeriod: 'Permanente', time: ['21:00'], active: false },
-];
+import { UserContext } from '@/context/user-context';
+import { Skeleton } from '@/components/ui/skeleton';
 
 type DialogMode = 'add' | 'edit';
 
 export function MedicationReminders() {
-    const [medications, setMedications] = useState<Medication[]>(mockMedications);
+    const context = useContext(UserContext);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
+    const [isSaving, setIsSaving] = useState(false);
     const [dialogMode, setDialogMode] = useState<DialogMode>('add');
     const [selectedMed, setSelectedMed] = useState<Medication | null>(null);
+
+    // Form State
+    const [name, setName] = useState('');
+    const [dosage, setDosage] = useState('');
+    const [frequency, setFrequency] = useState(24);
+    const [administrationPeriod, setAdministrationPeriod] = useState('Permanente');
     const [timeInputs, setTimeInputs] = useState<string[]>(['09:00']);
-    const [frequency, setFrequency] = useState<number>(24);
+    const [active, setActive] = useState(true);
+
     const { toast } = useToast();
+
+    if (!context) throw new Error("MedicationReminders must be used within a UserProvider");
+    const { medications, addMedication, updateMedication, deleteMedication, loading } = context;
 
     useEffect(() => {
         if (!isDialogOpen) return;
     
         const numTimes = frequency > 0 && frequency <= 24 ? Math.floor(24 / frequency) : 1;
         
-        if (selectedMed && selectedMed.frequency === frequency) {
+        // If we are editing and frequency hasn't changed, keep old times
+        if (dialogMode === 'edit' && selectedMed && selectedMed.frequency === frequency) {
             setTimeInputs(selectedMed.time);
             return;
         }
 
         const newTimes = Array.from({ length: numTimes }, (_, i) => {
-            if (frequency > 24) {
-                return '09:00';
-            }
             const hour = 9 + (i * frequency);
             return `${String(hour % 24).padStart(2, '0')}:00`;
         });
 
         setTimeInputs(newTimes);
 
-      }, [frequency, isDialogOpen, selectedMed]);
+    }, [frequency, isDialogOpen, selectedMed, dialogMode]);
 
+    const resetForm = () => {
+        setName('');
+        setDosage('');
+        setFrequency(24);
+        setAdministrationPeriod('Permanente');
+        setTimeInputs(['09:00']);
+        setActive(true);
+    };
 
     const handleOpenDialog = (mode: DialogMode, medication?: Medication) => {
         setDialogMode(mode);
         if (mode === 'edit' && medication) {
             setSelectedMed(medication);
+            setName(medication.name);
+            setDosage(medication.dosage);
             setFrequency(medication.frequency);
+            setAdministrationPeriod(medication.administrationPeriod);
             setTimeInputs(medication.time);
+            setActive(medication.active);
         } else {
             setSelectedMed(null);
-            setFrequency(24);
-            setTimeInputs(['09:00']);
+            resetForm();
         }
         setIsDialogOpen(true);
     };
 
-    const handleDelete = (id: string) => {
-        setMedications(meds => meds.filter(med => med.id !== id));
+    const handleDelete = async (id: string) => {
+        await deleteMedication(id);
         toast({ title: "Medicamento eliminado" });
     }
 
@@ -79,6 +95,30 @@ export function MedicationReminders() {
         newTimes[index] = value;
         setTimeInputs(newTimes);
     };
+
+    const handleSubmit = async () => {
+        if (!name || !dosage) {
+            toast({ variant: 'destructive', title: "Por favor, completa nombre y dosis." });
+            return;
+        }
+        setIsSaving(true);
+        const medData = { name, dosage, frequency, administrationPeriod, time: timeInputs, active };
+
+        if (dialogMode === 'add') {
+            await addMedication(medData);
+            toast({ title: 'Recordatorio añadido' });
+        } else if (selectedMed) {
+            await updateMedication(selectedMed.id, medData);
+            toast({ title: 'Recordatorio actualizado' });
+        }
+
+        setIsSaving(false);
+        setIsDialogOpen(false);
+    };
+
+    const handleToggleActive = async (med: Medication) => {
+        await updateMedication(med.id, { active: !med.active });
+    }
 
     const formatTime12h = (time: string) => {
         if (!time) return '';
@@ -96,6 +136,24 @@ export function MedicationReminders() {
         if (freq === 72) return `Cada 72 horas`;
         if (freq === 168) return `Cada 7 días`;
         return `Cada ${freq} horas`;
+    }
+    
+    if (loading) {
+        return (
+             <Card>
+                <CardHeader>
+                    <Skeleton className="h-8 w-3/4" />
+                    <Skeleton className="h-4 w-1/2" />
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <Skeleton className="h-16 w-full" />
+                    <Skeleton className="h-16 w-full" />
+                </CardContent>
+                 <CardFooter>
+                     <Skeleton className="h-10 w-48" />
+                </CardFooter>
+            </Card>
+        )
     }
 
     return (
@@ -118,9 +176,7 @@ export function MedicationReminders() {
                             </div>
                         </div>
                         <div className="flex items-center gap-2">
-                             <Switch checked={med.active} onCheckedChange={(checked) => {
-                                setMedications(meds => meds.map(m => m.id === med.id ? {...m, active: checked} : m));
-                            }} />
+                             <Switch checked={med.active} onCheckedChange={() => handleToggleActive(med)} />
                              <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
                                     <Button variant="ghost" size="icon">
@@ -151,15 +207,15 @@ export function MedicationReminders() {
                          <div className="grid gap-4 py-4 max-h-[60vh] overflow-y-auto pr-4">
                             <div className="grid gap-2">
                                 <Label htmlFor="med-name">Nombre del Medicamento</Label>
-                                <Input id="med-name" placeholder="ej., Ibuprofeno" defaultValue={selectedMed?.name} />
+                                <Input id="med-name" placeholder="ej., Ibuprofeno" value={name} onChange={e => setName(e.target.value)} />
                             </div>
                              <div className="grid gap-2">
                                 <Label htmlFor="dosage">Dosis</Label>
-                                <Input id="dosage" placeholder="ej., 200mg" defaultValue={selectedMed?.dosage}/>
+                                <Input id="dosage" placeholder="ej., 200mg" value={dosage} onChange={e => setDosage(e.target.value)} />
                             </div>
                              <div className="grid gap-2">
                                 <Label>Frecuencia</Label>
-                                <Select onValueChange={(value) => setFrequency(Number(value))} defaultValue={String(selectedMed?.frequency || 24)}>
+                                <Select onValueChange={(value) => setFrequency(Number(value))} value={String(frequency)}>
                                   <SelectTrigger>
                                     <SelectValue placeholder="Selecciona la frecuencia" />
                                   </SelectTrigger>
@@ -176,7 +232,7 @@ export function MedicationReminders() {
                             </div>
                              <div className="grid gap-2">
                                 <Label>Período de Administración</Label>
-                                <Select defaultValue={selectedMed?.administrationPeriod || 'Permanente'}>
+                                <Select value={administrationPeriod} onValueChange={setAdministrationPeriod}>
                                   <SelectTrigger>
                                     <SelectValue placeholder="Selecciona el período" />
                                   </SelectTrigger>
@@ -202,11 +258,12 @@ export function MedicationReminders() {
                         </div>
                         <DialogFooter>
                              <DialogClose asChild>
-                               <Button variant="outline">Cancelar</Button>
+                               <Button variant="outline" disabled={isSaving}>Cancelar</Button>
                             </DialogClose>
-                            <DialogClose asChild>
-                                <Button type="submit" onClick={() => setIsDialogOpen(false)}>{dialogMode === 'add' ? 'Añadir Recordatorio' : 'Guardar Cambios'}</Button>
-                            </DialogClose>
+                            <Button type="submit" onClick={handleSubmit} disabled={isSaving}>
+                                {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                {dialogMode === 'add' ? 'Añadir Recordatorio' : 'Guardar Cambios'}
+                            </Button>
                         </DialogFooter>
                     </DialogContent>
                 </Dialog>
@@ -214,5 +271,3 @@ export function MedicationReminders() {
         </Card>
     );
 }
-
-    

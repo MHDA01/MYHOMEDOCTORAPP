@@ -1,10 +1,10 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useContext } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Calendar as CalendarIcon, CalendarClock, PlusCircle, MoreVertical, FilePenLine, Trash2, Bell } from "lucide-react";
+import { Calendar as CalendarIcon, CalendarClock, PlusCircle, MoreVertical, FilePenLine, Trash2, Bell, Loader2 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -18,31 +18,36 @@ import { es } from 'date-fns/locale';
 import { cn } from "@/lib/utils";
 import type { Appointment } from '@/lib/types';
 import { useToast } from "@/hooks/use-toast";
+import { UserContext } from '@/context/user-context';
+import { Skeleton } from '@/components/ui/skeleton';
 
-
-const mockAppointments: Appointment[] = [
-  { id: '1', doctor: 'Dra. Evelyn Reed', specialty: 'Cardióloga', date: new Date('2024-08-15T10:00:00'), status: 'Upcoming', reminder: '24h' },
-  { id: '2', doctor: 'Dr. Ben Carter', specialty: 'Dermatólogo', date: new Date('2024-08-22T14:30:00'), status: 'Upcoming', reminder: '2h' },
-  { id: '3', doctor: 'Dra. Olivia Chen', specialty: 'Médico General', date: new Date('2024-07-05T09:00:00'), status: 'Past' },
-];
 
 type DialogMode = 'add' | 'edit';
 
 export function Appointments() {
-    const [appointments, setAppointments] = useState<Appointment[]>(mockAppointments);
+    const context = useContext(UserContext);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
+    const [isSaving, setIsSaving] = useState(false);
     const [dialogMode, setDialogMode] = useState<DialogMode>('add');
     const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
+    
+    // Form state
+    const [doctor, setDoctor] = useState('');
+    const [specialty, setSpecialty] = useState('');
     const [date, setDate] = useState<Date | undefined>();
+    const [time, setTime] = useState('10:00');
+    const [reminder, setReminder] = useState('24h');
+
     const { toast } = useToast();
+    const [isPopoverOpen, setIsPopoverOpen] = useState(false);
+
+    if (!context) throw new Error("Appointments must be used within a UserProvider");
+    const { appointments, addAppointment, updateAppointment, deleteAppointment, loading } = context;
     
     const [upcomingAppointments, setUpcomingAppointments] = useState<Appointment[]>([]);
     const [pastAppointments, setPastAppointments] = useState<Appointment[]>([]);
-    const [isPopoverOpen, setIsPopoverOpen] = useState(false);
-
 
     useEffect(() => {
-        // Defer date-sensitive logic to useEffect to prevent hydration mismatch
         const now = new Date();
         const sortedAppointments = [...appointments].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
         setUpcomingAppointments(
@@ -53,27 +58,64 @@ export function Appointments() {
         );
     }, [appointments]);
 
+    const resetForm = () => {
+        setDoctor('');
+        setSpecialty('');
+        setDate(new Date());
+        setTime('10:00');
+        setReminder('24h');
+    }
+
     const handleOpenDialog = (mode: DialogMode, appointment?: Appointment) => {
         setDialogMode(mode);
         if (mode === 'edit' && appointment) {
             setSelectedAppointment(appointment);
+            setDoctor(appointment.doctor);
+            setSpecialty(appointment.specialty);
             setDate(appointment.date);
+            setTime(format(appointment.date, 'HH:mm'));
+            setReminder(appointment.reminder || '24h');
         } else {
             setSelectedAppointment(null);
-            setDate(new Date());
+            resetForm();
         }
         setIsDialogOpen(true);
     };
 
-    const handleDelete = (id: string) => {
-        setAppointments(apps => apps.filter(app => app.id !== id));
+    const handleDelete = async (id: string) => {
+        await deleteAppointment(id);
         toast({ title: "Cita cancelada" });
     }
 
-    const formatTime = (date: Date) => {
-        const hours = String(date.getHours()).padStart(2, '0');
-        const minutes = String(date.getMinutes()).padStart(2, '0');
-        return `${hours}:${minutes}`;
+    const handleSubmit = async () => {
+        if (!date || !doctor || !specialty) {
+            toast({ variant: 'destructive', title: "Por favor, completa todos los campos." });
+            return;
+        }
+        setIsSaving(true);
+        
+        const [hours, minutes] = time.split(':').map(Number);
+        const finalDate = new Date(date);
+        finalDate.setHours(hours, minutes);
+
+        const appointmentData = {
+            doctor,
+            specialty,
+            date: finalDate,
+            status: 'Upcoming' as 'Upcoming',
+            reminder,
+        };
+
+        if (dialogMode === 'add') {
+            await addAppointment(appointmentData);
+            toast({ title: "Cita programada con éxito." });
+        } else if (selectedAppointment) {
+            await updateAppointment(selectedAppointment.id, appointmentData);
+            toast({ title: "Cita actualizada con éxito." });
+        }
+
+        setIsSaving(false);
+        setIsDialogOpen(false);
     }
 
     const getReminderLabel = (reminderKey?: string) => {
@@ -92,6 +134,25 @@ export function Appointments() {
             setDate(selectedDate);
             setIsPopoverOpen(false);
         }
+    }
+
+    if(loading) {
+        return (
+            <Card>
+                <CardHeader>
+                    <Skeleton className="h-8 w-3/4" />
+                    <Skeleton className="h-4 w-1/2" />
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <Skeleton className="h-10 w-full" />
+                    <Skeleton className="h-16 w-full" />
+                    <Skeleton className="h-16 w-full" />
+                </CardContent>
+                 <CardFooter>
+                     <Skeleton className="h-10 w-40" />
+                </CardFooter>
+            </Card>
+        )
     }
 
 
@@ -130,11 +191,11 @@ export function Appointments() {
                          <div className="grid gap-4 py-4 max-h-[70vh] overflow-y-auto pr-4">
                             <div className="grid gap-2">
                                 <Label htmlFor="doctor-name">Nombre del Doctor</Label>
-                                <Input id="doctor-name" placeholder="ej., Dr. Smith" defaultValue={selectedAppointment?.doctor} />
+                                <Input id="doctor-name" placeholder="ej., Dr. Smith" value={doctor} onChange={e => setDoctor(e.target.value)} />
                             </div>
                              <div className="grid gap-2">
                                 <Label htmlFor="specialty">Especialidad</Label>
-                                <Input id="specialty" placeholder="ej., Cardiología" defaultValue={selectedAppointment?.specialty} />
+                                <Input id="specialty" placeholder="ej., Cardiología" value={specialty} onChange={e => setSpecialty(e.target.value)} />
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="grid gap-2">
@@ -159,7 +220,6 @@ export function Appointments() {
                                                 onSelect={handleDateSelect}
                                                 initialFocus
                                                 locale={es}
-                                                captionLayout="dropdown-buttons"
                                                 fromYear={new Date().getFullYear()}
                                                 toYear={new Date().getFullYear() + 5}
                                                 disabled={(date) => date < new Date(new Date().setDate(new Date().getDate() -1))}
@@ -169,12 +229,12 @@ export function Appointments() {
                                 </div>
                                  <div className="grid gap-2">
                                     <Label htmlFor="appointment-time">Hora</Label>
-                                    <Input id="appointment-time" type="time" defaultValue={selectedAppointment ? formatTime(selectedAppointment.date) : '10:00'} />
+                                    <Input id="appointment-time" type="time" value={time} onChange={e => setTime(e.target.value)} />
                                 </div>
                             </div>
                             <div className="grid gap-2">
                                 <Label htmlFor="reminder">Recordatorio</Label>
-                                <Select defaultValue={selectedAppointment?.reminder || '24h'}>
+                                <Select value={reminder} onValueChange={setReminder}>
                                     <SelectTrigger id="reminder">
                                         <SelectValue placeholder="Selecciona un recordatorio" />
                                     </SelectTrigger>
@@ -190,11 +250,12 @@ export function Appointments() {
                         </div>
                         <DialogFooter>
                              <DialogClose asChild>
-                                <Button variant="outline">Cancelar</Button>
+                                <Button variant="outline" disabled={isSaving}>Cancelar</Button>
                             </DialogClose>
-                            <DialogClose asChild>
-                                <Button type="submit" onClick={() => setIsDialogOpen(false)}>{dialogMode === 'add' ? 'Programar' : 'Guardar Cambios'}</Button>
-                            </DialogClose>
+                            <Button type="submit" onClick={handleSubmit} disabled={isSaving}>
+                                {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                {dialogMode === 'add' ? 'Programar' : 'Guardar Cambios'}
+                            </Button>
                         </DialogFooter>
                     </DialogContent>
                 </Dialog>
