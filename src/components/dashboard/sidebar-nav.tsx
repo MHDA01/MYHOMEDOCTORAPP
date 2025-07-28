@@ -34,6 +34,7 @@ import {
 } from 'lucide-react';
 import { UserContext } from '@/context/user-context';
 import { Skeleton } from '../ui/skeleton';
+import { DownloadReportButton } from './download-report-button';
 
 const mainNavItems = [
   { href: '/dashboard', icon: LayoutDashboard, label: 'Mi Historial' },
@@ -103,6 +104,9 @@ export function SidebarNav() {
               </SidebarMenuButton>
             </SidebarMenuItem>
           ))}
+           <SidebarMenuItem>
+             <DownloadReportButton />
+           </SidebarMenuItem>
         </SidebarMenu>
         {isDashboardPage && (
           <>
