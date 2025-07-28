@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useContext } from 'react';
+import React, { useContext } from 'react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { format, differenceInYears, isValid } from 'date-fns';
