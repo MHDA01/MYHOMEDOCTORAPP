@@ -1,18 +1,21 @@
+
 "use client";
 
-import { createContext, useState, ReactNode, Dispatch, SetStateAction } from 'react';
+import { createContext, useState, useEffect, ReactNode, Dispatch, SetStateAction } from 'react';
 import type { PersonalInfo } from '@/lib/types';
+import { auth } from '@/lib/firebase';
+import { onAuthStateChanged, User, signInAnonymously } from 'firebase/auth';
+import { getUserProfile, updateUserProfile } from '@/services/userService';
 
-// Define el tipo para el valor del contexto
 interface UserContextType {
-  personalInfo: PersonalInfo;
-  setPersonalInfo: Dispatch<SetStateAction<PersonalInfo>>;
+  personalInfo: PersonalInfo | null;
+  setPersonalInfo: (info: PersonalInfo) => Promise<void>;
+  loading: boolean;
+  user: User | null;
 }
 
-// Crea el contexto con un valor inicial undefined
 export const UserContext = createContext<UserContextType | undefined>(undefined);
 
-// Datos iniciales del usuario
 const initialInfo: PersonalInfo = {
   firstName: 'John',
   lastName: 'Doe',
@@ -22,12 +25,49 @@ const initialInfo: PersonalInfo = {
   isapreName: 'Colmena',
 };
 
-// Crea el proveedor del contexto
 export const UserProvider = ({ children }: { children: ReactNode }) => {
-  const [personalInfo, setPersonalInfo] = useState<PersonalInfo>(initialInfo);
+  const [user, setUser] = useState<User | null>(null);
+  const [personalInfo, setPersonalInfoState] = useState<PersonalInfo | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+      setLoading(true);
+      if (currentUser) {
+        setUser(currentUser);
+        // User is signed in, see docs for a list of available properties
+        // https://firebase.google.com/docs/reference/js/firebase.User
+        const profile = await getUserProfile(currentUser.uid);
+        if (profile) {
+            setPersonalInfoState(profile);
+        } else {
+            // If no profile exists, create one with initial data
+            await updateUserProfile(currentUser.uid, initialInfo);
+            setPersonalInfoState(initialInfo);
+        }
+      } else {
+        // User is signed out, sign in anonymously
+        signInAnonymously(auth).catch((error) => {
+          console.error("Anonymous sign-in failed:", error);
+        });
+      }
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  const setPersonalInfo = async (info: PersonalInfo) => {
+    if (user) {
+      await updateUserProfile(user.uid, info);
+      setPersonalInfoState(info);
+    } else {
+        console.error("No user to save profile for");
+    }
+  };
 
   return (
-    <UserContext.Provider value={{ personalInfo, setPersonalInfo }}>
+    <UserContext.Provider value={{ user, personalInfo, setPersonalInfo, loading }}>
       {children}
     </UserContext.Provider>
   );

@@ -1,3 +1,4 @@
+
 'use client'
 
 import { useContext } from 'react';
@@ -27,8 +28,10 @@ import {
   User,
   Video,
   Siren,
+  Loader2,
 } from 'lucide-react';
 import { UserContext } from '@/context/user-context';
+import { Skeleton } from '../ui/skeleton';
 
 const mainNavItems = [
   { href: '/dashboard', icon: LayoutDashboard, label: 'Mi Historial' },
@@ -48,15 +51,37 @@ export function SidebarNav() {
   const pathname = usePathname();
   const context = useContext(UserContext);
 
-  if (!context) {
-    return null; // O un fallback/spinner mientras carga el contexto
+  const isDashboardPage = pathname === '/dashboard';
+
+  if (context?.loading || !context?.personalInfo) {
+    return (
+        <>
+            <SidebarHeader>
+                <Logo />
+            </SidebarHeader>
+            <SidebarContent className="p-2 space-y-2">
+               <Skeleton className="h-8 w-full" />
+               <Skeleton className="h-8 w-full" />
+               <Skeleton className="h-8 w-full" />
+            </SidebarContent>
+            <SidebarFooter>
+                <Separator className="my-2" />
+                <div className="flex items-center gap-3 p-2">
+                    <Skeleton className="h-9 w-9 rounded-full" />
+                    <div className="space-y-2">
+                        <Skeleton className="h-4 w-24" />
+                        <Skeleton className="h-3 w-32" />
+                    </div>
+                </div>
+            </SidebarFooter>
+        </>
+    )
   }
 
   const { personalInfo } = context;
-  const isDashboardPage = pathname === '/dashboard';
   const userFullName = `${personalInfo.firstName} ${personalInfo.lastName}`;
-  const userInitials = `${personalInfo.firstName[0]}${personalInfo.lastName[0]}`;
-  const userEmail = "john.doe@email.com"; // El email puede venir del contexto también si lo añadimos.
+  const userInitials = personalInfo.firstName && personalInfo.lastName ? `${personalInfo.firstName[0]}${personalInfo.lastName[0]}` : 'U';
+  const userEmail = context.user?.email || "usuario@ejemplo.com"; 
 
   return (
     <>
