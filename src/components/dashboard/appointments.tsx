@@ -25,8 +25,16 @@ import { Skeleton } from '@/components/ui/skeleton';
 type DialogMode = 'add' | 'edit';
 
 async function showNotification(title: string, options: NotificationOptions) {
-    const serviceWorker = await navigator.serviceWorker.ready;
-    await serviceWorker.showNotification(title, options);
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+    console.warn('Push notifications are not supported.');
+    return;
+  }
+  const registration = await navigator.serviceWorker.getRegistration();
+  if (!registration) {
+    console.error('Service Worker not registered.');
+    return;
+  }
+  await registration.showNotification(title, options);
 }
 
 export function Appointments() {
@@ -74,7 +82,8 @@ export function Appointments() {
             if (diff > 0 && diff <= reminderValue && diff > (reminderValue - 5)) { // Check within a 5-minute window to avoid missing it
                  showNotification('Recordatorio de Cita', {
                     body: `Tu cita con ${app.doctor} (${app.specialty}) es en ${getReminderLabel(app.reminder, true)}.`,
-                    icon: '/icons/icon-192x192.png'
+                    icon: '/icons/icon-192x192.png',
+                    badge: '/icons/icon-72x72.png',
                 });
                 // Mark as notified to prevent multiple notifications
                 updateAppointment(app.id, { notified: true });

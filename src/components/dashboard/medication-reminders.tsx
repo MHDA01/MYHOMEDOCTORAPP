@@ -22,8 +22,16 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 type DialogMode = 'add' | 'edit';
 
 async function showNotification(title: string, options: NotificationOptions) {
-    const serviceWorker = await navigator.serviceWorker.ready;
-    await serviceWorker.showNotification(title, options);
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+    console.warn('Push notifications are not supported.');
+    return;
+  }
+  const registration = await navigator.serviceWorker.getRegistration();
+  if (!registration) {
+    console.error('Service Worker not registered.');
+    return;
+  }
+  await registration.showNotification(title, options);
 }
 
 export function MedicationReminders() {
@@ -82,7 +90,8 @@ export function MedicationReminders() {
             if(med.active && med.time.includes(currentTime)) {
                 showNotification(`¡Hora de tu medicina!`, {
                     body: `${med.name} ${med.dosage}`,
-                    icon: '/icons/icon-192x192.png' 
+                    icon: '/icons/icon-192x192.png',
+                    badge: '/icons/icon-72x72.png',
                 });
             }
         });
@@ -236,9 +245,9 @@ export function MedicationReminders() {
                     <Alert>
                         <BellPlus className="h-4 w-4" />
                         <AlertTitle>Activa los Recordatorios</AlertTitle>
-                        <AlertDescription>
-                           Permite las notificaciones para recibir recordatorios de tus medicamentos a tiempo.
-                           <Button size="sm" className="ml-4" onClick={requestNotificationPermission}>Activar</Button>
+                        <AlertDescription className="flex items-center justify-between">
+                           <span>Permite las notificaciones para recibir recordatorios.</span>
+                           <Button size="sm" onClick={requestNotificationPermission}>Activar</Button>
                         </AlertDescription>
                     </Alert>
                 )}
@@ -348,5 +357,3 @@ export function MedicationReminders() {
         </Card>
     );
 }
-
-    
