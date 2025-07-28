@@ -35,18 +35,24 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       setLoading(true);
       if (currentUser) {
         setUser(currentUser);
-        // User is signed in, see docs for a list of available properties
-        // https://firebase.google.com/docs/reference/js/firebase.User
         const profile = await getUserProfile(currentUser.uid);
+        
         if (profile) {
             setPersonalInfoState(profile);
         } else {
-            // If no profile exists, create one with initial data
-            await updateUserProfile(currentUser.uid, initialInfo);
-            setPersonalInfoState(initialInfo);
+            // This is likely a new user (or a fresh anonymous one).
+            // Let's create a profile for them.
+            try {
+                await updateUserProfile(currentUser.uid, initialInfo);
+                setPersonalInfoState(initialInfo);
+            } catch (error) {
+                console.error("Failed to create initial user profile:", error);
+            }
         }
       } else {
-        // User is signed out, sign in anonymously
+        // User is signed out, or it's the initial load and we have no user yet.
+        // Attempt to sign in anonymously.
+        // onAuthStateChanged will run again once the sign-in is complete.
         signInAnonymously(auth).catch((error) => {
           console.error("Anonymous sign-in failed:", error);
         });
