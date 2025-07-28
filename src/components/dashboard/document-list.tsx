@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { MoreVertical, FileText, View, Trash2, Camera, FilePenLine, RefreshCcw, CameraRotate } from "lucide-react";
+import { MoreVertical, FileText, View, Trash2, Camera, FilePenLine, RefreshCcw, SwitchCamera } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -133,6 +133,14 @@ export function DocumentList() {
         }
     };
 
+    useEffect(() => {
+        // When the camera device changes, restart the stream.
+        if (isDialogOpen && dialogMode === 'add' && !capturedImage) {
+            startStream();
+        }
+    }, [currentDeviceIndex, isDialogOpen, dialogMode, capturedImage, startStream]);
+
+
     const handleDelete = (docId: string) => {
         setDocuments(docs => docs.filter(doc => doc.id !== docId));
         toast({ title: "Documento eliminado" });
@@ -240,7 +248,7 @@ export function DocumentList() {
                                           <div className="flex justify-center gap-4">
                                                 {videoDevices.length > 1 && (
                                                     <Button variant="outline" onClick={handleCameraSwitch} disabled={hasCameraPermission !== true}>
-                                                        <CameraRotate className="mr-2" /> Cambiar Cámara
+                                                        <SwitchCamera className="mr-2" /> Cambiar Cámara
                                                     </Button>
                                                 )}
                                                 <Button onClick={handleCapture} disabled={hasCameraPermission !== true}>
@@ -285,5 +293,3 @@ export function DocumentList() {
         </Card>
     );
 }
-
-    
