@@ -37,22 +37,26 @@ export function PersonalInfo() {
   const [editableInfo, setEditableInfo] = useState<PersonalInfoType | null>(null);
   const [age, setAge] = useState<string>('');
 
-  const getValidDate = (date: string | Date): Date | undefined => {
+  const getValidDate = (date: string | Date | undefined): Date | undefined => {
     if (!date) return undefined;
-    const d = date instanceof Date ? date : parseISO(date);
+    const d = date instanceof Date ? date : parseISO(date as string);
     return isValid(d) ? d : undefined;
   }
+
+  useEffect(() => {
+    if (context?.personalInfo?.dateOfBirth) {
+        setAge(calculateAge(getValidDate(context.personalInfo.dateOfBirth)));
+    }
+  }, [context?.personalInfo?.dateOfBirth]);
+
 
   useEffect(() => {
     if (context?.personalInfo) {
       const dob = getValidDate(context.personalInfo.dateOfBirth);
       const info = { ...context.personalInfo, dateOfBirth: dob || new Date() };
       setEditableInfo(info);
-      if (dob) {
-        setAge(calculateAge(dob));
-      }
     }
-  }, [context?.personalInfo]);
+  }, [context?.personalInfo, isDialogOpen]);
 
   if (!context) {
     throw new Error('PersonalInfo must be used within a UserProvider');
@@ -147,12 +151,12 @@ export function PersonalInfo() {
               Editar Información
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-lg">
+          <DialogContent className="sm:max-w-lg" modal={true}>
             <DialogHeader>
               <DialogTitle>Editar Información Personal</DialogTitle>
             </DialogHeader>
             {editableInfo && (
-                <div className="grid gap-4 py-4 max-h-[60vh] overflow-y-auto pr-4">
+                <div className="grid gap-4 py-4 max-h-[70vh] overflow-y-auto pr-4">
                     <div className="grid grid-cols-2 gap-4">
                         <div className="grid gap-2">
                             <Label htmlFor="firstName">Nombres</Label>
@@ -196,7 +200,7 @@ export function PersonalInfo() {
                                 {editableInfo.dateOfBirth && isValid(getValidDate(editableInfo.dateOfBirth)) ? format(getValidDate(editableInfo.dateOfBirth) as Date, "PPP", { locale: es }) : <span>Elige una fecha</span>}
                                 </Button>
                             </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0" align="start">
+                            <PopoverContent className="w-auto p-0" align="start" portal={false}>
                                 <Calendar
                                     mode="single"
                                     selected={getValidDate(editableInfo.dateOfBirth)}
@@ -204,7 +208,6 @@ export function PersonalInfo() {
                                     locale={es}
                                     fromYear={1920}
                                     toYear={new Date().getFullYear()}
-                                    captionLayout="dropdown-buttons"
                                     disabled={(date) => date > new Date() || date < new Date("1900-01-01")}
                                     initialFocus
                                 />

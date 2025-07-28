@@ -122,7 +122,7 @@ export function Appointments() {
                     <DialogTrigger asChild>
                         <Button onClick={() => handleOpenDialog('add')}><PlusCircle className="mr-2"/>Programar Cita</Button>
                     </DialogTrigger>
-                    <DialogContent>
+                    <DialogContent modal={true}>
                         <DialogHeader>
                             <DialogTitle>{dialogMode === 'add' ? 'Programar Nueva Cita' : 'Editar Cita'}</DialogTitle>
                         </DialogHeader>
@@ -151,7 +151,7 @@ export function Appointments() {
                                             {date ? format(date, "PPP", { locale: es }) : <span>Elige una fecha</span>}
                                             </Button>
                                         </PopoverTrigger>
-                                        <PopoverContent className="w-auto p-0" align="start">
+                                        <PopoverContent className="w-auto p-0" align="start" portal={false}>
                                             <Calendar
                                                 mode="single"
                                                 selected={date}
