@@ -40,6 +40,7 @@ export function Appointments() {
     const [pastAppointments, setPastAppointments] = useState<Appointment[]>([]);
 
     useEffect(() => {
+        // Defer date-sensitive logic to useEffect to prevent hydration mismatch
         const now = new Date();
         setUpcomingAppointments(
             appointments.filter(a => new Date(a.date) >= now).map(a => ({...a, status: 'Upcoming' as const}))
@@ -235,3 +236,5 @@ function AppointmentList({ appointments, onEdit, onDelete, isPast = false, getRe
         </div>
     );
 }
+
+    

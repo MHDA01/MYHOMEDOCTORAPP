@@ -47,6 +47,7 @@ export function PersonalInfo() {
     if (context?.personalInfo) {
       const info = { ...context.personalInfo, dateOfBirth: new Date(context.personalInfo.dateOfBirth) };
       setEditableInfo(info);
+      // Move age calculation to useEffect to prevent hydration errors
       setAge(calculateAge(info.dateOfBirth));
     }
   }, [context?.personalInfo]);
@@ -238,3 +239,5 @@ export function PersonalInfo() {
     </Card>
   );
 }
+
+    
