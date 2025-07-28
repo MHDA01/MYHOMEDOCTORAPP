@@ -111,7 +111,7 @@ export function PersonalInfo() {
             <div><strong>Sexo:</strong><p className="text-muted-foreground capitalize">{personalInfo.sex === 'male' ? 'Masculino' : personalInfo.sex === 'female' ? 'Femenino' : 'Indeterminado'}</p></div>
             <div>
                 <strong>Fecha de Nacimiento:</strong>
-                <p className="text-muted-foreground">{format(personalInfo.dateOfBirth, "d 'de' MMMM 'de' yyyy", { locale: es })} ({calculateAge(personalInfo.dateOfBirt_h)})</p>
+                <p className="text-muted-foreground">{format(personalInfo.dateOfBirth, "d 'de' MMMM 'de' yyyy", { locale: es })} ({calculateAge(new Date(personalInfo.dateOfBirth))})</p>
             </div>
             <div>
                 <strong>Previsión:</strong>
