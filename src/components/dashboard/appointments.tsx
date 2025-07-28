@@ -44,11 +44,12 @@ export function Appointments() {
     useEffect(() => {
         // Defer date-sensitive logic to useEffect to prevent hydration mismatch
         const now = new Date();
+        const sortedAppointments = [...appointments].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
         setUpcomingAppointments(
-            appointments.filter(a => new Date(a.date) >= now).sort((a,b) => a.date.getTime() - b.date.getTime())
+            sortedAppointments.filter(a => new Date(a.date) >= now)
         );
         setPastAppointments(
-            appointments.filter(a => new Date(a.date) < now).sort((a,b) => b.date.getTime() - a.date.getTime())
+            sortedAppointments.filter(a => new Date(a.date) < now).reverse()
         );
     }, [appointments]);
 
@@ -246,5 +247,3 @@ function AppointmentList({ appointments, onEdit, onDelete, isPast = false, getRe
         </div>
     );
 }
-
-    

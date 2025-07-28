@@ -45,7 +45,10 @@ export function PersonalInfo() {
 
   useEffect(() => {
     if (context?.personalInfo?.dateOfBirth) {
-        setAge(calculateAge(getValidDate(context.personalInfo.dateOfBirth)));
+        const validDob = getValidDate(context.personalInfo.dateOfBirth);
+        if (validDob) {
+            setAge(calculateAge(validDob));
+        }
     }
   }, [context?.personalInfo?.dateOfBirth]);
 
@@ -250,5 +253,3 @@ export function PersonalInfo() {
     </Card>
   );
 }
-
-    
