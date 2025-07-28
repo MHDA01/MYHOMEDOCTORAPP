@@ -1,12 +1,12 @@
 
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { MoreVertical, FileText, View, Trash2, Camera, FilePenLine, RefreshCcw } from "lucide-react";
+import { MoreVertical, FileText, View, Trash2, Camera, FilePenLine, RefreshCcw, CameraRotate } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -34,42 +34,65 @@ export function DocumentList() {
     const [selectedDoc, setSelectedDoc] = useState<Document | null>(null);
     const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
     const [capturedImage, setCapturedImage] = useState<string | null>(null);
+    const [videoDevices, setVideoDevices] = useState<MediaDeviceInfo[]>([]);
+    const [currentDeviceIndex, setCurrentDeviceIndex] = useState(0);
+
     const videoRef = useRef<HTMLVideoElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
+    const streamRef = useRef<MediaStream | null>(null);
     const { toast } = useToast();
 
+    const stopStream = useCallback(() => {
+        if (streamRef.current) {
+            streamRef.current.getTracks().forEach(track => track.stop());
+            streamRef.current = null;
+        }
+    }, []);
 
-    useEffect(() => {
-        const getCameraPermission = async () => {
-          if (isDialogOpen && dialogMode === 'add') {
-            try {
-              const stream = await navigator.mediaDevices.getUserMedia({video: true});
-              setHasCameraPermission(true);
+    const startStream = useCallback(async () => {
+        stopStream();
+        if (dialogMode !== 'add' || !isDialogOpen) return;
 
-              if (videoRef.current) {
+        try {
+            // Get available video devices
+            const devices = await navigator.mediaDevices.enumerateDevices();
+            const videoInputs = devices.filter(device => device.kind === 'videoinput');
+            setVideoDevices(videoInputs);
+            
+            const selectedDeviceId = videoInputs.length > 0 ? videoInputs[currentDeviceIndex].deviceId : undefined;
+
+            const stream = await navigator.mediaDevices.getUserMedia({
+                video: { deviceId: selectedDeviceId ? { exact: selectedDeviceId } : undefined }
+            });
+            
+            streamRef.current = stream;
+            setHasCameraPermission(true);
+
+            if (videoRef.current) {
                 videoRef.current.srcObject = stream;
-              }
-            } catch (error) {
-              console.error('Error accessing camera:', error);
-              setHasCameraPermission(false);
-              toast({
+            }
+        } catch (error) {
+            console.error('Error accessing camera:', error);
+            setHasCameraPermission(false);
+            toast({
                 variant: 'destructive',
                 title: 'Acceso a la cámara denegado',
                 description: 'Por favor, activa los permisos de la cámara en la configuración de tu navegador para usar esta función.',
-              });
-            }
-          }
-        };
-        getCameraPermission();
+            });
+        }
+    }, [currentDeviceIndex, dialogMode, isDialogOpen, stopStream, toast]);
+
+    useEffect(() => {
+        if (isDialogOpen && dialogMode === 'add') {
+            startStream();
+        } else {
+            stopStream();
+        }
         
         return () => {
-             if (videoRef.current && videoRef.current.srcObject) {
-                const stream = videoRef.current.srcObject as MediaStream;
-                stream.getTracks().forEach(track => track.stop());
-                videoRef.current.srcObject = null;
-            }
+            stopStream();
         }
-      }, [isDialogOpen, dialogMode, toast]);
+    }, [isDialogOpen, dialogMode, startStream, stopStream]);
 
     const handleOpenDialog = (mode: DialogMode, doc?: Document) => {
         setDialogMode(mode);
@@ -78,6 +101,7 @@ export function DocumentList() {
         } else {
             setSelectedDoc(null);
             setCapturedImage(null);
+            setCurrentDeviceIndex(0); // Reset to default camera
         }
         setIsDialogOpen(true);
     };
@@ -93,21 +117,21 @@ export function DocumentList() {
                 context.drawImage(video, 0, 0, video.videoWidth, video.videoHeight);
                 const dataUrl = canvas.toDataURL('image/png');
                 setCapturedImage(dataUrl);
-
-                // Stop video stream after capture
-                if (video.srcObject) {
-                    const stream = video.srcObject as MediaStream;
-                    stream.getTracks().forEach(track => track.stop());
-                    video.srcObject = null;
-                }
+                stopStream();
             }
         }
     };
 
     const handleRetake = () => {
         setCapturedImage(null);
+        startStream();
     };
 
+    const handleCameraSwitch = () => {
+        if (videoDevices.length > 1) {
+            setCurrentDeviceIndex((prevIndex) => (prevIndex + 1) % videoDevices.length);
+        }
+    };
 
     const handleDelete = (docId: string) => {
         setDocuments(docs => docs.filter(doc => doc.id !== docId));
@@ -213,9 +237,16 @@ export function DocumentList() {
                                                        </AlertDescription>
                                                </Alert>
                                          )}
-                                          <Button onClick={handleCapture} disabled={hasCameraPermission !== true}>
-                                                <Camera className="mr-2" /> Tomar Foto
-                                            </Button>
+                                          <div className="flex justify-center gap-4">
+                                                {videoDevices.length > 1 && (
+                                                    <Button variant="outline" onClick={handleCameraSwitch} disabled={hasCameraPermission !== true}>
+                                                        <CameraRotate className="mr-2" /> Cambiar Cámara
+                                                    </Button>
+                                                )}
+                                                <Button onClick={handleCapture} disabled={hasCameraPermission !== true}>
+                                                        <Camera className="mr-2" /> Tomar Foto
+                                                </Button>
+                                          </div>
                                      </div>
                                  )}
                                  <canvas ref={canvasRef} className="hidden" />
@@ -254,7 +285,5 @@ export function DocumentList() {
         </Card>
     );
 }
-
-    
 
     
