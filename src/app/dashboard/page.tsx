@@ -1,3 +1,5 @@
+'use client';
+
 import { DashboardHeader } from "@/components/dashboard/header";
 import { PersonalInfo } from "@/components/dashboard/personal-info";
 import { EmergencyContactsCard } from "@/components/dashboard/emergency-card";
