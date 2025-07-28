@@ -126,7 +126,7 @@ export function Appointments() {
                         <DialogHeader>
                             <DialogTitle>{dialogMode === 'add' ? 'Programar Nueva Cita' : 'Editar Cita'}</DialogTitle>
                         </DialogHeader>
-                         <div className="grid gap-4 py-4 max-h-[60vh] overflow-y-auto pr-4">
+                         <div className="grid gap-4 py-4 max-h-[70vh] overflow-y-auto pr-4">
                             <div className="grid gap-2">
                                 <Label htmlFor="doctor-name">Nombre del Doctor</Label>
                                 <Input id="doctor-name" placeholder="ej., Dr. Smith" defaultValue={selectedAppointment?.doctor} />
@@ -158,6 +158,9 @@ export function Appointments() {
                                                 onSelect={handleDateSelect}
                                                 initialFocus
                                                 locale={es}
+                                                captionLayout="dropdown-buttons"
+                                                fromYear={new Date().getFullYear()}
+                                                toYear={new Date().getFullYear() + 5}
                                                 disabled={(date) => date < new Date(new Date().setDate(new Date().getDate() -1))}
                                             />
                                         </PopoverContent>

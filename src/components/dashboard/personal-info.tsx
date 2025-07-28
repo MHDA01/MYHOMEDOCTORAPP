@@ -206,6 +206,7 @@ export function PersonalInfo() {
                                     selected={getValidDate(editableInfo.dateOfBirth)}
                                     onSelect={handleDateSelect}
                                     locale={es}
+                                    captionLayout="dropdown-buttons"
                                     fromYear={1920}
                                     toYear={new Date().getFullYear()}
                                     disabled={(date) => date > new Date() || date < new Date("1900-01-01")}
