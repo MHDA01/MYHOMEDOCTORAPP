@@ -1,22 +1,21 @@
 {
-    "name": "MiDoctorDeCasaApp",
-    "short_name": "DoctorDeCasa",
-    "description": "Tu asistente personal de gestión de salud.",
-    "icons": [
-        {
-            "src": "https://storage.googleapis.com/monorepo-prod-project-resources/465d6830-1bfa-4458-8926-b07283626a57/my-home-doctor-logo-192.png",
-            "sizes": "192x192",
-            "type": "image/png"
-        },
-        {
-            "src": "https://storage.googleapis.com/monorepo-prod-project-resources/465d6830-1bfa-4458-8926-b07283626a57/my-home-doctor-logo-512.png",
-            "sizes": "512x512",
-            "type": "image/png"
-        }
-    ],
-    "theme_color": "#FFFFFF",
-    "background_color": "#FFFFFF",
-    "start_url": "/",
-    "display": "standalone",
-    "orientation": "portrait"
+  "name": "MiDoctorDeCasaApp",
+  "short_name": "MiDoctor",
+  "description": "Tu asistente personal de gestión de salud.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F8F6F3",
+  "theme_color": "#35577C",
+  "icons": [
+    {
+      "src": "https://i.postimg.cc/J7N5r89y/LOGO-1.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://i.postimg.cc/J7N5r89y/LOGO-1.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
 }

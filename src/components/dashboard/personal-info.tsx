@@ -20,14 +20,19 @@ import { UserContext } from '@/context/user-context';
 import { Skeleton } from '@/components/ui/skeleton';
 
 const calculateAge = (dob: Date) => {
+    if (!dob) return '';
     const today = new Date();
     const years = differenceInYears(today, dob);
+    if (isNaN(years)) return '';
+    
     const months = differenceInMonths(today, subYears(today, years)) - differenceInMonths(dob, subYears(dob, years));
     const correctedMonths = months < 0 ? months + 12 : months;
     
     let ageString = `${years} años`;
-    if (correctedMonths > 0) {
+    if (years > 0 && correctedMonths > 0) {
       ageString += ` y ${correctedMonths} ${correctedMonths === 1 ? 'mes' : 'meses'}`;
+    } else if (years === 0) {
+      ageString = `${correctedMonths} ${correctedMonths === 1 ? 'mes' : 'meses'}`;
     }
     return ageString;
 };
@@ -37,6 +42,7 @@ export function PersonalInfo() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [editableInfo, setEditableInfo] = useState<PersonalInfoType | null>(null);
+  const [age, setAge] = useState<string>('');
 
   useEffect(() => {
     if (context?.personalInfo) {
@@ -44,6 +50,13 @@ export function PersonalInfo() {
     }
   }, [context?.personalInfo]);
   
+  useEffect(() => {
+    if (context?.personalInfo?.dateOfBirth) {
+        const dob = new Date(context.personalInfo.dateOfBirth);
+        setAge(calculateAge(dob));
+    }
+  }, [context?.personalInfo?.dateOfBirth]);
+
   if (!context) {
     throw new Error('PersonalInfo must be used within a UserProvider');
   }
@@ -111,7 +124,7 @@ export function PersonalInfo() {
             <div><strong>Sexo:</strong><p className="text-muted-foreground capitalize">{personalInfo.sex === 'male' ? 'Masculino' : personalInfo.sex === 'female' ? 'Femenino' : 'Indeterminado'}</p></div>
             <div>
                 <strong>Fecha de Nacimiento:</strong>
-                <p className="text-muted-foreground">{format(personalInfo.dateOfBirth, "d 'de' MMMM 'de' yyyy", { locale: es })} ({calculateAge(new Date(personalInfo.dateOfBirth))})</p>
+                <p className="text-muted-foreground">{format(personalInfo.dateOfBirth, "d 'de' MMMM 'de' yyyy", { locale: es })} ({age || 'Calculando...'})</p>
             </div>
             <div>
                 <strong>Previsión:</strong>
