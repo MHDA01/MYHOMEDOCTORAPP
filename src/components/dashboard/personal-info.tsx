@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useContext } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from "@/components/ui/dialog";
@@ -15,16 +15,8 @@ import type { PersonalInfo as PersonalInfoType } from '@/lib/types';
 import { format, differenceInYears, differenceInMonths, subYears } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { cn } from "@/lib/utils";
+import { UserContext } from '@/context/user-context';
 
-
-const initialInfo: PersonalInfoType = {
-  firstName: 'John',
-  lastName: 'Doe',
-  sex: 'male',
-  dateOfBirth: new Date('1985-05-20'),
-  insuranceProvider: 'Isapre',
-  isapreName: 'Colmena',
-};
 
 const calculateAge = (dob: Date) => {
     const today = new Date();
@@ -40,9 +32,14 @@ const calculateAge = (dob: Date) => {
 };
 
 export function PersonalInfo() {
-  const [personalInfo, setPersonalInfo] = useState<PersonalInfoType>(initialInfo);
+  const context = useContext(UserContext);
+  if (!context) {
+    throw new Error('PersonalInfo must be used within a UserProvider');
+  }
+  const { personalInfo, setPersonalInfo } = context;
+
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editableInfo, setEditableInfo] = useState<PersonalInfoType>(initialInfo);
+  const [editableInfo, setEditableInfo] = useState<PersonalInfoType>(personalInfo);
   
   const handleEditClick = () => {
     setEditableInfo(JSON.parse(JSON.stringify(personalInfo)));

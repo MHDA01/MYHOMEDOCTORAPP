@@ -1,5 +1,6 @@
 'use client'
 
+import { useContext } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
@@ -27,6 +28,7 @@ import {
   Video,
   Siren,
 } from 'lucide-react';
+import { UserContext } from '@/context/user-context';
 
 const mainNavItems = [
   { href: '/dashboard', icon: LayoutDashboard, label: 'Mi Historial' },
@@ -44,8 +46,17 @@ const secondaryNavItems = [
 
 export function SidebarNav() {
   const pathname = usePathname();
+  const context = useContext(UserContext);
 
+  if (!context) {
+    return null; // O un fallback/spinner mientras carga el contexto
+  }
+
+  const { personalInfo } = context;
   const isDashboardPage = pathname === '/dashboard';
+  const userFullName = `${personalInfo.firstName} ${personalInfo.lastName}`;
+  const userInitials = `${personalInfo.firstName[0]}${personalInfo.lastName[0]}`;
+  const userEmail = "john.doe@email.com"; // El email puede venir del contexto también si lo añadimos.
 
   return (
     <>
@@ -91,20 +102,20 @@ export function SidebarNav() {
                 <Button variant="ghost" className="flex h-auto w-full justify-start items-center gap-3 p-2">
                     <Avatar className="h-9 w-9">
                         <AvatarImage src="https://placehold.co/100x100.png" alt="@user" data-ai-hint="user avatar" />
-                        <AvatarFallback>JD</AvatarFallback>
+                        <AvatarFallback>{userInitials}</AvatarFallback>
                     </Avatar>
                     <div className="text-left">
-                        <p className="font-medium text-sm">John Doe</p>
-                        <p className="text-xs text-muted-foreground">john.doe@email.com</p>
+                        <p className="font-medium text-sm">{userFullName}</p>
+                        <p className="text-xs text-muted-foreground">{userEmail}</p>
                     </div>
                 </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent className="w-56" align="end" forceMount>
                 <DropdownMenuLabel className="font-normal">
                 <div className="flex flex-col space-y-1">
-                    <p className="text-sm font-medium leading-none">John Doe</p>
+                    <p className="text-sm font-medium leading-none">{userFullName}</p>
                     <p className="text-xs leading-none text-muted-foreground">
-                    john.doe@email.com
+                    {userEmail}
                     </p>
                 </div>
                 </DropdownMenuLabel>
