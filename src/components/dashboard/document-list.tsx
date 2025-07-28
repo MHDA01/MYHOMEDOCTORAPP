@@ -49,28 +49,52 @@ export function DocumentList() {
         }
     }, []);
 
-    const startStream = useCallback(async () => {
+    const startStream = useCallback(async (deviceId?: string) => {
         stopStream();
-        if (dialogMode !== 'add' || !isDialogOpen) return;
+        if (hasCameraPermission !== true) return;
 
         try {
-            // Enumerate devices first to ensure the UI updates with the switch button
-            const devices = await navigator.mediaDevices.enumerateDevices();
-            const videoInputs = devices.filter(device => device.kind === 'videoinput');
-            setVideoDevices(videoInputs);
-            
-            const selectedDeviceId = videoInputs.length > 0 ? videoInputs[currentDeviceIndex].deviceId : undefined;
-
             const stream = await navigator.mediaDevices.getUserMedia({
-                video: { deviceId: selectedDeviceId ? { exact: selectedDeviceId } : undefined }
+                video: { deviceId: deviceId ? { exact: deviceId } : undefined }
             });
             
             streamRef.current = stream;
-            setHasCameraPermission(true);
 
             if (videoRef.current) {
                 videoRef.current.srcObject = stream;
             }
+        } catch (error) {
+            console.error('Error starting stream:', error);
+            setHasCameraPermission(false);
+             toast({
+                variant: 'destructive',
+                title: 'Error de Cámara',
+                description: 'No se pudo iniciar la cámara seleccionada.',
+            });
+        }
+    }, [hasCameraPermission, stopStream, toast]);
+
+    const initializeCamera = useCallback(async () => {
+        if (dialogMode !== 'add' || !isDialogOpen) return;
+        stopStream(); // Ensure any previous stream is stopped
+
+        try {
+            // Get permission and initial stream to trigger the prompt
+            const initialStream = await navigator.mediaDevices.getUserMedia({ video: true });
+            setHasCameraPermission(true);
+
+            // Now enumerate devices
+            const devices = await navigator.mediaDevices.enumerateDevices();
+            const videoInputs = devices.filter(device => device.kind === 'videoinput');
+            setVideoDevices(videoInputs);
+
+            // Stop the initial generic stream
+            initialStream.getTracks().forEach(track => track.stop());
+
+            // Start the stream with the selected device
+            const selectedDeviceId = videoInputs.length > 0 ? videoInputs[currentDeviceIndex].deviceId : undefined;
+            await startStream(selectedDeviceId);
+
         } catch (error) {
             console.error('Error accessing camera:', error);
             setHasCameraPermission(false);
@@ -80,11 +104,11 @@ export function DocumentList() {
                 description: 'Por favor, activa los permisos de la cámara en la configuración de tu navegador para usar esta función.',
             });
         }
-    }, [currentDeviceIndex, dialogMode, isDialogOpen, stopStream, toast]);
+    }, [dialogMode, isDialogOpen, stopStream, currentDeviceIndex, startStream, toast]);
 
     useEffect(() => {
-        if (isDialogOpen && dialogMode === 'add') {
-            startStream();
+        if (isDialogOpen && dialogMode === 'add' && !capturedImage) {
+           initializeCamera();
         } else {
             stopStream();
         }
@@ -92,7 +116,15 @@ export function DocumentList() {
         return () => {
             stopStream();
         }
-    }, [isDialogOpen, dialogMode, startStream, stopStream]);
+    }, [isDialogOpen, dialogMode, capturedImage, initializeCamera, stopStream]);
+    
+     useEffect(() => {
+        if (videoDevices.length > 0 && isDialogOpen && dialogMode === 'add' && !capturedImage) {
+            const deviceId = videoDevices[currentDeviceIndex]?.deviceId;
+            startStream(deviceId);
+        }
+    }, [currentDeviceIndex, videoDevices, isDialogOpen, dialogMode, capturedImage, startStream]);
+
 
     const handleOpenDialog = (mode: DialogMode, doc?: Document) => {
         setDialogMode(mode);
@@ -101,7 +133,7 @@ export function DocumentList() {
         } else {
             setSelectedDoc(null);
             setCapturedImage(null);
-            setCurrentDeviceIndex(0); // Reset to default camera
+            setCurrentDeviceIndex(0);
         }
         setIsDialogOpen(true);
     };
@@ -124,7 +156,7 @@ export function DocumentList() {
 
     const handleRetake = () => {
         setCapturedImage(null);
-        startStream();
+        // initializeCamera will be called by the useEffect dependency change
     };
 
     const handleCameraSwitch = () => {
@@ -132,14 +164,6 @@ export function DocumentList() {
             setCurrentDeviceIndex((prevIndex) => (prevIndex + 1) % videoDevices.length);
         }
     };
-
-    useEffect(() => {
-        // When the camera device changes, restart the stream.
-        if (isDialogOpen && dialogMode === 'add' && !capturedImage) {
-            startStream();
-        }
-    }, [currentDeviceIndex, isDialogOpen, dialogMode, capturedImage, startStream]);
-
 
     const handleDelete = (docId: string) => {
         setDocuments(docs => docs.filter(doc => doc.id !== docId));
