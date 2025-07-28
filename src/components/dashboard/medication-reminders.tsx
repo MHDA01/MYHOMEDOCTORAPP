@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { Pill, PlusCircle, BellRing, MoreVertical, FilePenLine, Trash2, Loader2 } from "lucide-react";
+import { Pill, PlusCircle, BellRing, MoreVertical, FilePenLine, Trash2, Loader2, BellPlus } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -49,18 +49,28 @@ export function MedicationReminders() {
 
     useEffect(() => {
         if (typeof window !== 'undefined' && 'Notification' in window) {
-            const checkPermission = async () => {
-                const currentPermission = Notification.permission;
-                if (currentPermission === 'default') {
-                    const permission = await Notification.requestPermission();
-                    setNotificationPermission(permission);
-                } else {
-                    setNotificationPermission(currentPermission);
-                }
-            }
-            checkPermission();
+            setNotificationPermission(Notification.permission);
         }
     }, []);
+    
+    const requestNotificationPermission = async () => {
+        if (typeof window !== 'undefined' && 'Notification' in window) {
+            const permission = await Notification.requestPermission();
+            setNotificationPermission(permission);
+            if (permission === 'denied') {
+                toast({
+                    variant: 'destructive',
+                    title: 'Notificaciones Bloqueadas',
+                    description: 'Para recibir recordatorios, debes habilitar las notificaciones en la configuración de tu navegador.',
+                });
+            } else if (permission === 'granted') {
+                 toast({
+                    title: '¡Notificaciones Activadas!',
+                    description: 'Recibirás recordatorios para tus medicamentos.',
+                });
+            }
+        }
+    };
     
     const checkReminders = useCallback(() => {
         if (typeof window === 'undefined' || !('Notification' in window) || Notification.permission !== 'granted') return;
@@ -222,6 +232,16 @@ export function MedicationReminders() {
                         </AlertDescription>
                     </Alert>
                 )}
+                 {notificationPermission === 'default' && (
+                    <Alert>
+                        <BellPlus className="h-4 w-4" />
+                        <AlertTitle>Activa los Recordatorios</AlertTitle>
+                        <AlertDescription>
+                           Permite las notificaciones para recibir recordatorios de tus medicamentos a tiempo.
+                           <Button size="sm" className="ml-4" onClick={requestNotificationPermission}>Activar</Button>
+                        </AlertDescription>
+                    </Alert>
+                )}
                 {medications.length === 0 && <p className="text-center text-muted-foreground pt-4">No has añadido ningún medicamento.</p>}
                 {medications.map((med) => (
                     <div key={med.id} className="flex items-center justify-between rounded-lg border p-3">
@@ -328,3 +348,5 @@ export function MedicationReminders() {
         </Card>
     );
 }
+
+    
