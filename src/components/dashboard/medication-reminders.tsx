@@ -148,7 +148,7 @@ export function MedicationReminders() {
                         <DialogHeader>
                             <DialogTitle>{dialogMode === 'add' ? 'Añadir Nuevo Medicamento' : 'Editar Medicamento'}</DialogTitle>
                         </DialogHeader>
-                         <div className="grid gap-4 py-4 max-h-[60vh] overflow-y-auto pr-2">
+                         <div className="grid gap-4 py-4 max-h-[60vh] overflow-y-auto pr-4">
                             <div className="grid gap-2">
                                 <Label htmlFor="med-name">Nombre del Medicamento</Label>
                                 <Input id="med-name" placeholder="ej., Ibuprofeno" defaultValue={selectedMed?.name} />
@@ -214,3 +214,5 @@ export function MedicationReminders() {
         </Card>
     );
 }
+
+    

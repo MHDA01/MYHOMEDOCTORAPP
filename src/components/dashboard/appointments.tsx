@@ -45,10 +45,10 @@ export function Appointments() {
         // Defer date-sensitive logic to useEffect to prevent hydration mismatch
         const now = new Date();
         setUpcomingAppointments(
-            appointments.filter(a => new Date(a.date) >= now).map(a => ({...a, status: 'Upcoming' as const}))
+            appointments.filter(a => new Date(a.date) >= now).sort((a,b) => a.date.getTime() - b.date.getTime())
         );
         setPastAppointments(
-            appointments.filter(a => new Date(a.date) < now).map(a => ({...a, status: 'Past' as const}))
+            appointments.filter(a => new Date(a.date) < now).sort((a,b) => b.date.getTime() - a.date.getTime())
         );
     }, [appointments]);
 
@@ -89,7 +89,7 @@ export function Appointments() {
      const handleDateSelect = (selectedDate: Date | undefined) => {
         if (selectedDate) {
             setDate(selectedDate);
-            setIsPopoverOpen(false); // Close popover after selection
+            setIsPopoverOpen(false);
         }
     }
 
@@ -118,7 +118,7 @@ export function Appointments() {
                 </Tabs>
             </CardContent>
             <CardFooter>
-                 <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen} modal={true}>
+                 <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                     <DialogTrigger asChild>
                         <Button onClick={() => handleOpenDialog('add')}><PlusCircle className="mr-2"/>Programar Cita</Button>
                     </DialogTrigger>
@@ -126,7 +126,7 @@ export function Appointments() {
                         <DialogHeader>
                             <DialogTitle>{dialogMode === 'add' ? 'Programar Nueva Cita' : 'Editar Cita'}</DialogTitle>
                         </DialogHeader>
-                         <div className="grid gap-4 py-4">
+                         <div className="grid gap-4 py-4 max-h-[60vh] overflow-y-auto pr-4">
                             <div className="grid gap-2">
                                 <Label htmlFor="doctor-name">Nombre del Doctor</Label>
                                 <Input id="doctor-name" placeholder="ej., Dr. Smith" defaultValue={selectedAppointment?.doctor} />
@@ -151,16 +151,14 @@ export function Appointments() {
                                             {date ? format(date, "PPP", { locale: es }) : <span>Elige una fecha</span>}
                                             </Button>
                                         </PopoverTrigger>
-                                        <PopoverContent className="w-auto p-0" portal={false}>
+                                        <PopoverContent className="w-auto p-0" align="start">
                                             <Calendar
-                                            mode="single"
-                                            selected={date}
-                                            onSelect={handleDateSelect}
-                                            initialFocus
-                                            locale={es}
-                                            captionLayout="dropdown-buttons"
-                                            fromYear={new Date().getFullYear()}
-                                            toYear={new Date().getFullYear() + 5}
+                                                mode="single"
+                                                selected={date}
+                                                onSelect={handleDateSelect}
+                                                initialFocus
+                                                locale={es}
+                                                disabled={(date) => date < new Date(new Date().setDate(new Date().getDate() -1))}
                                             />
                                         </PopoverContent>
                                     </Popover>
@@ -245,3 +243,5 @@ function AppointmentList({ appointments, onEdit, onDelete, isPast = false, getRe
         </div>
     );
 }
+
+    

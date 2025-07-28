@@ -158,10 +158,10 @@ export function DocumentList() {
                         <DialogHeader>
                             <DialogTitle>{dialogMode === 'add' ? 'Capturar Nuevo Documento' : 'Editar Documento'}</DialogTitle>
                         </DialogHeader>
-                        <div className="grid gap-4 py-4">
+                        <div className="grid gap-4 py-4 max-h-[60vh] overflow-y-auto pr-4">
                             {dialogMode === 'add' && (
                                 <>
-                                 <video ref={videoRef} className="w-full aspect-video rounded-md bg-muted" autoPlay muted />
+                                 <video ref={videoRef} className="w-full aspect-video rounded-md bg-muted" autoPlay muted playsInline />
                                  { hasCameraPermission === false && (
                                      <Alert variant="destructive">
                                                <AlertTitle>Se requiere acceso a la cámara</AlertTitle>
@@ -205,3 +205,5 @@ export function DocumentList() {
         </Card>
     );
 }
+
+    

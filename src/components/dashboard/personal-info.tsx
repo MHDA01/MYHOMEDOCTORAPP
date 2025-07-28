@@ -13,39 +13,21 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { User, FilePenLine, Calendar as CalendarIcon, HeartPulse, Hospital, Loader2 } from "lucide-react";
 import type { PersonalInfo as PersonalInfoType } from '@/lib/types';
-import { format, differenceInYears, differenceInMonths, subYears, isValid } from 'date-fns';
+import { format, differenceInYears, isValid, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { cn } from "@/lib/utils";
 import { UserContext } from '@/context/user-context';
 import { Skeleton } from '@/components/ui/skeleton';
 
+
 const calculateAge = (dob: Date | undefined): string => {
     if (!dob || !isValid(dob)) return '';
     const today = new Date();
     const years = differenceInYears(today, dob);
-    
-    if (years < 0) return ''; // Handle future dates
-
-    const dobThisYear = new Date(today.getFullYear(), dob.getMonth(), dob.getDate());
-    const months = differenceInMonths(today, dobThisYear);
-    
-    let ageString = `${years} años`;
-    if (years > 0 && months > 0) {
-      ageString += ` y ${months} ${months === 1 ? 'mes' : 'meses'}`;
-    } else if (years === 0 && months >= 0) {
-      ageString = `${months} ${months === 1 ? 'mes' : 'meses'}`;
-    } else if (years > 0 && months < 0) {
-        // This case handles when the birthday hasn't occurred yet this year.
-        const correctedYears = years -1;
-        const correctedMonths = differenceInMonths(today, subYears(today, 1)) - differenceInMonths(dob, subYears(dob,1));
-        const finalMonths = correctedMonths < 0 ? correctedMonths + 12 : correctedMonths;
-        ageString = `${correctedYears} años`;
-        if(finalMonths > 0) {
-            ageString += ` y ${finalMonths} ${finalMonths === 1 ? 'mes' : 'meses'}`;
-        }
-    }
-    return ageString;
+    if (years < 0) return '';
+    return `${years} años`;
 };
+
 
 export function PersonalInfo() {
   const context = useContext(UserContext);
@@ -55,11 +37,20 @@ export function PersonalInfo() {
   const [editableInfo, setEditableInfo] = useState<PersonalInfoType | null>(null);
   const [age, setAge] = useState<string>('');
 
+  const getValidDate = (date: string | Date): Date | undefined => {
+    if (!date) return undefined;
+    const d = date instanceof Date ? date : parseISO(date);
+    return isValid(d) ? d : undefined;
+  }
+
   useEffect(() => {
     if (context?.personalInfo) {
-      const info = { ...context.personalInfo, dateOfBirth: new Date(context.personalInfo.dateOfBirth) };
+      const dob = getValidDate(context.personalInfo.dateOfBirth);
+      const info = { ...context.personalInfo, dateOfBirth: dob || new Date() };
       setEditableInfo(info);
-      setAge(calculateAge(info.dateOfBirth));
+      if (dob) {
+        setAge(calculateAge(dob));
+      }
     }
   }, [context?.personalInfo]);
 
@@ -71,7 +62,8 @@ export function PersonalInfo() {
 
   const handleEditClick = () => {
     if (personalInfo) {
-      setEditableInfo({ ...personalInfo, dateOfBirth: new Date(personalInfo.dateOfBirth) });
+      const dob = getValidDate(personalInfo.dateOfBirth);
+      setEditableInfo({ ...personalInfo, dateOfBirth: dob || new Date() });
       setIsDialogOpen(true);
     }
   }
@@ -88,9 +80,11 @@ export function PersonalInfo() {
   const handleDateSelect = (date: Date | undefined) => {
     if (date && editableInfo) {
         setEditableInfo({ ...editableInfo, dateOfBirth: date });
-        setIsPopoverOpen(false); // Close popover after selection
+        setIsPopoverOpen(false);
     }
   }
+
+  const displayDob = getValidDate(personalInfo?.dateOfBirth);
 
   if (loading || !personalInfo) {
     return (
@@ -131,7 +125,7 @@ export function PersonalInfo() {
             <div><strong>Sexo:</strong><p className="text-muted-foreground capitalize">{personalInfo.sex === 'male' ? 'Masculino' : personalInfo.sex === 'female' ? 'Femenino' : 'Indeterminado'}</p></div>
             <div>
                 <strong>Fecha de Nacimiento:</strong>
-                <p className="text-muted-foreground">{format(new Date(personalInfo.dateOfBirth), "d 'de' MMMM 'de' yyyy", { locale: es })} ({age || 'Calculando...'})</p>
+                <p className="text-muted-foreground">{displayDob ? `${format(displayDob, "d 'de' MMMM 'de' yyyy", { locale: es })} (${age})` : 'No registrada'}</p>
             </div>
             <div>
                 <strong>Previsión:</strong>
@@ -146,7 +140,7 @@ export function PersonalInfo() {
         </div>
       </CardContent>
       <CardFooter>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen} modal={true}>
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
             <Button onClick={handleEditClick}>
               <FilePenLine className="mr-2" />
@@ -199,19 +193,20 @@ export function PersonalInfo() {
                                 className={cn("w-full justify-start text-left font-normal", !editableInfo.dateOfBirth && "text-muted-foreground")}
                                 >
                                 <CalendarIcon className="mr-2 h-4 w-4" />
-                                {editableInfo.dateOfBirth ? format(new Date(editableInfo.dateOfBirth), "PPP", { locale: es }) : <span>Elige una fecha</span>}
+                                {editableInfo.dateOfBirth && isValid(getValidDate(editableInfo.dateOfBirth)) ? format(getValidDate(editableInfo.dateOfBirth) as Date, "PPP", { locale: es }) : <span>Elige una fecha</span>}
                                 </Button>
                             </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0" side="bottom" align="start" avoidCollisions={true} portal={false}>
+                            <PopoverContent className="w-auto p-0" align="start">
                                 <Calendar
-                                mode="single"
-                                selected={new Date(editableInfo.dateOfBirth)}
-                                onSelect={handleDateSelect}
-                                initialFocus
-                                locale={es}
-                                captionLayout="dropdown-buttons"
-                                fromYear={1920}
-                                toYear={new Date().getFullYear()}
+                                    mode="single"
+                                    selected={getValidDate(editableInfo.dateOfBirth)}
+                                    onSelect={handleDateSelect}
+                                    locale={es}
+                                    fromYear={1920}
+                                    toYear={new Date().getFullYear()}
+                                    captionLayout="dropdown-buttons"
+                                    disabled={(date) => date > new Date() || date < new Date("1900-01-01")}
+                                    initialFocus
                                 />
                             </PopoverContent>
                         </Popover>
@@ -251,3 +246,5 @@ export function PersonalInfo() {
     </Card>
   );
 }
+
+    
