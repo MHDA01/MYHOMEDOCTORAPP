@@ -24,6 +24,11 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 type DialogMode = 'add' | 'edit';
 
+async function showNotification(title: string, options: NotificationOptions) {
+    const serviceWorker = await navigator.serviceWorker.ready;
+    await serviceWorker.showNotification(title, options);
+}
+
 export function Appointments() {
     const context = useContext(UserContext);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -67,9 +72,9 @@ export function Appointments() {
             const diff = differenceInMinutes(app.date, now);
 
             if (diff > 0 && diff <= reminderValue && diff > (reminderValue - 5)) { // Check within a 5-minute window to avoid missing it
-                 new Notification('Recordatorio de Cita', {
+                 showNotification('Recordatorio de Cita', {
                     body: `Tu cita con ${app.doctor} (${app.specialty}) es en ${getReminderLabel(app.reminder, true)}.`,
-                    icon: '/icon-192x192.png'
+                    icon: '/icons/icon-192x192.png'
                 });
                 // Mark as notified to prevent multiple notifications
                 updateAppointment(app.id, { notified: true });

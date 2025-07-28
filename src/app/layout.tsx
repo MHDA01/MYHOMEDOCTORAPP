@@ -1,21 +1,29 @@
-import type {Metadata} from 'next';
+'use client';
+import { useEffect } from 'react';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster"
-
-export const metadata: Metadata = {
-  title: 'MiDoctorDeCasaApp',
-  description: 'Tu asistente personal de gestión de salud.',
-  manifest: "/manifest.webmanifest",
-};
 
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+
+  useEffect(() => {
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker
+        .register('/sw.js')
+        .then((registration) => console.log('Service Worker registrado con éxito:', registration))
+        .catch((error) => console.log('Error en el registro del Service Worker:', error));
+    }
+  }, []);
+
   return (
     <html lang="es" suppressHydrationWarning>
       <head>
+        <title>MiDoctorDeCasaApp</title>
+        <meta name="description" content="Tu asistente personal de gestión de salud." />
+        <link rel="manifest" href="/manifest.webmanifest" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet" />
@@ -26,7 +34,8 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-title" content="MiDoctorDeCasaApp" />
         <meta name="format-detection" content="telephone=no" />
         <meta name="mobile-web-app-capable" content="yes" />
-        <meta name="theme-color" content="#FFFFFF" />
+        <meta name="theme-color" content="#35577C" />
+        <link rel="apple-touch-icon" href="/icons/icon-192x192.png" />
       </head>
       <body className="font-body antialiased">
         {children}

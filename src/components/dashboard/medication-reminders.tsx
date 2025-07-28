@@ -21,6 +21,11 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 type DialogMode = 'add' | 'edit';
 
+async function showNotification(title: string, options: NotificationOptions) {
+    const serviceWorker = await navigator.serviceWorker.ready;
+    await serviceWorker.showNotification(title, options);
+}
+
 export function MedicationReminders() {
     const context = useContext(UserContext);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -43,15 +48,14 @@ export function MedicationReminders() {
     const { medications, addMedication, updateMedication, deleteMedication, loading } = context;
 
     useEffect(() => {
-        // This code runs only on the client
         if (typeof window !== 'undefined' && 'Notification' in window) {
             setNotificationPermission(Notification.permission);
         }
     }, []);
 
     const requestNotificationPermission = async () => {
-         if (typeof window === 'undefined' || !('Notification' in window)) {
-            toast({ variant: 'destructive', title: 'Navegador no compatible', description: 'Tu navegador no soporta notificaciones.' });
+         if (typeof window === 'undefined' || !('Notification' in window) || !('serviceWorker' in navigator)) {
+            toast({ variant: 'destructive', title: 'Navegador no compatible', description: 'Tu navegador no soporta notificaciones o service workers.' });
             return;
         }
         const permission = await Notification.requestPermission();
@@ -71,9 +75,9 @@ export function MedicationReminders() {
         
         medications.forEach(med => {
             if(med.active && med.time.includes(currentTime)) {
-                new Notification(`¡Hora de tu medicina!`, {
+                showNotification(`¡Hora de tu medicina!`, {
                     body: `${med.name} ${med.dosage}`,
-                    icon: '/icon-192x192.png' 
+                    icon: '/icons/icon-192x192.png' 
                 });
             }
         });
@@ -94,7 +98,6 @@ export function MedicationReminders() {
     
         const numTimes = frequency > 0 && frequency <= 24 ? Math.floor(24 / frequency) : 1;
         
-        // If we are editing and frequency hasn't changed, keep old times
         if (dialogMode === 'edit' && selectedMed && selectedMed.frequency === frequency) {
             setTimeInputs(selectedMed.time);
             return;
@@ -334,5 +337,3 @@ export function MedicationReminders() {
         </Card>
     );
 }
-
-    
