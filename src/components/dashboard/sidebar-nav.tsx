@@ -29,6 +29,7 @@ import {
   Video,
   Siren,
   Loader2,
+  MoreVertical,
 } from 'lucide-react';
 import { UserContext } from '@/context/user-context';
 import { Skeleton } from '../ui/skeleton';
@@ -68,7 +69,7 @@ export function SidebarNav() {
                 <Separator className="my-2" />
                 <div className="flex items-center gap-3 p-2">
                     <Skeleton className="h-9 w-9 rounded-full" />
-                    <div className="space-y-2">
+                    <div className="space-y-2 flex-1">
                         <Skeleton className="h-4 w-24" />
                         <Skeleton className="h-3 w-32" />
                     </div>
@@ -129,10 +130,11 @@ export function SidebarNav() {
                         <AvatarImage src="https://placehold.co/100x100.png" alt="@user" data-ai-hint="user avatar" />
                         <AvatarFallback>{userInitials}</AvatarFallback>
                     </Avatar>
-                    <div className="text-left">
-                        <p className="font-medium text-sm">{userFullName}</p>
-                        <p className="text-xs text-muted-foreground">{userEmail}</p>
+                    <div className="text-left flex-1">
+                        <p className="font-medium text-sm truncate">{userFullName}</p>
+                        <p className="text-xs text-muted-foreground truncate">{userEmail}</p>
                     </div>
+                    <MoreVertical className="h-4 w-4 text-muted-foreground ml-auto" />
                 </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent className="w-56" align="end" forceMount>
