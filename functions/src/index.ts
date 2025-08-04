@@ -10,7 +10,7 @@ export const checkAlarms = functions.pubsub.schedule("every 1 minutes").onRun(as
 
     const now = admin.firestore.Timestamp.now();
 
-    // Buscar en la colección 'alarms' documentos cuya hora ya pasó y no han sido enviados.
+    // Buscar en el grupo de colecciones 'alarms' documentos cuya hora ya pasó y no han sido enviados.
     const query = db.collectionGroup("alarms")
         .where("alarmTime", "<=", now)
         .where("status", "==", "scheduled");

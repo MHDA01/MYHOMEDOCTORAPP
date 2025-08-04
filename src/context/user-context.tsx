@@ -42,12 +42,15 @@ const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 // --- Generic Firestore Functions ---
 
 async function getCollection<T>(userId: string, collectionName: string): Promise<T[]> {
-    const q = query(collection(db, 'users', userId, collectionName), orderBy('uploadedAt', 'desc'));
-    if (collectionName === 'appointments' || collectionName === 'medications' || collectionName === 'alarms' ) {
-        const plainQuery = collection(db, 'users', userId, collectionName);
-        const snapshot = await getDocs(plainQuery);
-        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as T));
+    let q;
+    if (collectionName === 'appointments') {
+        q = query(collection(db, 'users', userId, collectionName), orderBy('date', 'desc'));
+    } else if (collectionName === 'documents') {
+        q = query(collection(db, 'users', userId, collectionName), orderBy('uploadedAt', 'desc'));
+    } else {
+        q = query(collection(db, 'users', userId, collectionName));
     }
+    
     const snapshot = await getDocs(q);
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as T));
 }
@@ -362,7 +365,7 @@ useEffect(() => {
         const newAppointment = { ...appointment, id: newDocRef.id };
         
         await setDoc(newDocRef, { ...appointment, date: Timestamp.fromDate(appointment.date) });
-        setAppointments(prev => [...prev, newAppointment]);
+        setAppointments(prev => [newAppointment, ...prev].sort((a,b) => b.date.getTime() - a.date.getTime()));
 
         if(appointment.reminder && appointment.reminder !== 'none') {
             const reminderMinutes: { [key: string]: number } = { '1h': 60, '2h': 120, '24h': 1440, '2d': 2880 };
@@ -385,7 +388,7 @@ useEffect(() => {
         await removeAlarmsBySourceId(id);
         const data = appointment.date ? { ...appointment, date: Timestamp.fromDate(appointment.date) } : appointment;
         await updateInCollection(user.uid, 'appointments', id, data);
-        setAppointments(prev => prev.map(a => a.id === id ? { ...a, ...appointment } : a));
+        setAppointments(prev => prev.map(a => a.id === id ? { ...a, ...appointment } : a).sort((a,b) => b.date.getTime() - a.date.getTime()));
 
         const updatedAppointment = { ...appointments.find(a => a.id === id), ...appointment };
         if (updatedAppointment.reminder && updatedAppointment.reminder !== 'none' && updatedAppointment.date) {
