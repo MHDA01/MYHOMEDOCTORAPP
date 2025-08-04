@@ -27,6 +27,7 @@ export function MedicationReminders() {
     const [isSaving, setIsSaving] = useState(false);
     const [dialogMode, setDialogMode] = useState<DialogMode>('add');
     const [selectedMed, setSelectedMed] = useState<Medication | null>(null);
+    const [notificationPermission, setNotificationPermission] = useState('default');
     const [showPermissionRequest, setShowPermissionRequest] = useState(true);
 
     // Form State
@@ -40,15 +41,13 @@ export function MedicationReminders() {
     const { toast } = useToast();
 
     if (!context) throw new Error("MedicationReminders must be used within a UserProvider");
-    const { medications, addMedication, updateMedication, deleteMedication, loading, fcmState, setupFCM } = context;
+    const { medications, addMedication, updateMedication, deleteMedication, loading } = context;
 
-    useEffect(() => {
-        if (fcmState === 'default' && showPermissionRequest) {
-            setShowPermissionRequest(true);
-        } else {
-            setShowPermissionRequest(false);
+     useEffect(() => {
+        if ('Notification' in window) {
+            setNotificationPermission(Notification.permission);
         }
-    }, [fcmState, showPermissionRequest]);
+    }, []);
 
     useEffect(() => {
         if (!isDialogOpen) return;
@@ -68,6 +67,31 @@ export function MedicationReminders() {
         setTimeInputs(newTimes);
 
     }, [frequency, isDialogOpen, selectedMed, dialogMode]);
+
+    const requestNotificationPermission = async () => {
+        setShowPermissionRequest(false);
+        if (!('Notification' in window)) {
+            toast({ variant: 'destructive', title: 'Navegador no compatible', description: 'Este navegador no soporta notificaciones de escritorio.' });
+            return;
+        }
+
+        const permission = await Notification.requestPermission();
+        setNotificationPermission(permission);
+
+        if (permission === 'granted') {
+            toast({
+                title: '¡Notificaciones Activadas!',
+                description: 'Recibirás recordatorios para tus medicamentos y citas.',
+            });
+        } else if (permission === 'denied') {
+            toast({
+                variant: 'destructive',
+                title: 'Permiso denegado',
+                description: 'No se podrán enviar notificaciones. Puedes cambiarlo en la configuración del navegador.',
+            });
+        }
+    };
+
 
     const resetForm = () => {
         setName('');
@@ -129,19 +153,6 @@ export function MedicationReminders() {
     const handleToggleActive = async (med: Medication) => {
         await updateMedication(med.id, { active: !med.active });
     }
-    
-     const handleRequestPermission = async () => {
-        setShowPermissionRequest(false);
-        try {
-            await setupFCM();
-        } catch (error) {
-            toast({
-                variant: 'destructive',
-                title: 'Error de Notificaciones',
-                description: 'No se pudo completar la configuración. Revisa la consola para más detalles.',
-            });
-        }
-    }
 
     const formatTime12h = (time: string) => {
         if (!time) return '';
@@ -189,7 +200,7 @@ export function MedicationReminders() {
                 <CardDescription>Mantente al día con tu horario de medicación.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-                 {fcmState === 'denied' && (
+                 {notificationPermission === 'denied' && (
                     <Alert variant="destructive">
                         <AlertTitle>Notificaciones Bloqueadas</AlertTitle>
                         <AlertDescription>
@@ -197,13 +208,13 @@ export function MedicationReminders() {
                         </AlertDescription>
                     </Alert>
                 )}
-                 {fcmState === 'default' && showPermissionRequest && (
+                 {notificationPermission === 'default' && showPermissionRequest && (
                     <Alert>
                         <BellPlus className="h-4 w-4" />
                         <AlertTitle>Activa los Recordatorios</AlertTitle>
                         <AlertDescription className="flex items-center justify-between">
                            <span>Permite las notificaciones para recibir recordatorios.</span>
-                           <Button size="sm" onClick={handleRequestPermission}>Activar</Button>
+                           <Button size="sm" onClick={requestNotificationPermission}>Activar</Button>
                         </AlertDescription>
                     </Alert>
                 )}
@@ -218,7 +229,7 @@ export function MedicationReminders() {
                             </div>
                         </div>
                         <div className="flex items-center gap-2">
-                             <Switch checked={med.active} onCheckedChange={() => handleToggleActive(med)} aria-label={`Activar o desactivar recordatorio para ${med.name}`} disabled={fcmState !== 'granted'}/>
+                             <Switch checked={med.active} onCheckedChange={() => handleToggleActive(med)} aria-label={`Activar o desactivar recordatorio para ${med.name}`} disabled={notificationPermission !== 'granted'}/>
                              <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
                                     <Button variant="ghost" size="icon">
@@ -240,7 +251,7 @@ export function MedicationReminders() {
             <CardFooter>
                  <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                     <DialogTrigger asChild>
-                        <Button disabled={fcmState !== 'granted'}><PlusCircle className="mr-2"/>Añadir Medicamento</Button>
+                        <Button disabled={notificationPermission !== 'granted'}><PlusCircle className="mr-2"/>Añadir Medicamento</Button>
                     </DialogTrigger>
                     <DialogContent>
                         <DialogHeader>
