@@ -3,11 +3,10 @@
 
 import { createContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import type { PersonalInfo, HealthInfo, Appointment, Document as DocumentType, Medication } from '@/lib/types';
-import { auth, db, functions } from '@/lib/firebase';
-import { onAuthStateChanged, User, signInAnonymously } from 'firebase/auth';
+import { auth, db } from '@/lib/firebase';
+import { onAuthStateChanged, User, signInAnonymously, signOut, updateProfile } from 'firebase/auth';
 import { doc, getDoc, setDoc, Timestamp, collection, getDocs, addDoc, updateDoc, deleteDoc, query, orderBy, writeBatch, where } from 'firebase/firestore';
-import { httpsCallable } from 'firebase/functions';
-import { getMessaging, getToken, onMessage } from 'firebase/messaging';
+import { getMessaging, getToken } from 'firebase/messaging';
 
 
 // We need a way to serialize Date objects to be stored in Firestore
@@ -134,29 +133,26 @@ interface UserContextType {
   fcmToken: string | null;
   fcmState: 'denied' | 'granted' | 'default';
   setupFCM: () => Promise<void>;
+  signOutUser: () => Promise<void>;
 }
 
 export const UserContext = createContext<UserContextType | undefined>(undefined);
 
-const initialPersonalInfo: PersonalInfo = {
-  firstName: 'John',
-  lastName: 'Doe',
-  sex: 'male',
-  dateOfBirth: new Date('1985-05-20'),
-  insuranceProvider: 'Isapre',
-  isapreName: 'Colmena',
+const initialAnonymousPersonalInfo: PersonalInfo = {
+  firstName: 'Invitado',
+  lastName: '',
+  sex: 'other',
+  dateOfBirth: new Date(),
+  insuranceProvider: 'Fonasa',
 };
 
-const initialHealthInfo: HealthInfo = {
-    allergies: ['Cacahuetes', 'Penicilina'],
-    medications: ['Lisinopril 10mg', 'Metformina 500mg'],
-    pathologicalHistory: 'Hipertensión Arterial diagnosticada en 2010. Diabetes Mellitus tipo 2 diagnosticada en 2015.',
-    surgicalHistory: 'Apendicectomía en 2005. Colecistectomía laparoscópica en 2018.',
+const initialAnonymousHealthInfo: HealthInfo = {
+    allergies: [],
+    medications: [],
+    pathologicalHistory: '',
+    surgicalHistory: '',
     gynecologicalHistory: '',
-    emergencyContacts: [
-      { id: '1', name: 'Jane Doe', phone: '123-456-7890', relationship: 'Esposa' },
-      { id: '2', name: 'Dr. Smith', phone: '098-765-4321', relationship: 'Médico de cabecera' },
-    ],
+    emergencyContacts: [],
 };
 
 export const UserProvider = ({ children }: { children: ReactNode }) => {
@@ -176,17 +172,18 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       setLoading(true);
       if (currentUser) {
         setUser(currentUser);
-      } else if (!user) {
-        try {
-          await signInAnonymously(auth);
-        } catch (error) {
-          console.error("Anonymous sign-in failed:", error);
-          setLoading(false); 
-        }
+      } else {
+        // User is signed out
+        setUser(null);
+        setPersonalInfo(null);
+        setHealthInfo(null);
+        setAppointments([]);
+        setDocuments([]);
+        setMedications([]);
+        setLoading(false);
       }
     });
     return () => unsubscribe();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -200,9 +197,23 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
               setPersonalInfo(userDoc.personalInfo);
               setHealthInfo(userDoc.healthInfo);
           } else {
-              await updateUserDocument(user.uid, { personalInfo: initialPersonalInfo, healthInfo: initialHealthInfo });
-              setPersonalInfo(initialPersonalInfo);
-              setHealthInfo(initialHealthInfo);
+              // This case happens for new users, especially anonymous ones
+              const isAnon = user.isAnonymous;
+              const defaultPersonalInfo = isAnon ? initialAnonymousPersonalInfo : {
+                  firstName: user.displayName?.split(' ')[0] || 'Nuevo',
+                  lastName: user.displayName?.split(' ').slice(1).join(' ') || 'Usuario',
+                  sex: 'other',
+                  dateOfBirth: new Date(),
+                  insuranceProvider: 'Fonasa',
+              };
+              const defaultHealthInfo = isAnon ? initialAnonymousHealthInfo : {
+                  allergies: [], medications: [], pathologicalHistory: '', surgicalHistory: '',
+                  gynecologicalHistory: '', emergencyContacts: [],
+              };
+              
+              await updateUserDocument(user.uid, { personalInfo: defaultPersonalInfo, healthInfo: defaultHealthInfo });
+              setPersonalInfo(defaultPersonalInfo);
+              setHealthInfo(defaultHealthInfo);
           }
           
           // Fetch subcollections
@@ -229,9 +240,21 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [user]);
 
+  const signOutUser = async () => {
+    try {
+        await signOut(auth);
+    } catch (error) {
+        console.error("Error signing out:", error);
+    }
+  };
+
   const updatePersonalInfo = async (info: PersonalInfo) => {
-    if (user && healthInfo) {
+    if (user) {
+      // Optimistic update
       setPersonalInfo(info);
+      if(user.displayName !== `${info.firstName} ${info.lastName}`) {
+          await updateProfile(auth.currentUser!, { displayName: `${info.firstName} ${info.lastName}` });
+      }
       await updateUserDocument(user.uid, { personalInfo: info });
     }
   };
@@ -248,14 +271,13 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       if (typeof window === 'undefined' || !('Notification' in window) || !('serviceWorker' in navigator)) {
         return;
       }
+      try {
+        const permission = await Notification.requestPermission();
+        setFcmState(permission);
 
-      const permission = await Notification.requestPermission();
-      setFcmState(permission);
-
-      if (permission === 'granted') {
-        const messaging = getMessaging(auth.app);
-        const VAPID_KEY = "BDC_g-k_7o3t8z5Jq_r-r8w8A_Qj_6h_4wX8g_V_y_Z_6k_8J_1n_7m_3T_0n_9S_2c";
-        try {
+        if (permission === 'granted') {
+          const messaging = getMessaging(auth.app);
+          const VAPID_KEY = "BDC_g-k_7o3t8z5Jq_r-r8w8A_Qj_6h_4wX8g_V_y_Z_6k_8J_1n_7m_3T_0n_9S_2c";
           const token = await getToken(messaging, { vapidKey: VAPID_KEY });
           if (token) {
             setFcmToken(token);
@@ -263,11 +285,11 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
               await setDoc(doc(db, 'users', user.uid), { fcmToken: token }, { merge: true });
             }
           } else {
-            console.warn('No registration token available. Request permission to generate one.');
+            console.warn('No registration token available.');
           }
-        } catch (err) {
-          console.error('An error occurred while retrieving token. ', err);
         }
+      } catch (err) {
+        console.error('An error occurred while setting up FCM. ', err);
       }
     };
 
@@ -282,8 +304,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         await setDoc(newDocRef, { ...appointment, date: Timestamp.fromDate(appointment.date) });
 
         // Add to local state and re-sort
-        const newAppointments = [...appointments, newAppointment].sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-        setAppointments(newAppointments);
+        setAppointments(prev => [...prev, newAppointment].sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
 
         if (fcmToken && appointment.reminder && appointment.reminder !== 'none') {
             const reminderMinutes: { [key: string]: number } = { '1h': 60, '2h': 120, '24h': 1440, '2d': 2880 };
@@ -338,14 +359,14 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
 
     // Medications CRUD
     const addMedication = async (med: Omit<Medication, 'id'>) => {
-        if (!user || !fcmToken) return;
+        if (!user) return;
         
         const newDocRef = doc(collection(db, 'users', user.uid, 'medications'));
         const newMed = { ...med, id: newDocRef.id };
         await setDoc(newDocRef, newMed);
         setMedications(prev => [...prev, newMed]);
 
-        if (med.active) {
+        if (med.active && fcmToken) {
             const batch = writeBatch(db);
             med.time.forEach(t => {
                 const [hours, minutes] = t.split(':').map(Number);
@@ -398,6 +419,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         fcmToken,
         fcmState,
         setupFCM,
+        signOutUser,
         updatePersonalInfo,
         updateHealthInfo,
         addAppointment,
@@ -414,4 +436,3 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     </UserContext.Provider>
   );
 };
-

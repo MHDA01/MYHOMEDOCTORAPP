@@ -3,7 +3,7 @@
 
 import { useContext } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import {
   SidebarContent,
   SidebarHeader,
@@ -53,9 +53,17 @@ const secondaryNavItems = [
 
 export function SidebarNav() {
   const pathname = usePathname();
+  const router = useRouter();
   const context = useContext(UserContext);
 
   const isDashboardPage = pathname === '/dashboard';
+
+  const handleLogout = async () => {
+    if (context?.signOutUser) {
+      await context.signOutUser();
+      router.push('/login');
+    }
+  };
 
   if (context?.loading || !context?.personalInfo) {
     return (
@@ -82,10 +90,10 @@ export function SidebarNav() {
     )
   }
 
-  const { personalInfo } = context;
-  const userFullName = `${personalInfo.firstName} ${personalInfo.lastName}`;
-  const userInitials = personalInfo.firstName && personalInfo.lastName ? `${personalInfo.firstName[0]}${personalInfo.lastName[0]}` : 'U';
-  const userEmail = context.user?.email || "usuario@ejemplo.com"; 
+  const { personalInfo, user } = context;
+  const userFullName = personalInfo?.firstName && personalInfo?.lastName ? `${personalInfo.firstName} ${personalInfo.lastName}` : (user?.displayName || 'Usuario');
+  const userInitials = userFullName ? userFullName.split(' ').map(n => n[0]).join('').substring(0,2).toUpperCase() : 'U';
+  const userEmail = user?.email || "invitado@ejemplo.com"; 
 
   return (
     <>
@@ -136,7 +144,7 @@ export function SidebarNav() {
                         <AvatarImage src="https://placehold.co/100x100.png" alt="@user" data-ai-hint="user avatar" />
                         <AvatarFallback>{userInitials}</AvatarFallback>
                     </Avatar>
-                    <div className="text-left flex-1">
+                    <div className="text-left flex-1 overflow-hidden">
                         <p className="font-medium text-sm truncate">{userFullName}</p>
                         <p className="text-xs text-muted-foreground truncate">{userEmail}</p>
                     </div>
@@ -153,21 +161,21 @@ export function SidebarNav() {
                 </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem>
-                    <User className="mr-2 h-4 w-4" />
-                    <span>Perfil</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem>
+                <a href="#personal-info">
+                    <DropdownMenuItem>
+                        <User className="mr-2 h-4 w-4" />
+                        <span>Perfil</span>
+                    </DropdownMenuItem>
+                </a>
+                <DropdownMenuItem disabled>
                     <Settings className="mr-2 h-4 w-4" />
                     <span>Configuración</span>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <Link href="/">
-                    <DropdownMenuItem>
-                        <LogOut className="mr-2 h-4 w-4" />
-                        <span>Cerrar Sesión</span>
-                    </DropdownMenuItem>
-                </Link>
+                <DropdownMenuItem onClick={handleLogout}>
+                    <LogOut className="mr-2 h-4 w-4" />
+                    <span>Cerrar Sesión</span>
+                </DropdownMenuItem>
             </DropdownMenuContent>
         </DropdownMenu>
       </SidebarFooter>
