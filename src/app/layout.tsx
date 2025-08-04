@@ -13,6 +13,7 @@ export default function RootLayout({
       <head>
         <title>MiDoctorDeCasaApp</title>
         <meta name="description" content="Tu asistente personal de gestión de salud." />
+        <link rel="canonical" href="https://www.myhomedoctorapp.com" />
         <link rel="manifest" href="/manifest.webmanifest" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
