@@ -194,23 +194,21 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   const { toast } = useToast();
 
   const setupFCM = useCallback(async () => {
-    if (typeof window === 'undefined' || !user) {
+    if (typeof window === 'undefined' || !user || !('serviceWorker' in navigator) || !('Notification' in window)) {
         return;
     }
 
     try {
         const messaging = getMessaging(firebaseApp);
-        // Solicitar permiso
+        
         const permission = await Notification.requestPermission();
         setFcmState(permission);
 
         if (permission === 'granted') {
-             // Registrar el service worker para FCM
             const swRegistration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
             
-            // Obtener el token
             const currentToken = await getToken(messaging, { 
-                vapidKey: 'BDS7iLcn00G63wYy_eXpM8e-pT2KjF1X9mZ_gE5fO5y2n1wR_C_B6yR_Z3x_F_A_E_T_H_K_G_L_M_N_O_P', // Reemplaza con tu VAPID key
+                vapidKey: 'BDS7iLcn00G63wYy_eXpM8e-pT2KjF1X9mZ_gE5fO5y2n1wR_C_B6yR_Z3x_F_A_E_T_H_K_G_L_M_N_O_P',
                 serviceWorkerRegistration: swRegistration 
             });
 
@@ -222,14 +220,17 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
                     description: 'Recibirás recordatorios para tus medicamentos y citas.',
                 });
             } else {
+                 setFcmToken(null);
                 toast({ variant: 'destructive', title: 'Error de Notificaciones', description: 'No se pudo obtener el token.' });
             }
         } else {
+             setFcmToken(null);
              toast({ variant: 'destructive', title: 'Permiso denegado', description: 'No se podrán enviar notificaciones.' });
         }
     } catch (error) {
         console.error("Error en setupFCM:", error);
         setFcmState('denied');
+        setFcmToken(null);
     }
 }, [user, toast]);
 
@@ -365,7 +366,7 @@ useEffect(() => {
         const newAppointment = { ...appointment, id: newDocRef.id };
         
         await setDoc(newDocRef, { ...appointment, date: Timestamp.fromDate(appointment.date) });
-        setAppointments(prev => [newAppointment, ...prev].sort((a,b) => b.date.getTime() - a.date.getTime()));
+        setAppointments(prev => [...prev, newAppointment].sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
 
         if(appointment.reminder && appointment.reminder !== 'none') {
             const reminderMinutes: { [key: string]: number } = { '1h': 60, '2h': 120, '24h': 1440, '2d': 2880 };
@@ -388,7 +389,7 @@ useEffect(() => {
         await removeAlarmsBySourceId(id);
         const data = appointment.date ? { ...appointment, date: Timestamp.fromDate(appointment.date) } : appointment;
         await updateInCollection(user.uid, 'appointments', id, data);
-        setAppointments(prev => prev.map(a => a.id === id ? { ...a, ...appointment } : a).sort((a,b) => b.date.getTime() - a.date.getTime()));
+        setAppointments(prev => prev.map(a => a.id === id ? { ...a, ...appointment } : a).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
 
         const updatedAppointment = { ...appointments.find(a => a.id === id), ...appointment };
         if (updatedAppointment.reminder && updatedAppointment.reminder !== 'none' && updatedAppointment.date) {
@@ -434,7 +435,16 @@ useEffect(() => {
 
     // Medications CRUD
     const addMedication = async (med: Omit<Medication, 'id'>) => {
-        if (!user || !fcmToken) return;
+        if (!user) return;
+
+        if (!fcmToken) {
+            toast({
+                variant: "destructive",
+                title: "Notificaciones no habilitadas",
+                description: "Por favor, habilita las notificaciones para añadir recordatorios."
+            });
+            return;
+        }
         
         const newDocRef = doc(collection(db, 'users', user.uid, 'medications'));
         const newMed = { ...med, id: newDocRef.id };
