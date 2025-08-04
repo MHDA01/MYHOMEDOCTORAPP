@@ -1,6 +1,6 @@
 {
   "name": "MiDoctorDeCasaApp",
-  "short_name": "DoctorDeCasa",
+  "short_name": "MiDoctor",
   "start_url": "https://www.myhomedoctorapp.com",
   "display": "standalone",
   "background_color": "#F8F6F3",
@@ -8,14 +8,16 @@
   "description": "Tu asistente personal de gestión de salud.",
   "icons": [
     {
-      "src": "https://placehold.co/192x192.png",
+      "src": "https://i.postimg.cc/J7N5r89y/LOGO-1.png",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     },
     {
-      "src": "https://placehold.co/512x512.png",
+      "src": "https://i.postimg.cc/J7N5r89y/LOGO-1.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     }
   ]
 }
