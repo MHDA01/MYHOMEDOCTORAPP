@@ -28,7 +28,7 @@ export function MedicationReminders() {
     const [dialogMode, setDialogMode] = useState<DialogMode>('add');
     const [selectedMed, setSelectedMed] = useState<Medication | null>(null);
     const [notificationPermission, setNotificationPermission] = useState('default');
-    const [showPermissionRequest, setShowPermissionRequest] = useState(true);
+    const [showPermissionRequest, setShowPermissionRequest] = useState(false);
 
     // Form State
     const [name, setName] = useState('');
@@ -41,11 +41,14 @@ export function MedicationReminders() {
     const { toast } = useToast();
 
     if (!context) throw new Error("MedicationReminders must be used within a UserProvider");
-    const { medications, addMedication, updateMedication, deleteMedication, loading } = context;
+    const { medications, addMedication, updateMedication, deleteMedication, loading, fcmToken, setupFCM, fcmState } = context;
 
      useEffect(() => {
         if ('Notification' in window) {
             setNotificationPermission(Notification.permission);
+             if (Notification.permission === 'default') {
+                setShowPermissionRequest(true);
+            }
         }
     }, []);
 
@@ -70,26 +73,7 @@ export function MedicationReminders() {
 
     const requestNotificationPermission = async () => {
         setShowPermissionRequest(false);
-        if (!('Notification' in window)) {
-            toast({ variant: 'destructive', title: 'Navegador no compatible', description: 'Este navegador no soporta notificaciones de escritorio.' });
-            return;
-        }
-
-        const permission = await Notification.requestPermission();
-        setNotificationPermission(permission);
-
-        if (permission === 'granted') {
-            toast({
-                title: '¡Notificaciones Activadas!',
-                description: 'Recibirás recordatorios para tus medicamentos y citas.',
-            });
-        } else if (permission === 'denied') {
-            toast({
-                variant: 'destructive',
-                title: 'Permiso denegado',
-                description: 'No se podrán enviar notificaciones. Puedes cambiarlo en la configuración del navegador.',
-            });
-        }
+        await setupFCM();
     };
 
 
@@ -200,7 +184,7 @@ export function MedicationReminders() {
                 <CardDescription>Mantente al día con tu horario de medicación.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-                 {notificationPermission === 'denied' && (
+                 {fcmState === 'denied' && (
                     <Alert variant="destructive">
                         <AlertTitle>Notificaciones Bloqueadas</AlertTitle>
                         <AlertDescription>
@@ -208,7 +192,7 @@ export function MedicationReminders() {
                         </AlertDescription>
                     </Alert>
                 )}
-                 {notificationPermission === 'default' && showPermissionRequest && (
+                 {fcmState === 'default' && showPermissionRequest && (
                     <Alert>
                         <BellPlus className="h-4 w-4" />
                         <AlertTitle>Activa los Recordatorios</AlertTitle>
@@ -229,7 +213,7 @@ export function MedicationReminders() {
                             </div>
                         </div>
                         <div className="flex items-center gap-2">
-                             <Switch checked={med.active} onCheckedChange={() => handleToggleActive(med)} aria-label={`Activar o desactivar recordatorio para ${med.name}`} disabled={notificationPermission !== 'granted'}/>
+                             <Switch checked={med.active} onCheckedChange={() => handleToggleActive(med)} aria-label={`Activar o desactivar recordatorio para ${med.name}`} disabled={fcmState !== 'granted'}/>
                              <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
                                     <Button variant="ghost" size="icon">
@@ -251,7 +235,7 @@ export function MedicationReminders() {
             <CardFooter>
                  <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                     <DialogTrigger asChild>
-                        <Button disabled={notificationPermission !== 'granted'}><PlusCircle className="mr-2"/>Añadir Medicamento</Button>
+                        <Button><PlusCircle className="mr-2"/>Añadir Medicamento</Button>
                     </DialogTrigger>
                     <DialogContent>
                         <DialogHeader>
@@ -324,3 +308,5 @@ export function MedicationReminders() {
         </Card>
     );
 }
+
+    
