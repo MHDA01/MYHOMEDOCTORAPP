@@ -1,12 +1,22 @@
 'use client';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster"
+import { useEffect } from 'react';
 
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+
+  useEffect(() => {
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker
+        .register('/sw.js')
+        .then((registration) => console.log('Service Worker registered with scope:', registration.scope))
+        .catch((error) => console.log('Service Worker registration failed:', error));
+    }
+  }, []);
 
   return (
     <html lang="es" suppressHydrationWarning>
@@ -26,7 +36,7 @@ export default function RootLayout({
         <meta name="format-detection" content="telephone=no" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="theme-color" content="#35577C" />
-        <link rel="apple-touch-icon" href="/icons/icon-192x192.png" />
+        <link rel="apple-touch-icon" href="https://placehold.co/192x192.png" />
       </head>
       <body className="font-body antialiased">
         {children}
