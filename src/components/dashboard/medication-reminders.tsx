@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect, useContext, useCallback } from "react";
+import { useState, useEffect, useContext } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -21,60 +21,12 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 type DialogMode = 'add' | 'edit';
 
-async function scheduleMedicationNotifications(medication: Omit<Medication, 'id'>) {
-    if (typeof window === 'undefined' || !('serviceWorker' in navigator) || !('Notification' in window) || Notification.permission !== 'granted') {
-        return;
-    }
-     if (!medication.active) return;
-    
-    const registration = await navigator.serviceWorker.getRegistration();
-    if (!registration) {
-        console.error('Service Worker not registered.');
-        return;
-    }
-    
-    const title = '¡Hora de tu medicina!';
-    const options = {
-        body: `${medication.name} ${medication.dosage}`,
-        icon: '/icons/icon-192x192.png',
-        badge: '/icons/icon-72x72.png',
-        tag: `medication-reminder-${medication.name.replace(/\s/g, '-')}` // Use a tag to group notifications
-    };
-
-    // For simplicity, we schedule for the next occurrence of each time.
-    // A more robust solution would handle complex schedules (e.g., across days).
-    for (const time of medication.time) {
-        const [hours, minutes] = time.split(':').map(Number);
-        const now = new Date();
-        let notificationTime = new Date();
-        notificationTime.setHours(hours, minutes, 0, 0);
-
-        if (notificationTime.getTime() < now.getTime()) {
-             // If the time has already passed today, schedule for the next interval
-            notificationTime.setTime(notificationTime.getTime() + medication.frequency * 60 * 60 * 1000);
-        }
-        
-        try {
-            await registration.showNotification(title, {
-                ...options,
-                timestamp: notificationTime.getTime(),
-                showTrigger: new (window as any).TimestampTrigger(notificationTime.getTime()),
-            });
-        } catch (e) {
-            console.error("Error scheduling medication notification: ", e);
-        }
-    }
-}
-
-
 export function MedicationReminders() {
     const context = useContext(UserContext);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     const [dialogMode, setDialogMode] = useState<DialogMode>('add');
     const [selectedMed, setSelectedMed] = useState<Medication | null>(null);
-    const [notificationPermission, setNotificationPermission] = useState('default');
-    const [showPermissionRequest, setShowPermissionRequest] = useState(true);
 
     // Form State
     const [name, setName] = useState('');
@@ -87,34 +39,8 @@ export function MedicationReminders() {
     const { toast } = useToast();
 
     if (!context) throw new Error("MedicationReminders must be used within a UserProvider");
-    const { medications, addMedication, updateMedication, deleteMedication, loading } = context;
+    const { medications, addMedication, updateMedication, deleteMedication, loading, fcmState, setupFCM } = context;
 
-    useEffect(() => {
-        if (typeof window !== 'undefined' && 'Notification' in window) {
-            setNotificationPermission(Notification.permission);
-        }
-    }, []);
-    
-    const requestNotificationPermission = async () => {
-        setShowPermissionRequest(false);
-        if (typeof window !== 'undefined' && 'Notification' in window) {
-            const permission = await Notification.requestPermission();
-            setNotificationPermission(permission);
-            if (permission === 'denied') {
-                toast({
-                    variant: 'destructive',
-                    title: 'Notificaciones Bloqueadas',
-                    description: 'Para recibir recordatorios, debes habilitar las notificaciones en la configuración de tu navegador.',
-                });
-            } else if (permission === 'granted') {
-                 toast({
-                    title: '¡Notificaciones Activadas!',
-                    description: 'Recibirás recordatorios para tus medicamentos.',
-                });
-            }
-        }
-    };
-    
     useEffect(() => {
         if (!isDialogOpen) return;
     
@@ -181,11 +107,9 @@ export function MedicationReminders() {
 
         if (dialogMode === 'add') {
             await addMedication(medData);
-            await scheduleMedicationNotifications(medData);
             toast({ title: 'Recordatorio añadido' });
         } else if (selectedMed) {
             await updateMedication(selectedMed.id, medData);
-            await scheduleMedicationNotifications(medData);
             toast({ title: 'Recordatorio actualizado' });
         }
 
@@ -194,9 +118,19 @@ export function MedicationReminders() {
     };
 
     const handleToggleActive = async (med: Medication) => {
-        const updatedMed = { ...med, active: !med.active };
         await updateMedication(med.id, { active: !med.active });
-        await scheduleMedicationNotifications(updatedMed);
+    }
+    
+     const handleRequestPermission = async () => {
+        try {
+            await setupFCM();
+        } catch (error) {
+            toast({
+                variant: 'destructive',
+                title: 'Error de Notificaciones',
+                description: 'No se pudo completar la configuración. Revisa la consola para más detalles.',
+            });
+        }
     }
 
     const formatTime12h = (time: string) => {
@@ -245,7 +179,7 @@ export function MedicationReminders() {
                 <CardDescription>Mantente al día con tu horario de medicación.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-                 {notificationPermission === 'denied' && (
+                 {fcmState === 'denied' && (
                     <Alert variant="destructive">
                         <AlertTitle>Notificaciones Bloqueadas</AlertTitle>
                         <AlertDescription>
@@ -253,13 +187,13 @@ export function MedicationReminders() {
                         </AlertDescription>
                     </Alert>
                 )}
-                 {notificationPermission === 'default' && showPermissionRequest && (
+                 {fcmState === 'default' && (
                     <Alert>
                         <BellPlus className="h-4 w-4" />
                         <AlertTitle>Activa los Recordatorios</AlertTitle>
                         <AlertDescription className="flex items-center justify-between">
                            <span>Permite las notificaciones para recibir recordatorios.</span>
-                           <Button size="sm" onClick={requestNotificationPermission}>Activar</Button>
+                           <Button size="sm" onClick={handleRequestPermission}>Activar</Button>
                         </AlertDescription>
                     </Alert>
                 )}
@@ -274,7 +208,7 @@ export function MedicationReminders() {
                             </div>
                         </div>
                         <div className="flex items-center gap-2">
-                             <Switch checked={med.active} onCheckedChange={() => handleToggleActive(med)} aria-label={`Activar o desactivar recordatorio para ${med.name}`}/>
+                             <Switch checked={med.active} onCheckedChange={() => handleToggleActive(med)} aria-label={`Activar o desactivar recordatorio para ${med.name}`} disabled={fcmState !== 'granted'}/>
                              <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
                                     <Button variant="ghost" size="icon">
@@ -296,7 +230,7 @@ export function MedicationReminders() {
             <CardFooter>
                  <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                     <DialogTrigger asChild>
-                        <Button onClick={() => handleOpenDialog('add')}><PlusCircle className="mr-2"/>Añadir Medicamento</Button>
+                        <Button disabled={fcmState !== 'granted'}><PlusCircle className="mr-2"/>Añadir Medicamento</Button>
                     </DialogTrigger>
                     <DialogContent>
                         <DialogHeader>

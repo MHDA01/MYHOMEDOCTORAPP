@@ -13,7 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { format, differenceInMinutes, addMinutes } from "date-fns";
+import { format } from "date-fns";
 import { es } from 'date-fns/locale';
 import { cn } from "@/lib/utils";
 import type { Appointment } from '@/lib/types';
@@ -24,63 +24,14 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 type DialogMode = 'add' | 'edit';
 
-async function scheduleNotification(appointment: Omit<Appointment, 'id' | 'status'>) {
-    if (typeof window === 'undefined' || !('serviceWorker' in navigator) || !('Notification' in window) || Notification.permission !== 'granted') {
-        return;
-    }
-    if (!appointment.reminder || appointment.reminder === 'none') return;
-    
-    const registration = await navigator.serviceWorker.getRegistration();
-    if (!registration) {
-        console.error('Service Worker not registered.');
-        return;
-    }
-
-    const reminderMinutes: { [key: string]: number } = {
-        '1h': 60,
-        '2h': 120,
-        '24h': 1440,
-        '2d': 2880,
-    };
-    const reminderValue = reminderMinutes[appointment.reminder];
-    if (!reminderValue) return;
-
-    const notificationTime = appointment.date.getTime() - reminderValue * 60 * 1000;
-
-    // Do not schedule notifications for past events
-    if (notificationTime < Date.now()) return;
-
-    const title = 'Recordatorio de Cita';
-    const options = {
-        body: `Tu cita con ${appointment.doctor} (${appointment.specialty}) es en ${getReminderLabel(appointment.reminder, true)}.`,
-        icon: '/icons/icon-192x192.png',
-        badge: '/icons/icon-72x72.png',
-        timestamp: notificationTime,
-        showTrigger: new (window as any).TimestampTrigger(notificationTime),
-    };
-    
-    try {
-        await registration.showNotification(title, options);
-    } catch (e) {
-        console.error("Error showing notification: ", e);
-    }
-}
-
-const getReminderLabel = (reminderKey?: string, forNotification = false) => {
-    if (!reminderKey) return forNotification ? 'pronto' : 'Sin recordatorio';
-    const labels: {[key: string]: string} = {
-        '1h': '1 hora',
-        '2h': '2 horas',
-        '24h': '24 horas',
-        '2d': '2 días',
-    };
+const getReminderLabel = (reminderKey?: string) => {
+    if (!reminderKey) return 'Sin recordatorio';
     const displayLabels: {[key: string]: string} = {
-            '1h': '1 hora antes',
+        '1h': '1 hora antes',
         '2h': '2 horas antes',
         '24h': '24 horas antes',
         '2d': '2 días antes',
     };
-    if(forNotification) return labels[reminderKey] || 'pronto';
     return displayLabels[reminderKey] || 'Personalizado';
 }
 
@@ -164,20 +115,14 @@ export function Appointments() {
             date: finalDate,
             reminder,
             notified: false,
+            status: 'Upcoming' as 'Upcoming',
         };
         
-        const appointmentDataForDb = {
-            ...appointmentData,
-            status: 'Upcoming' as 'Upcoming',
-        }
-
         if (dialogMode === 'add') {
-            await addAppointment(appointmentDataForDb);
-            await scheduleNotification(appointmentData);
+            await addAppointment(appointmentData);
             toast({ title: "Cita programada con éxito." });
         } else if (selectedAppointment) {
-            await updateAppointment(selectedAppointment.id, appointmentDataForDb);
-            await scheduleNotification(appointmentData);
+            await updateAppointment(selectedAppointment.id, appointmentData);
             toast({ title: "Cita actualizada con éxito." });
         }
 
