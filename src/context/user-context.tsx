@@ -202,10 +202,10 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         const messaging = getMessaging(firebaseApp);
         
         const permission = await Notification.requestPermission();
-        setFcmState(permission);
+        setFcmState(permission); // <-- This immediately updates the state
 
         if (permission === 'granted') {
-            const swRegistration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+            const swRegistration = await navigator.serviceWorker.ready;
             
             const currentToken = await getToken(messaging, { 
                 vapidKey: 'BDS7iLcn00G63wYy_eXpM8e-pT2KjF1X9mZ_gE5fO5y2n1wR_C_B6yR_Z3x_F_A_E_T_H_K_G_L_M_N_O_P',
@@ -360,15 +360,16 @@ useEffect(() => {
 
   // Appointments CRUD
     const addAppointment = async (appointment: Omit<Appointment, 'id'>) => {
-        if (!user || !fcmToken) return;
+        if (!user) return;
         
         const newDocRef = doc(collection(db, 'users', user.uid, 'appointments'));
         const newAppointment = { ...appointment, id: newDocRef.id };
         
         await setDoc(newDocRef, { ...appointment, date: Timestamp.fromDate(appointment.date) });
+        
         setAppointments(prev => [...prev, newAppointment].sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
 
-        if(appointment.reminder && appointment.reminder !== 'none') {
+        if (fcmToken && appointment.reminder && appointment.reminder !== 'none') {
             const reminderMinutes: { [key: string]: number } = { '1h': 60, '2h': 120, '24h': 1440, '2d': 2880 };
             const reminderValue = reminderMinutes[appointment.reminder];
             if(reminderValue) {
@@ -392,7 +393,7 @@ useEffect(() => {
         setAppointments(prev => prev.map(a => a.id === id ? { ...a, ...appointment } : a).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
 
         const updatedAppointment = { ...appointments.find(a => a.id === id), ...appointment };
-        if (updatedAppointment.reminder && updatedAppointment.reminder !== 'none' && updatedAppointment.date) {
+        if (fcmToken && updatedAppointment.reminder && updatedAppointment.reminder !== 'none' && updatedAppointment.date) {
             const reminderMinutes: { [key: string]: number } = { '1h': 60, '2h': 120, '24h': 1440, '2d': 2880 };
             const reminderValue = reminderMinutes[updatedAppointment.reminder];
             if (reminderValue) {
@@ -474,7 +475,7 @@ useEffect(() => {
         setMedications(prev => prev.map(m => m.id === id ? { ...m, ...med } : m));
         
         const updatedMed = { ...medications.find(m => m.id === id), ...med };
-        if(updatedMed.active) {
+        if(updatedMed.active && fcmToken) {
             updatedMed.time?.forEach(t => {
                  const [hours, minutes] = t.split(':').map(Number);
                  let alarmTime = new Date();

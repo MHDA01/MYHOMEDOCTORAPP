@@ -43,10 +43,12 @@ export function MedicationReminders() {
     const { medications, addMedication, updateMedication, deleteMedication, loading, fcmState, setupFCM } = context;
 
     useEffect(() => {
-        if (fcmState !== 'default') {
+        if (fcmState === 'default' && showPermissionRequest) {
+            setShowPermissionRequest(true);
+        } else {
             setShowPermissionRequest(false);
         }
-    }, [fcmState]);
+    }, [fcmState, showPermissionRequest]);
 
     useEffect(() => {
         if (!isDialogOpen) return;
