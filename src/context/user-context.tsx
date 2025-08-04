@@ -3,9 +3,12 @@
 
 import { createContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import type { PersonalInfo, HealthInfo, Appointment, Document as DocumentType, Medication } from '@/lib/types';
-import { auth, db } from '@/lib/firebase';
+import { auth, db, functions } from '@/lib/firebase';
 import { onAuthStateChanged, User, signInAnonymously } from 'firebase/auth';
 import { doc, getDoc, setDoc, Timestamp, collection, getDocs, addDoc, updateDoc, deleteDoc, query, orderBy, writeBatch, where } from 'firebase/firestore';
+import { httpsCallable } from 'firebase/functions';
+import { getMessaging, getToken, onMessage } from 'firebase/messaging';
+
 
 // We need a way to serialize Date objects to be stored in Firestore
 // and deserialize them back to Date objects.
@@ -48,21 +51,6 @@ async function getCollection<T>(userId: string, collectionName: string): Promise
     
     const snapshot = await getDocs(q);
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as T));
-}
-
-async function addToCollection<T extends { [x: string]: any }>(userId: string, collectionName: string, data: Omit<T, 'id'>): Promise<T> {
-    const docRef = await addDoc(collection(db, 'users', userId, collectionName), data);
-    return { id: docRef.id, ...data } as T;
-}
-
-async function updateInCollection<T extends { [x: string]: any }>(userId: string, collectionName: string, id: string, data: Partial<T>) {
-    const docRef = doc(db, 'users', userId, collectionName, id);
-    await updateDoc(docRef, data);
-}
-
-async function deleteFromCollection(userId: string, collectionName: string, id: string) {
-    const docRef = doc(db, 'users', userId, collectionName, id);
-    await deleteDoc(docRef);
 }
 
 
@@ -143,6 +131,9 @@ interface UserContextType {
   deleteMedication: (id: string) => Promise<void>;
   loading: boolean;
   user: User | null;
+  fcmToken: string | null;
+  fcmState: 'denied' | 'granted' | 'default';
+  setupFCM: () => Promise<void>;
 }
 
 export const UserContext = createContext<UserContextType | undefined>(undefined);
@@ -176,30 +167,9 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   const [documents, setDocuments] = useState<DocumentType[]>([]);
   const [medications, setMedications] = useState<Medication[]>([]);
   const [loading, setLoading] = useState(true);
+  const [fcmToken, setFcmToken] = useState<string | null>(null);
+  const [fcmState, setFcmState] = useState<UserContextType['fcmState']>('default');
   
-  const scheduleNotification = useCallback((id: string, title: string, body: string, date: Date, tag?: string) => {
-    if ('serviceWorker' in navigator && 'Notification' in window && Notification.permission === 'granted') {
-      navigator.serviceWorker.getRegistration().then(reg => {
-        if (!reg) return;
-        reg.showNotification(title, {
-          tag: tag || id,
-          body: body,
-          showTrigger: new (window as any).TimestampTrigger(date.getTime()),
-          icon: '/icons/icon-192x192.png',
-        });
-      });
-    }
-  }, []);
-  
-  const cancelNotification = useCallback((tag: string) => {
-     if ('serviceWorker' in navigator && Notification.permission === 'granted') {
-        navigator.serviceWorker.getRegistration().then(async reg => {
-            if (!reg) return;
-            const notifications = await reg.getNotifications({ tag: tag });
-            notifications.forEach(notification => notification.close());
-        });
-    }
-  }, []);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
@@ -262,24 +232,44 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   const updatePersonalInfo = async (info: PersonalInfo) => {
     if (user && healthInfo) {
       setPersonalInfo(info);
-      try {
-        await updateUserDocument(user.uid, { personalInfo: info });
-      } catch (error) {
-        console.error("Failed to save personal info:", error);
-      }
+      await updateUserDocument(user.uid, { personalInfo: info });
     }
   };
 
   const updateHealthInfo = async (info: HealthInfo) => {
       if (user) {
           setHealthInfo(info);
-          try {
-              await updateUserDocument(user.uid, { healthInfo: info });
-          } catch(error) {
-              console.error("Failed to save health info:", error);
-          }
+          await updateUserDocument(user.uid, { healthInfo: info });
       }
   };
+
+
+    const setupFCM = async () => {
+      if (typeof window === 'undefined' || !('Notification' in window) || !('serviceWorker' in navigator)) {
+        return;
+      }
+
+      const permission = await Notification.requestPermission();
+      setFcmState(permission);
+
+      if (permission === 'granted') {
+        const messaging = getMessaging(auth.app);
+        const VAPID_KEY = "BDC_g-k_7o3t8z5Jq_r-r8w8A_Qj_6h_4wX8g_V_y_Z_6k_8J_1n_7m_3T_0n_9S_2c";
+        try {
+          const token = await getToken(messaging, { vapidKey: VAPID_KEY });
+          if (token) {
+            setFcmToken(token);
+            if (user) {
+              await setDoc(doc(db, 'users', user.uid), { fcmToken: token }, { merge: true });
+            }
+          } else {
+            console.warn('No registration token available. Request permission to generate one.');
+          }
+        } catch (err) {
+          console.error('An error occurred while retrieving token. ', err);
+        }
+      }
+    };
 
 
   // Appointments CRUD
@@ -290,146 +280,108 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         const newAppointment = { ...appointment, id: newDocRef.id };
         
         await setDoc(newDocRef, { ...appointment, date: Timestamp.fromDate(appointment.date) });
-        
-        const newAppointments = [...appointments, newAppointment].sort((a,b) => b.date.getTime() - a.date.getTime());
+
+        // Add to local state and re-sort
+        const newAppointments = [...appointments, newAppointment].sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
         setAppointments(newAppointments);
 
-        if (appointment.reminder && appointment.reminder !== 'none') {
+        if (fcmToken && appointment.reminder && appointment.reminder !== 'none') {
             const reminderMinutes: { [key: string]: number } = { '1h': 60, '2h': 120, '24h': 1440, '2d': 2880 };
             const reminderValue = reminderMinutes[appointment.reminder];
             if(reminderValue) {
                 const alarmTime = new Date(appointment.date.getTime() - reminderValue * 60 * 1000);
                 if (alarmTime > new Date()) {
-                     scheduleNotification(
-                       newAppointment.id,
-                       'Recordatorio de Cita',
-                       `Tu cita con ${appointment.doctor} es pronto.`,
-                       alarmTime
-                     );
+                    await addDoc(collection(db, 'users', user.uid, 'alarms'), {
+                        fcmToken,
+                        title: 'Recordatorio de Cita',
+                        message: `Tu cita con ${appointment.doctor} es pronto.`,
+                        alarmTime: Timestamp.fromDate(alarmTime),
+                        status: 'scheduled',
+                    });
                 }
             }
         }
     };
     const updateAppointment = async (id: string, appointment: Partial<Appointment>) => {
         if (!user) return;
-        cancelNotification(id);
+        
+        const appointmentDocRef = doc(db, 'users', user.uid, 'appointments', id);
         const data = appointment.date ? { ...appointment, date: Timestamp.fromDate(appointment.date) } : appointment;
-        await updateInCollection(user.uid, 'appointments', id, data);
+        await updateDoc(appointmentDocRef, data);
         setAppointments(prev => prev.map(a => a.id === id ? { ...a, ...appointment } : a).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
 
-        const updatedAppointment = { ...appointments.find(a => a.id === id), ...appointment };
-        if (updatedAppointment.reminder && updatedAppointment.reminder !== 'none' && updatedAppointment.date) {
-            const reminderMinutes: { [key: string]: number } = { '1h': 60, '2h': 120, '24h': 1440, '2d': 2880 };
-            const reminderValue = reminderMinutes[updatedAppointment.reminder];
-            if (reminderValue) {
-                const alarmTime = new Date(updatedAppointment.date.getTime() - reminderValue * 60 * 1000);
-                 if (alarmTime > new Date()) {
-                    scheduleNotification(
-                       id,
-                       'Cita Actualizada',
-                       `Tu cita con ${updatedAppointment.doctor} ha sido reagendada.`,
-                       alarmTime
-                     );
-                }
-            }
-        }
     };
     const deleteAppointment = async (id: string) => {
         if (!user) return;
-        cancelNotification(id);
-        await deleteFromCollection(user.uid, 'appointments', id);
+        await deleteDoc(doc(db, 'users', user.uid, 'appointments', id));
         setAppointments(prev => prev.filter(a => a.id !== id));
     };
 
     // Documents CRUD
     const addDocument = async (docData: Omit<DocumentType, 'id'>) => {
         if (!user) return;
+        const newDocRef = doc(collection(db, 'users', user.uid, 'documents'));
         const data = { ...docData, uploadedAt: Timestamp.fromDate(docData.uploadedAt) };
-        const newDoc = await addToCollection(user.uid, 'documents', data);
-        setDocuments(prev => [{ ...docData, id: newDoc.id },...prev]);
+        await setDoc(newDocRef, data);
+        setDocuments(prev => [{...docData, id: newDocRef.id},...prev].sort((a, b) => b.uploadedAt.getTime() - a.uploadedAt.getTime()));
     };
     const updateDocument = async (id: string, docData: Partial<DocumentType>) => {
         if (!user) return;
-        await updateInCollection(user.uid, 'documents', id, docData);
+        await updateDoc(doc(db, 'users', user.uid, 'documents', id), docData);
         setDocuments(prev => prev.map(d => d.id === id ? { ...d, ...docData } : d));
     };
     const deleteDocument = async (id: string) => {
         if (!user) return;
-        await deleteFromCollection(user.uid, 'documents', id);
+        await deleteDoc(doc(db, 'users', user.uid, 'documents', id));
         setDocuments(prev => prev.filter(d => d.id !== id));
     };
 
     // Medications CRUD
     const addMedication = async (med: Omit<Medication, 'id'>) => {
-        if (!user) return;
-
+        if (!user || !fcmToken) return;
+        
         const newDocRef = doc(collection(db, 'users', user.uid, 'medications'));
         const newMed = { ...med, id: newDocRef.id };
-        
         await setDoc(newDocRef, newMed);
         setMedications(prev => [...prev, newMed]);
 
         if (med.active) {
+            const batch = writeBatch(db);
             med.time.forEach(t => {
                 const [hours, minutes] = t.split(':').map(Number);
-                let alarmTime = new Date();
+                const alarmTime = new Date();
                 alarmTime.setHours(hours, minutes, 0, 0);
 
-                 // Si la hora ya pasó hoy, programarla para mañana.
-                 if (alarmTime < new Date()) {
-                    alarmTime.setDate(alarmTime.getDate() + 1);
-                 }
-                 
-                 scheduleNotification(
-                    `${newMed.id}-${t}`,
-                    "¡Hora de tu medicina!",
-                    `${med.name} ${med.dosage}`,
-                    alarmTime
-                 );
+                const alarmDocRef = doc(collection(db, 'users', user.uid, 'alarms'));
+                batch.set(alarmDocRef, {
+                    fcmToken,
+                    title: "Hora de tu Medicina",
+                    message: `${med.name} ${med.dosage}`,
+                    alarmTime: Timestamp.fromDate(alarmTime),
+                    status: 'scheduled',
+                    medicationId: newMed.id,
+                    recurring: true, 
+                    frequency: med.frequency,
+                });
             });
+            await batch.commit();
         }
     };
     const updateMedication = async (id: string, med: Partial<Medication>) => {
         if (!user) return;
-        
-        const oldMed = medications.find(m => m.id === id);
-        if (oldMed) {
-            oldMed.time.forEach(t => cancelNotification(`${id}-${t}`));
-        }
-
-        await updateInCollection(user.uid, 'medications', id, med);
-        const updatedMedications = medications.map(m => m.id === id ? { ...m, ...med } : m);
-        setMedications(updatedMedications);
-        
-        const updatedMed = updatedMedications.find(m => m.id === id);
-        if(updatedMed?.active && updatedMed.time) {
-            updatedMed.time.forEach(t => {
-                 const [hours, minutes] = t.split(':').map(Number);
-                 let alarmTime = new Date();
-                 alarmTime.setHours(hours, minutes, 0, 0);
-                 
-                  if (alarmTime < new Date()) {
-                    alarmTime.setDate(alarmTime.getDate() + 1);
-                 }
-
-                 scheduleNotification(
-                    `${id}-${t}`,
-                    "¡Hora de tu medicina!",
-                    `${updatedMed.name} ${updatedMed.dosage}`,
-                    alarmTime
-                 );
-            });
-        }
+        await updateDoc(doc(db, 'users', user.uid, 'medications', id), med);
+        setMedications(prev => prev.map(m => m.id === id ? { ...m, ...med } : m));
     };
     const deleteMedication = async (id: string) => {
         if (!user) return;
-
-        const medToDelete = medications.find(m => m.id === id);
-        if (medToDelete) {
-           medToDelete.time.forEach(t => cancelNotification(`${id}-${t}`));
-        }
+        await deleteDoc(doc(db, 'users', user.uid, 'medications', id));
         
-        await deleteFromCollection(user.uid, 'medications', id);
+        const q = query(collection(db, "users", user.uid, "alarms"), where("medicationId", "==", id));
+        const snapshot = await getDocs(q);
+        const batch = writeBatch(db);
+        snapshot.forEach(doc => batch.delete(doc.ref));
+        await batch.commit();
+
         setMedications(prev => prev.filter(m => m.id !== id));
     };
 
@@ -443,6 +395,9 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         appointments,
         documents,
         medications,
+        fcmToken,
+        fcmState,
+        setupFCM,
         updatePersonalInfo,
         updateHealthInfo,
         addAppointment,
@@ -459,3 +414,4 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     </UserContext.Provider>
   );
 };
+
