@@ -48,7 +48,9 @@ export function RegisterForm() {
           lastName: lastName || '',
           sex: 'other',
           dateOfBirth: new Date(),
+          country: 'chile',
           insuranceProvider: 'Fonasa',
+          insuranceProviderName: '',
         },
         healthInfo: {
             allergies: [],

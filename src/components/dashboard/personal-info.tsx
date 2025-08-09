@@ -9,9 +9,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { User, FilePenLine, HeartPulse, Hospital, Loader2 } from "lucide-react";
+import { User, FilePenLine, HeartPulse, Hospital, Loader2, MapPin } from "lucide-react";
 import type { PersonalInfo as PersonalInfoType } from '@/lib/types';
-import { format, differenceInYears, isValid, parse, set } from 'date-fns';
+import { format, differenceInYears, isValid, parse } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { UserContext } from '@/context/user-context';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -30,6 +30,28 @@ const getValidDate = (date: string | Date | undefined): Date | undefined => {
     const d = date instanceof Date ? date : new Date(date);
     return isValid(d) ? d : undefined;
 }
+
+const countryHealthData = {
+    argentina: {
+      label: 'Obra Social',
+      options: ['No tengo', 'Obra Social Sindical', 'Obra Social de Dirección', 'PAMI', 'Medicina Prepaga'],
+      requiresInputFor: ['PAMI', 'Medicina Prepaga'],
+      inputLabel: (option: string) => `Nombre de la ${option}`
+    },
+    colombia: {
+      label: 'Seguridad Social',
+      options: ['No tengo', 'EPS contributiva', 'EPS subsidiada', 'Medicina Prepagada'],
+      requiresInputFor: ['EPS contributiva', 'EPS subsidiada', 'Medicina Prepagada'],
+      inputLabel: () => `¿A qué EPS o prepagada está adscrito?`
+    },
+    chile: {
+      label: 'Previsión',
+      options: ['Fonasa', 'Isapre', 'Particular'],
+      requiresInputFor: ['Isapre'],
+      inputLabel: () => `Nombre de la Isapre`
+    }
+};
+
 
 export function PersonalInfo() {
   const context = useContext(UserContext);
@@ -92,8 +114,33 @@ export function PersonalInfo() {
       setIsDialogOpen(false);
     }
   }
+
+  const handleCountryChange = (country: PersonalInfoType['country']) => {
+    if (editableInfo) {
+        setEditableInfo({
+            ...editableInfo,
+            country: country,
+            insuranceProvider: '',
+            insuranceProviderName: '',
+        });
+    }
+  }
+
+  const handleInsuranceChange = (provider: string) => {
+    if (editableInfo) {
+        setEditableInfo({
+            ...editableInfo,
+            insuranceProvider: provider,
+            insuranceProviderName: '',
+        });
+    }
+  }
   
   const displayDob = getValidDate(personalInfo?.dateOfBirth);
+  
+  const selectedCountryData = personalInfo ? countryHealthData[personalInfo.country] : null;
+  const requiresProviderName = selectedCountryData && selectedCountryData.requiresInputFor.includes(personalInfo?.insuranceProvider || '');
+
 
   if (loading || !personalInfo) {
     return (
@@ -125,7 +172,7 @@ export function PersonalInfo() {
             <User className="h-6 w-6 text-primary" />
             <CardTitle className="font-headline text-xl">Información Personal</CardTitle>
         </div>
-        <CardDescription>Tus datos personales y previsión.</CardDescription>
+        <CardDescription>Tus datos personales, país y sistema de salud.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
@@ -136,14 +183,17 @@ export function PersonalInfo() {
                 <strong>Fecha de Nacimiento:</strong>
                 <p className="text-muted-foreground">{displayDob ? `${format(displayDob, "d 'de' MMMM 'de' yyyy", { locale: es })} (${age})` : 'No registrada'}</p>
             </div>
-            <div>
-                <strong>Previsión:</strong>
-                <p className="text-muted-foreground">{personalInfo.insuranceProvider}</p>
-            </div>
-            {personalInfo.insuranceProvider === 'Isapre' && (
+            <div><strong>País:</strong><p className="text-muted-foreground capitalize">{personalInfo.country}</p></div>
+            {selectedCountryData && (
+                 <div>
+                    <strong>{selectedCountryData.label}:</strong>
+                    <p className="text-muted-foreground">{personalInfo.insuranceProvider}</p>
+                </div>
+            )}
+            {requiresProviderName && (
                 <div>
-                    <strong>Isapre:</strong>
-                    <p className="text-muted-foreground">{personalInfo.isapreName}</p>
+                    <strong>Nombre de la Entidad:</strong>
+                    <p className="text-muted-foreground">{personalInfo.insuranceProviderName}</p>
                 </div>
             )}
         </div>
@@ -196,45 +246,41 @@ export function PersonalInfo() {
                     <div className="grid gap-2">
                         <Label>Fecha de Nacimiento</Label>
                         <div className="flex items-center gap-2">
-                            <Input
-                                type="number"
-                                value={day}
-                                onChange={(e) => setDay(e.target.value)}
-                                placeholder="DD"
-                                aria-label="Día de nacimiento"
-                            />
-                            <Input
-                                type="number"
-                                value={month}
-                                onChange={(e) => setMonth(e.target.value)}
-                                placeholder="MM"
-                                aria-label="Mes de nacimiento"
-                            />
-                            <Input
-                                type="number"
-                                value={year}
-                                onChange={(e) => setYear(e.target.value)}
-                                placeholder="AAAA"
-                                aria-label="Año de nacimiento"
-                            />
+                            <Input type="number" value={day} onChange={(e) => setDay(e.target.value)} placeholder="DD" aria-label="Día de nacimiento" />
+                            <Input type="number" value={month} onChange={(e) => setMonth(e.target.value)} placeholder="MM" aria-label="Mes de nacimiento" />
+                            <Input type="number" value={year} onChange={(e) => setYear(e.target.value)} placeholder="AAAA" aria-label="Año de nacimiento" />
                         </div>
                     </div>
                     <div className="grid gap-2">
-                        <Label>Previsión</Label>
-                        <Select value={editableInfo.insuranceProvider} onValueChange={(value) => setEditableInfo({...editableInfo, insuranceProvider: value as 'Fonasa' | 'Isapre'})}>
-                            <SelectTrigger>
-                                <SelectValue placeholder="Selecciona una previsión" />
-                            </SelectTrigger>
+                        <Label>País de Residencia</Label>
+                        <Select value={editableInfo.country} onValueChange={(value) => handleCountryChange(value as PersonalInfoType['country'])}>
+                            <SelectTrigger><SelectValue placeholder="Selecciona un país" /></SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="Fonasa"><div className="flex items-center gap-2"><HeartPulse/> Fonasa</div></SelectItem>
-                                <SelectItem value="Isapre"><div className="flex items-center gap-2"><Hospital/> Isapre</div></SelectItem>
+                                <SelectItem value="chile"><div className="flex items-center gap-2"><MapPin/> Chile</div></SelectItem>
+                                <SelectItem value="argentina"><div className="flex items-center gap-2"><MapPin/> Argentina</div></SelectItem>
+                                <SelectItem value="colombia"><div className="flex items-center gap-2"><MapPin/> Colombia</div></SelectItem>
                             </SelectContent>
                         </Select>
                     </div>
-                    {editableInfo.insuranceProvider === 'Isapre' && (
+
+                    {editableInfo.country && countryHealthData[editableInfo.country] && (
                         <div className="grid gap-2">
-                            <Label htmlFor="isapreName">Nombre de la Isapre</Label>
-                            <Input id="isapreName" value={editableInfo.isapreName} onChange={(e) => setEditableInfo({...editableInfo, isapreName: e.target.value})} />
+                            <Label>{countryHealthData[editableInfo.country].label}</Label>
+                            <Select value={editableInfo.insuranceProvider} onValueChange={(value) => handleInsuranceChange(value)}>
+                                <SelectTrigger><SelectValue placeholder={`Selecciona tu ${countryHealthData[editableInfo.country].label.toLowerCase()}`} /></SelectTrigger>
+                                <SelectContent>
+                                    {countryHealthData[editableInfo.country].options.map(opt => (
+                                        <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    )}
+                    
+                    {editableInfo.country && countryHealthData[editableInfo.country]?.requiresInputFor.includes(editableInfo.insuranceProvider) && (
+                        <div className="grid gap-2">
+                            <Label htmlFor="insuranceProviderName">{countryHealthData[editableInfo.country].inputLabel(editableInfo.insuranceProvider)}</Label>
+                            <Input id="insuranceProviderName" value={editableInfo.insuranceProviderName} onChange={(e) => setEditableInfo({...editableInfo, insuranceProviderName: e.target.value})} />
                         </div>
                     )}
                 </div>

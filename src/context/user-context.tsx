@@ -4,7 +4,7 @@
 import { createContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import type { PersonalInfo, HealthInfo, Appointment, Document as DocumentType, Medication } from '@/lib/types';
 import { auth, db } from '@/lib/firebase';
-import { onAuthStateChanged, User, signInAnonymously, signOut, updateProfile } from 'firebase/auth';
+import { onAuthStateChanged, User, signOut, updateProfile } from 'firebase/auth';
 import { doc, getDoc, setDoc, Timestamp, collection, getDocs, addDoc, updateDoc, deleteDoc, query, orderBy, writeBatch, where } from 'firebase/firestore';
 import { getMessaging, getToken } from 'firebase/messaging';
 
@@ -93,7 +93,7 @@ async function updateUserDocument(userId: string, data: Partial<UserDocument>): 
   try {
     const docRef = doc(db, 'users', userId);
     
-    const serializableData: Partial<UserDocumentData> = { ...data };
+    const serializableData: Partial<any> = { ...data };
     if (data.personalInfo) {
          const dob = data.personalInfo.dateOfBirth instanceof Date 
             ? data.personalInfo.dateOfBirth 
@@ -143,6 +143,7 @@ const initialAnonymousPersonalInfo: PersonalInfo = {
   lastName: '',
   sex: 'other',
   dateOfBirth: new Date(),
+  country: 'chile',
   insuranceProvider: 'Fonasa',
 };
 
@@ -166,19 +167,20 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   const [fcmToken, setFcmToken] = useState<string | null>(null);
   const [fcmState, setFcmState] = useState<UserContextType['fcmState']>('default');
   
-    useEffect(() => {
+  useEffect(() => {
+    let permissionStatus: PermissionStatus | undefined;
+
     const checkNotificationPermission = async () => {
         if ('permissions' in navigator) {
             try {
-                const permissionStatus = await navigator.permissions.query({ name: 'notifications' });
+                permissionStatus = await navigator.permissions.query({ name: 'notifications' });
                 setFcmState(permissionStatus.state);
                 permissionStatus.onchange = () => {
                     setFcmState(permissionStatus.state);
                 };
             } catch (error) {
                 console.error("Error querying notification permissions:", error);
-                // Fallback for browsers that might not support query but have Notification.permission
-                if ('Notification' in window) {
+                 if ('Notification' in window) {
                    setFcmState(Notification.permission as UserContextType['fcmState']);
                 }
             }
@@ -188,6 +190,12 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     }
 
     checkNotificationPermission();
+
+    return () => {
+      if (permissionStatus) {
+        permissionStatus.onchange = null;
+      }
+    };
   }, []);
 
   useEffect(() => {
@@ -222,12 +230,14 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
           } else {
               // This case happens for new users, especially anonymous ones
               const isAnon = user.isAnonymous;
-              const defaultPersonalInfo = isAnon ? initialAnonymousPersonalInfo : {
+              const defaultPersonalInfo: PersonalInfo = isAnon ? initialAnonymousPersonalInfo : {
                   firstName: user.displayName?.split(' ')[0] || 'Nuevo',
                   lastName: user.displayName?.split(' ').slice(1).join(' ') || 'Usuario',
                   sex: 'other',
                   dateOfBirth: new Date(),
+                  country: 'chile',
                   insuranceProvider: 'Fonasa',
+                  insuranceProviderName: ''
               };
               const defaultHealthInfo = isAnon ? initialAnonymousHealthInfo : {
                   allergies: [], medications: [], pathologicalHistory: '', surgicalHistory: '',
@@ -326,7 +336,6 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         
         await setDoc(newDocRef, { ...appointment, date: Timestamp.fromDate(appointment.date) });
 
-        // Add to local state and re-sort
         setAppointments(prev => [...prev, newAppointment].sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
 
         if (fcmToken && appointment.reminder && appointment.reminder !== 'none') {
@@ -460,5 +469,3 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     </UserContext.Provider>
   );
 };
-
-    

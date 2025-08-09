@@ -47,6 +47,7 @@ export type PersonalInfo = {
   lastName: string;
   sex: 'male' | 'female' | 'other';
   dateOfBirth: Date;
-  insuranceProvider: 'Fonasa' | 'Isapre';
-  isapreName?: string;
+  country: 'chile' | 'argentina' | 'colombia';
+  insuranceProvider: string;
+  insuranceProviderName?: string;
 }
