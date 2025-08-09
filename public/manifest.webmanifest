@@ -1,23 +1,24 @@
 {
-  "name": "MiDoctorDeCasaApp",
-  "short_name": "MiDoctor",
-  "start_url": "https://www.myhomedoctorapp.com",
-  "display": "standalone",
-  "background_color": "#F8F6F3",
-  "theme_color": "#35577C",
-  "description": "Tu asistente personal de gestión de salud.",
-  "icons": [
-    {
-      "src": "https://i.postimg.cc/J7N5r89y/LOGO-1.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "https://i.postimg.cc/J7N5r89y/LOGO-1.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any maskable"
-    }
-  ]
+    "name": "MyHomeDoctor App",
+    "short_name": "MHD",
+    "description": "Tu asistente personal de gestión de salud.",
+    "icons": [
+        {
+            "src": "https://i.postimg.cc/J7N5r89y/LOGO-1.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "any"
+        },
+        {
+            "src": "https://i.postimg.cc/J7N5r89y/LOGO-1.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "maskable"
+        }
+    ],
+    "theme_color": "#1976d2",
+    "background_color": "#ffffff",
+    "start_url": "/",
+    "display": "standalone",
+    "orientation": "portrait"
 }
