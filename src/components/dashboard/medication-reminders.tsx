@@ -27,7 +27,6 @@ export function MedicationReminders() {
     const [isSaving, setIsSaving] = useState(false);
     const [dialogMode, setDialogMode] = useState<DialogMode>('add');
     const [selectedMed, setSelectedMed] = useState<Medication | null>(null);
-    const [notificationPermission, setNotificationPermission] = useState('default');
     const [showPermissionRequest, setShowPermissionRequest] = useState(false);
 
     // Form State
@@ -41,16 +40,11 @@ export function MedicationReminders() {
     const { toast } = useToast();
 
     if (!context) throw new Error("MedicationReminders must be used within a UserProvider");
-    const { medications, addMedication, updateMedication, deleteMedication, loading, fcmToken, setupFCM, fcmState } = context;
+    const { medications, addMedication, updateMedication, deleteMedication, loading, setupFCM, fcmState } = context;
 
      useEffect(() => {
-        if ('Notification' in window) {
-            setNotificationPermission(Notification.permission);
-             if (Notification.permission === 'default') {
-                setShowPermissionRequest(true);
-            }
-        }
-    }, []);
+        setShowPermissionRequest(fcmState === 'default' || fcmState === 'prompt');
+    }, [fcmState]);
 
     useEffect(() => {
         if (!isDialogOpen) return;
@@ -72,7 +66,6 @@ export function MedicationReminders() {
     }, [frequency, isDialogOpen, selectedMed, dialogMode]);
 
     const requestNotificationPermission = async () => {
-        setShowPermissionRequest(false);
         await setupFCM();
     };
 
@@ -192,7 +185,7 @@ export function MedicationReminders() {
                         </AlertDescription>
                     </Alert>
                 )}
-                 {fcmState === 'default' && showPermissionRequest && (
+                 {showPermissionRequest && (
                     <Alert>
                         <BellPlus className="h-4 w-4" />
                         <AlertTitle>Activa los Recordatorios</AlertTitle>

@@ -131,7 +131,7 @@ interface UserContextType {
   loading: boolean;
   user: User | null;
   fcmToken: string | null;
-  fcmState: 'denied' | 'granted' | 'default';
+  fcmState: 'denied' | 'granted' | 'default' | 'prompt';
   setupFCM: () => Promise<void>;
   signOutUser: () => Promise<void>;
 }
@@ -166,6 +166,29 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   const [fcmToken, setFcmToken] = useState<string | null>(null);
   const [fcmState, setFcmState] = useState<UserContextType['fcmState']>('default');
   
+    useEffect(() => {
+    const checkNotificationPermission = async () => {
+        if ('permissions' in navigator) {
+            try {
+                const permissionStatus = await navigator.permissions.query({ name: 'notifications' });
+                setFcmState(permissionStatus.state);
+                permissionStatus.onchange = () => {
+                    setFcmState(permissionStatus.state);
+                };
+            } catch (error) {
+                console.error("Error querying notification permissions:", error);
+                // Fallback for browsers that might not support query but have Notification.permission
+                if ('Notification' in window) {
+                   setFcmState(Notification.permission as UserContextType['fcmState']);
+                }
+            }
+        } else if ('Notification' in window) {
+             setFcmState(Notification.permission as UserContextType['fcmState']);
+        }
+    }
+
+    checkNotificationPermission();
+  }, []);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
@@ -252,8 +275,8 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     if (user) {
       // Optimistic update
       setPersonalInfo(info);
-      if(user.displayName !== `${info.firstName} ${info.lastName}`) {
-          await updateProfile(auth.currentUser!, { displayName: `${info.firstName} ${info.lastName}` });
+      if(auth.currentUser && auth.currentUser.displayName !== `${info.firstName} ${info.lastName}`) {
+          await updateProfile(auth.currentUser, { displayName: `${info.firstName} ${info.lastName}` });
       }
       await updateUserDocument(user.uid, { personalInfo: info });
     }
@@ -278,11 +301,11 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         if (permission === 'granted') {
           const messaging = getMessaging(auth.app);
           const VAPID_KEY = "BDC_g-k_7o3t8z5Jq_r-r8w8A_Qj_6h_4wX8g_V_y_Z_6k_8J_1n_7m_3T_0n_9S_2c";
-          const token = await getToken(messaging, { vapidKey: VAPID_KEY });
-          if (token) {
-            setFcmToken(token);
+          const currentToken = await getToken(messaging, { vapidKey: VAPID_KEY });
+          if (currentToken) {
+            setFcmToken(currentToken);
             if (user) {
-              await setDoc(doc(db, 'users', user.uid), { fcmToken: token }, { merge: true });
+              await setDoc(doc(db, 'users', user.uid), { fcmToken: currentToken }, { merge: true });
             }
           } else {
             console.warn('No registration token available.');
@@ -327,7 +350,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         if (!user) return;
         
         const appointmentDocRef = doc(db, 'users', user.uid, 'appointments', id);
-        const data = appointment.date ? { ...appointment, date: Timestamp.fromDate(appointment.date) } : appointment;
+        const data = appointment.date ? { ...appointment, date: Timestamp.fromDate(new Date(appointment.date)) } : appointment;
         await updateDoc(appointmentDocRef, data);
         setAppointments(prev => prev.map(a => a.id === id ? { ...a, ...appointment } : a).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
 
@@ -366,7 +389,8 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         await setDoc(newDocRef, newMed);
         setMedications(prev => [...prev, newMed]);
 
-        if (med.active && fcmToken) {
+        const currentFcmToken = fcmToken;
+        if (med.active && currentFcmToken) {
             const batch = writeBatch(db);
             med.time.forEach(t => {
                 const [hours, minutes] = t.split(':').map(Number);
@@ -375,7 +399,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
 
                 const alarmDocRef = doc(collection(db, 'users', user.uid, 'alarms'));
                 batch.set(alarmDocRef, {
-                    fcmToken,
+                    fcmToken: currentFcmToken,
                     title: "Hora de tu Medicina",
                     message: `${med.name} ${med.dosage}`,
                     alarmTime: Timestamp.fromDate(alarmTime),
@@ -436,3 +460,5 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     </UserContext.Provider>
   );
 };
+
+    
