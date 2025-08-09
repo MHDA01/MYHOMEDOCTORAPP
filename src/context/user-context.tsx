@@ -308,6 +308,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
 
             if (permission === 'granted') {
                 const messaging = getMessaging(auth.app);
+                // NOTE: Replace with your actual VAPID key
                 const VAPID_KEY = "BDC_g-k_7o3t8z5Jq_r-r8w8A_Qj_6h_4wX8g_V_y_Z_6k_8J_1n_7m_3T_0n_9S_2c"; 
                 const currentToken = await getToken(messaging, { vapidKey: VAPID_KEY });
                 
@@ -337,7 +338,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         
         await setDoc(newDocRef, { ...appointment, date: Timestamp.fromDate(appointment.date) });
 
-        setAppointments(prev => [...prev, newAppointment].sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime()));
+        setAppointments(prev => [...prev, newAppointment].sort((a, b) => b.date.getTime() - a.date.getTime()));
 
         const currentFcmToken = fcmToken;
         if (currentFcmToken && appointment.reminder && appointment.reminder !== 'none') {
@@ -417,14 +418,52 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
                     clickAction: '/dashboard#medications',
                     recurring: {
                         frequency: med.frequency
-                    }
+                    },
+                    medicationId: newMed.id
                 });
             });
         }
     };
     const updateMedication = async (id: string, med: Partial<Medication>) => {
         if (!user) return;
+        // First, update the medication document in its subcollection
         await updateDoc(doc(db, 'users', user.uid, 'medications', id), med);
+        
+        // Then, delete existing alarms for this medication to avoid duplicates or old schedules
+        const q = query(collection(db, "alarms"), where("userId", "==", user.uid), where("medicationId", "==", id));
+        const snapshot = await getDocs(q);
+        const batch = writeBatch(db);
+        snapshot.forEach(doc => batch.delete(doc.ref));
+        await batch.commit();
+
+        // Now, get the full updated medication data to schedule new alarms
+        const updatedMedDoc = await getDoc(doc(db, 'users', user.uid, 'medications', id));
+        const fullMed = updatedMedDoc.data() as Medication;
+
+        const currentFcmToken = fcmToken;
+        // If the medication is active and we have a token, create new alarms
+        if (fullMed.active && currentFcmToken) {
+            const today = new Date();
+            fullMed.time.forEach(t => {
+                const [hours, minutes] = t.split(':').map(Number);
+                const localAlarmTime = new Date(today.getFullYear(), today.getMonth(), today.getDate(), hours, minutes);
+
+                scheduleAlarm({
+                    userId: user.uid,
+                    fcmToken: currentFcmToken,
+                    title: 'Hora de tu Medicina',
+                    body: `${fullMed.name} ${fullMed.dosage}`,
+                    localISO: localAlarmTime.toISOString(),
+                    clickAction: '/dashboard#medications',
+                    recurring: {
+                        frequency: fullMed.frequency
+                    },
+                    medicationId: id,
+                });
+            });
+        }
+        
+        // Finally, update the local state
         setMedications(prev => prev.map(m => m.id === id ? { ...m, ...med } : m));
     };
     const deleteMedication = async (id: string) => {
