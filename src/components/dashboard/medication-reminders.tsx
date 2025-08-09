@@ -27,7 +27,6 @@ export function MedicationReminders() {
     const [isSaving, setIsSaving] = useState(false);
     const [dialogMode, setDialogMode] = useState<DialogMode>('add');
     const [selectedMed, setSelectedMed] = useState<Medication | null>(null);
-    const [showPermissionRequest, setShowPermissionRequest] = useState(false);
 
     // Form State
     const [name, setName] = useState('');
@@ -41,10 +40,6 @@ export function MedicationReminders() {
 
     if (!context) throw new Error("MedicationReminders must be used within a UserProvider");
     const { medications, addMedication, updateMedication, deleteMedication, loading, setupFCM, fcmState } = context;
-
-     useEffect(() => {
-        setShowPermissionRequest(fcmState === 'default' || fcmState === 'prompt');
-    }, [fcmState]);
 
     useEffect(() => {
         if (!isDialogOpen) return;
@@ -185,7 +180,7 @@ export function MedicationReminders() {
                         </AlertDescription>
                     </Alert>
                 )}
-                 {showPermissionRequest && (
+                 {fcmState === 'default' && (
                     <Alert>
                         <BellPlus className="h-4 w-4" />
                         <AlertTitle>Activa los Recordatorios</AlertTitle>
@@ -301,5 +296,3 @@ export function MedicationReminders() {
         </Card>
     );
 }
-
-    

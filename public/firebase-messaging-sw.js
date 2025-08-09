@@ -1,8 +1,9 @@
-// Este script se ejecuta en segundo plano y necesita su propia inicialización de Firebase.
-importScripts("https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js");
-importScripts("https://www.gstatic.com/firebasejs/9.22.1/firebase-messaging-compat.js");
+'use strict';
 
-// IMPORTANTE: Tu configuración de Firebase debe estar aquí.
+/* eslint-disable no-undef */
+importScripts('https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js');
+importScripts('https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js');
+
 const firebaseConfig = {
   "projectId": "myhomedoctorapp",
   "appId": "1:138646987953:web:f0f8ee1d83efc34e4dae90",
@@ -16,19 +17,30 @@ firebase.initializeApp(firebaseConfig);
 
 const messaging = firebase.messaging();
 
-// Este manejador de eventos se dispara cuando llega una notificación
-// y la PWA está en segundo plano o cerrada.
+// Notificaciones en background
 messaging.onBackgroundMessage((payload) => {
-  console.log(
-    "[firebase-messaging-sw.js] Mensaje en segundo plano recibido.",
-    payload
-  );
-
-  const notificationTitle = payload.notification.title;
-  const notificationOptions = {
-    body: payload.notification.body,
-    icon: "/icons/icon-192x192.png",
+  const { title, body } = payload.notification || {};
+  const options = {
+    body,
+    icon: 'https://i.postimg.cc/J7N5r89y/LOGO-1.png',
+    badge: 'https://i.postimg.cc/J7N5r89y/LOGO-1.png',
+    data: { click_action: payload?.fcmOptions?.link || '/' }
   };
+  self.registration.showNotification(title || 'Recordatorio', options);
+});
 
-  self.registration.showNotification(notificationTitle, notificationOptions);
+// Manejar clics en la notificación
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const url = event.notification?.data?.click_action || '/';
+  event.waitUntil(clients.matchAll({ type: 'window', includeUncontrolled: true }).then(windowClients => {
+    for (const client of windowClients) {
+      if (client.url.includes(self.registration.scope) && 'focus' in client) {
+        return client.focus();
+      }
+    }
+    if (clients.openWindow) {
+      return clients.openWindow(url);
+    }
+  }));
 });

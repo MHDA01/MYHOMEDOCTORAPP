@@ -6,7 +6,7 @@ import type { PersonalInfo, HealthInfo, Appointment, Document as DocumentType, M
 import { auth, db } from '@/lib/firebase';
 import { onAuthStateChanged, User, signOut, updateProfile } from 'firebase/auth';
 import { doc, getDoc, setDoc, Timestamp, collection, getDocs, addDoc, updateDoc, deleteDoc, query, orderBy, writeBatch, where } from 'firebase/firestore';
-import { getMessaging, getToken } from 'firebase/messaging';
+import { getMessaging, getToken, isSupported } from 'firebase/messaging';
 
 
 // We need a way to serialize Date objects to be stored in Firestore
@@ -168,13 +168,17 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   const [fcmState, setFcmState] = useState<UserContextType['fcmState']>('default');
   
   useEffect(() => {
-    let permissionStatus: PermissionStatus | undefined;
-
-    const checkNotificationPermission = async () => {
-        if ('permissions' in navigator) {
+        const checkNotificationPermission = async () => {
+            if (!('permissions' in navigator)) {
+                 if ('Notification' in window) {
+                   setFcmState(Notification.permission as UserContextType['fcmState']);
+                }
+                return;
+            }
             try {
-                permissionStatus = await navigator.permissions.query({ name: 'notifications' });
+                const permissionStatus = await navigator.permissions.query({ name: 'notifications' });
                 setFcmState(permissionStatus.state);
+
                 permissionStatus.onchange = () => {
                     setFcmState(permissionStatus.state);
                 };
@@ -184,18 +188,9 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
                    setFcmState(Notification.permission as UserContextType['fcmState']);
                 }
             }
-        } else if ('Notification' in window) {
-             setFcmState(Notification.permission as UserContextType['fcmState']);
         }
-    }
 
     checkNotificationPermission();
-
-    return () => {
-      if (permissionStatus) {
-        permissionStatus.onchange = null;
-      }
-    };
   }, []);
 
   useEffect(() => {
@@ -301,29 +296,35 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
 
 
     const setupFCM = async () => {
-      if (typeof window === 'undefined' || !('Notification' in window) || !('serviceWorker' in navigator)) {
-        return;
-      }
-      try {
-        const permission = await Notification.requestPermission();
-        setFcmState(permission);
-
-        if (permission === 'granted') {
-          const messaging = getMessaging(auth.app);
-          const VAPID_KEY = "BDC_g-k_7o3t8z5Jq_r-r8w8A_Qj_6h_4wX8g_V_y_Z_6k_8J_1n_7m_3T_0n_9S_2c";
-          const currentToken = await getToken(messaging, { vapidKey: VAPID_KEY });
-          if (currentToken) {
-            setFcmToken(currentToken);
-            if (user) {
-              await setDoc(doc(db, 'users', user.uid), { fcmToken: currentToken }, { merge: true });
-            }
-          } else {
-            console.warn('No registration token available.');
-          }
+        if (!(await isSupported())) {
+            console.log("FCM is not supported in this browser.");
+            return;
         }
-      } catch (err) {
-        console.error('An error occurred while setting up FCM. ', err);
-      }
+
+        try {
+            const permission = await Notification.requestPermission();
+            setFcmState(permission);
+
+            if (permission === 'granted') {
+                const messaging = getMessaging(auth.app);
+                //VAPID key reference: https://firebase.google.com/docs/cloud-messaging/js/client?hl=es-419
+                const VAPID_KEY = "BDC_g-k_7o3t8z5Jq_r-r8w8A_Qj_6h_4wX8g_V_y_Z_6k_8J_1n_7m_3T_0n_9S_2c"; 
+                const currentToken = await getToken(messaging, { vapidKey: VAPID_KEY });
+                
+                if (currentToken) {
+                    setFcmToken(currentToken);
+                    if (user) {
+                        await setDoc(doc(db, 'users', user.uid), { fcmToken: currentToken }, { merge: true });
+                    }
+                } else {
+                    console.warn('No registration token available. Request permission to generate one.');
+                }
+            } else {
+                 console.warn('Notification permission denied.');
+            }
+        } catch (err) {
+            console.error('An error occurred while setting up FCM. ', err);
+        }
     };
 
 

@@ -83,8 +83,8 @@ export function Appointments() {
             setSelectedAppointment(appointment);
             setDoctor(appointment.doctor);
             setSpecialty(appointment.specialty);
-            setDate(appointment.date);
-            setTime(format(appointment.date, 'HH:mm'));
+            setDate(new Date(appointment.date));
+            setTime(format(new Date(appointment.date), 'HH:mm'));
             setReminder(appointment.reminder || '24h');
         } else {
             setSelectedAppointment(null);
@@ -285,8 +285,8 @@ function AppointmentList({ appointments, onEdit, onDelete, isPast = false, getRe
                     </div>
                     <div className="flex items-center gap-2">
                         <div className="text-right">
-                            <p className="text-sm font-medium">{format(app.date, "EEE, d MMM", { locale: es })}</p>
-                            <p className="text-xs text-muted-foreground">{format(app.date, "h:mm a")}</p>
+                            <p className="text-sm font-medium">{format(new Date(app.date), "EEE, d MMM", { locale: es })}</p>
+                            <p className="text-xs text-muted-foreground">{format(new Date(app.date), "h:mm a")}</p>
                         </div>
                         {!isPast && (
                             <DropdownMenu>
