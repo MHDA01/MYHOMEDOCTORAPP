@@ -7,6 +7,7 @@ import { auth, db } from '@/lib/firebase';
 import { onAuthStateChanged, User, signOut, updateProfile } from 'firebase/auth';
 import { doc, getDoc, setDoc, Timestamp, collection, getDocs, addDoc, updateDoc, deleteDoc, query, orderBy, writeBatch, where } from 'firebase/firestore';
 import { getMessaging, getToken, isSupported } from 'firebase/messaging';
+import { scheduleAlarm } from '@/lib/alarms';
 
 
 // We need a way to serialize Date objects to be stored in Firestore
@@ -168,27 +169,27 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   const [fcmState, setFcmState] = useState<UserContextType['fcmState']>('default');
   
   useEffect(() => {
-        const checkNotificationPermission = async () => {
-            if (!('permissions' in navigator)) {
-                 if ('Notification' in window) {
-                   setFcmState(Notification.permission as UserContextType['fcmState']);
-                }
-                return;
+    const checkNotificationPermission = async () => {
+        if (!('permissions' in navigator)) {
+            if ('Notification' in window) {
+              setFcmState(Notification.permission as UserContextType['fcmState']);
             }
-            try {
-                const permissionStatus = await navigator.permissions.query({ name: 'notifications' });
-                setFcmState(permissionStatus.state);
+            return;
+        }
+        try {
+            const permissionStatus = await navigator.permissions.query({ name: 'notifications' });
+            setFcmState(permissionStatus.state);
 
-                permissionStatus.onchange = () => {
-                    setFcmState(permissionStatus.state);
-                };
-            } catch (error) {
-                console.error("Error querying notification permissions:", error);
-                 if ('Notification' in window) {
-                   setFcmState(Notification.permission as UserContextType['fcmState']);
-                }
+            permissionStatus.onchange = () => {
+                setFcmState(permissionStatus.state);
+            };
+        } catch (error) {
+            console.error("Error querying notification permissions:", error);
+            if ('Notification' in window) {
+              setFcmState(Notification.permission as UserContextType['fcmState']);
             }
         }
+    }
 
     checkNotificationPermission();
   }, []);
@@ -307,7 +308,6 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
 
             if (permission === 'granted') {
                 const messaging = getMessaging(auth.app);
-                //VAPID key reference: https://firebase.google.com/docs/cloud-messaging/js/client?hl=es-419
                 const VAPID_KEY = "BDC_g-k_7o3t8z5Jq_r-r8w8A_Qj_6h_4wX8g_V_y_Z_6k_8J_1n_7m_3T_0n_9S_2c"; 
                 const currentToken = await getToken(messaging, { vapidKey: VAPID_KEY });
                 
@@ -337,20 +337,22 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         
         await setDoc(newDocRef, { ...appointment, date: Timestamp.fromDate(appointment.date) });
 
-        setAppointments(prev => [...prev, newAppointment].sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
+        setAppointments(prev => [...prev, newAppointment].sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime()));
 
-        if (fcmToken && appointment.reminder && appointment.reminder !== 'none') {
+        const currentFcmToken = fcmToken;
+        if (currentFcmToken && appointment.reminder && appointment.reminder !== 'none') {
             const reminderMinutes: { [key: string]: number } = { '1h': 60, '2h': 120, '24h': 1440, '2d': 2880 };
             const reminderValue = reminderMinutes[appointment.reminder];
             if(reminderValue) {
                 const alarmTime = new Date(appointment.date.getTime() - reminderValue * 60 * 1000);
                 if (alarmTime > new Date()) {
-                    await addDoc(collection(db, 'users', user.uid, 'alarms'), {
-                        fcmToken,
+                    await scheduleAlarm({
+                        userId: user.uid,
+                        fcmToken: currentFcmToken,
                         title: 'Recordatorio de Cita',
-                        message: `Tu cita con ${appointment.doctor} es pronto.`,
-                        alarmTime: Timestamp.fromDate(alarmTime),
-                        status: 'scheduled',
+                        body: `Tu cita con ${appointment.doctor} es pronto.`,
+                        localISO: alarmTime.toISOString(),
+                        clickAction: '/dashboard#appointments'
                     });
                 }
             }
@@ -401,25 +403,23 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
 
         const currentFcmToken = fcmToken;
         if (med.active && currentFcmToken) {
-            const batch = writeBatch(db);
+            const today = new Date();
             med.time.forEach(t => {
                 const [hours, minutes] = t.split(':').map(Number);
-                const alarmTime = new Date();
-                alarmTime.setHours(hours, minutes, 0, 0);
+                const localAlarmTime = new Date(today.getFullYear(), today.getMonth(), today.getDate(), hours, minutes);
 
-                const alarmDocRef = doc(collection(db, 'users', user.uid, 'alarms'));
-                batch.set(alarmDocRef, {
+                scheduleAlarm({
+                    userId: user.uid,
                     fcmToken: currentFcmToken,
-                    title: "Hora de tu Medicina",
-                    message: `${med.name} ${med.dosage}`,
-                    alarmTime: Timestamp.fromDate(alarmTime),
-                    status: 'scheduled',
-                    medicationId: newMed.id,
-                    recurring: true, 
-                    frequency: med.frequency,
+                    title: 'Hora de tu Medicina',
+                    body: `${med.name} ${med.dosage}`,
+                    localISO: localAlarmTime.toISOString(),
+                    clickAction: '/dashboard#medications',
+                    recurring: {
+                        frequency: med.frequency
+                    }
                 });
             });
-            await batch.commit();
         }
     };
     const updateMedication = async (id: string, med: Partial<Medication>) => {
@@ -431,7 +431,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         if (!user) return;
         await deleteDoc(doc(db, 'users', user.uid, 'medications', id));
         
-        const q = query(collection(db, "users", user.uid, "alarms"), where("medicationId", "==", id));
+        const q = query(collection(db, "alarms"), where("userId", "==", user.uid), where("medicationId", "==", id));
         const snapshot = await getDocs(q);
         const batch = writeBatch(db);
         snapshot.forEach(doc => batch.delete(doc.ref));

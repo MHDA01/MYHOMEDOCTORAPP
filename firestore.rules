@@ -2,9 +2,22 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Un usuario solo puede leer/escribir sus propios datos
-    match /users/{userId}/{documents=**} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+    function isSignedIn() { return request.auth != null; }
+
+    match /users/{uid} {
+      allow read, write: if isSignedIn() && request.auth.uid == uid;
+
+      // Allow subcollection access if the user is the owner
+      match /{collection}/{id} {
+        allow read, write: if isSignedIn() && request.auth.uid == uid;
+      }
+    }
+
+    match /alarms/{alarmId} {
+      // A user can only create an alarm for themselves
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      // A user can only read/update/delete their own alarms
+      allow read, update, delete: if isSignedIn() && resource.data.userId == request.auth.uid;
     }
   }
 }
