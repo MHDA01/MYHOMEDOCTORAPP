@@ -249,8 +249,8 @@ export function DocumentList() {
                     <TableHeader>
                         <TableRow>
                             <TableHead>Nombre</TableHead>
-                            <TableHead>Categoría</TableHead>
-                            <TableHead>Subido</TableHead>
+                            <TableHead className="hidden sm:table-cell">Categoría</TableHead>
+                            <TableHead className="hidden md:table-cell">Subido</TableHead>
                             <TableHead className="text-right">Acciones</TableHead>
                         </TableRow>
                     </TableHeader>
@@ -258,10 +258,10 @@ export function DocumentList() {
                         {documents.map((doc) => (
                             <TableRow key={doc.id}>
                                 <TableCell className="font-medium">{doc.name}</TableCell>
-                                <TableCell>
+                                <TableCell className="hidden sm:table-cell">
                                     <Badge variant="secondary">{getCategoryLabel(doc.category)}</Badge>
                                 </TableCell>
-                                <TableCell>{format(doc.uploadedAt, 'PP', { locale: es })}</TableCell>
+                                <TableCell className="hidden md:table-cell">{format(doc.uploadedAt, 'PP', { locale: es })}</TableCell>
                                 <TableCell className="text-right">
                                     <DropdownMenu>
                                         <DropdownMenuTrigger asChild>

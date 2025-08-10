@@ -202,7 +202,7 @@ export function Appointments() {
                                 <Label htmlFor="specialty">Especialidad</Label>
                                 <Input id="specialty" placeholder="ej., Cardiología" value={specialty} onChange={e => setSpecialty(e.target.value)} />
                             </div>
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div className="grid gap-2">
                                     <Label>Fecha</Label>
                                     <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
@@ -276,8 +276,8 @@ function AppointmentList({ appointments, onEdit, onDelete, isPast = false, getRe
     return (
         <div className="space-y-4 pt-4">
             {appointments.map(app => (
-                <div key={app.id} className="flex items-start justify-between rounded-lg border p-3">
-                    <div className="flex-1">
+                <div key={app.id} className="flex items-start justify-between rounded-lg border p-3 flex-wrap">
+                    <div className="flex-1 min-w-[150px]">
                         <p className="font-semibold">{app.doctor}</p>
                         <p className="text-sm text-muted-foreground">{app.specialty}</p>
                         {!isPast && getReminderLabel && app.reminder && app.reminder !== 'none' && (
@@ -287,7 +287,7 @@ function AppointmentList({ appointments, onEdit, onDelete, isPast = false, getRe
                             </div>
                         )}
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 mt-2 md:mt-0">
                         <div className="text-right">
                             <p className="text-sm font-medium">{format(new Date(app.date), "EEE, d MMM", { locale: es })}</p>
                             <p className="text-xs text-muted-foreground">{format(new Date(app.date), "h:mm a")}</p>

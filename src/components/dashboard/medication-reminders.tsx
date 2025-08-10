@@ -174,15 +174,15 @@ export function MedicationReminders() {
             <CardContent className="space-y-4">
                 {medications.length === 0 && <p className="text-center text-muted-foreground pt-4">No has añadido ningún medicamento.</p>}
                 {medications.map((med) => (
-                    <div key={med.id} className="flex items-center justify-between rounded-lg border p-3">
-                        <div>
+                    <div key={med.id} className="flex items-center justify-between rounded-lg border p-3 flex-wrap gap-2">
+                        <div className="flex-grow min-w-[180px]">
                             <p className="font-semibold">{med.name} <span className="text-sm font-normal text-muted-foreground">{med.dosage}</span></p>
                             <p className="text-sm text-muted-foreground">{formatFrequencyLabel(med.frequency)} - {med.administrationPeriod}</p>
                             <div className="flex items-center gap-2 mt-1 flex-wrap">
                                 {med.time.map(t => <Badge key={t} variant="outline">{formatTime12h(t)}</Badge>)}
                             </div>
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-shrink-0">
                              <Switch checked={med.active} onCheckedChange={() => handleToggleActive(med)} aria-label={`Activar o desactivar recordatorio para ${med.name}`}/>
                              <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
@@ -211,7 +211,7 @@ export function MedicationReminders() {
                         <DialogHeader>
                             <DialogTitle>{dialogMode === 'add' ? 'Añadir Nuevo Medicamento' : 'Editar Medicamento'}</DialogTitle>
                         </DialogHeader>
-                         <div className="grid gap-4 py-4 max-h-[60vh] overflow-y-auto pr-4">
+                         <div className="grid gap-4 py-4 max-h-[70vh] overflow-y-auto pr-4">
                             <div className="grid gap-2">
                                 <Label htmlFor="med-name">Nombre del Medicamento</Label>
                                 <Input id="med-name" placeholder="ej., Ibuprofeno" value={name} onChange={e => setName(e.target.value)} />
