@@ -1,91 +1,86 @@
-// Nombre de la caché para nuestra aplicación.
+// Define el nombre de la caché y los archivos a cachear.
 const CACHE_NAME = 'my-home-doctor-app-cache-v1';
-// Lista de recursos esenciales que se deben cachear durante la instalación.
 const urlsToCache = [
   '/',
   '/login',
   '/dashboard',
   '/manifest.webmanifest',
-  // Es importante no cachear aquí todos los archivos de CSS o JS,
-  // ya que Next.js les asigna nombres únicos con hashes.
-  // La estrategia de caché en el 'fetch' se encargará de ellos dinámicamente.
+  '/favicon.ico',
+  // Es posible que necesites agregar aquí rutas a tus archivos CSS y JS principales si no se cachean dinámicamente.
 ];
 
-// 1. Evento 'install': Se dispara cuando el Service Worker se instala por primera vez.
+// Evento 'install': Se dispara cuando el Service Worker se instala por primera vez.
 self.addEventListener('install', (event) => {
-  console.log('Service Worker: Instalando...');
-  // Esperamos hasta que la promesa de abrir la caché y añadir los recursos se complete.
+  // Espera a que la promesa dentro de waitUntil se resuelva.
   event.waitUntil(
+    // Abre la caché con el nombre definido.
     caches.open(CACHE_NAME)
       .then((cache) => {
-        console.log('Service Worker: Caché abierta, añadiendo recursos esenciales.');
+        console.log('Cache abierta');
+        // Agrega todos los archivos definidos en urlsToCache a la caché.
         return cache.addAll(urlsToCache);
       })
-      .catch(error => {
-        console.error('Service Worker: Fallo al cachear recursos durante la instalación:', error);
+      .catch((err) => {
+        console.error('Fallo al cachear en la instalación:', err);
       })
   );
 });
 
-// 2. Evento 'activate': Se dispara cuando el Service Worker se activa.
-// Se usa para limpiar cachés antiguas y asegurar que la nueva versión tome el control.
+// Evento 'activate': Se dispara después de la instalación y cuando una nueva versión del SW toma el control.
 self.addEventListener('activate', (event) => {
-  console.log('Service Worker: Activando...');
   event.waitUntil(
+    // Obtiene todas las claves de caché (nombres de cachés).
     caches.keys().then((cacheNames) => {
       return Promise.all(
-        cacheNames.map((cacheName) => {
-          // Si el nombre de la caché no es el actual, la eliminamos.
-          if (cacheName !== CACHE_NAME) {
-            console.log('Service Worker: Limpiando caché antigua:', cacheName);
-            return caches.delete(cacheName);
-          }
+        // Filtra y elimina las cachés antiguas que no coinciden con CACHE_NAME.
+        cacheNames.filter(cacheName => {
+          return cacheName.startsWith('my-home-doctor-app-cache-') && cacheName !== CACHE_NAME;
+        }).map(cacheName => {
+          return caches.delete(cacheName);
         })
       );
     })
   );
-  // Forzamos al Service Worker a tomar el control inmediatamente.
-  return self.clients.claim();
 });
 
-
-// 3. Evento 'fetch': Se dispara cada vez que la aplicación realiza una petición de red.
-// Aquí implementamos la estrategia de "Network Falling Back to Cache".
+// Evento 'fetch': Se dispara cada vez que la aplicación realiza una petición de red.
 self.addEventListener('fetch', (event) => {
-    // Solo interceptamos peticiones GET.
-    if (event.request.method !== 'GET') {
-        return;
-    }
+  // Ignora las peticiones que no son GET.
+  if (event.request.method !== 'GET') {
+    return;
+  }
+  // Ignora las peticiones a Firestore y otros servicios de Google.
+  if (event.request.url.includes('firestore.googleapis.com') || event.request.url.includes('google.com/recaptcha')) {
+    return;
+  }
 
-    event.respondWith(
-        // Primero, intentamos obtener el recurso de la red.
-        fetch(event.request)
-            .then((networkResponse) => {
-                // Si la respuesta de la red es exitosa (ej. status 200)
-                // clonamos la respuesta para poder guardarla en caché y devolverla al navegador.
-                if (networkResponse && networkResponse.status === 200) {
-                    const responseToCache = networkResponse.clone();
-                    caches.open(CACHE_NAME)
-                        .then((cache) => {
-                            // Guardamos la nueva respuesta en la caché.
-                            cache.put(event.request, responseToCache);
-                        });
-                }
-                // Devolvemos la respuesta original de la red.
-                return networkResponse;
-            })
-            .catch(() => {
-                // Si la petición a la red falla (ej. sin conexión),
-                // intentamos servir el recurso desde la caché.
-                console.log('Service Worker: Fallo de red. Intentando servir desde caché para:', event.request.url);
-                return caches.match(event.request).then((cachedResponse) => {
-                    if (cachedResponse) {
-                        return cachedResponse;
-                    }
-                    // Si el recurso no está en caché, no podemos hacer nada.
-                    // Para una mejor experiencia, aquí se podría devolver una página de "sin conexión" personalizada.
-                    console.warn('Service Worker: Recurso no encontrado ni en red ni en caché:', event.request.url);
-                });
-            })
-    );
+  // Estrategia: Network Falling Back to Cache
+  event.respondWith(
+    // Intenta obtener el recurso de la red.
+    fetch(event.request)
+      .then((networkResponse) => {
+        // Si la respuesta es exitosa, la clona y la guarda en la caché para futuras peticiones.
+        if (networkResponse && networkResponse.status === 200) {
+          const responseToCache = networkResponse.clone();
+          caches.open(CACHE_NAME)
+            .then((cache) => {
+              cache.put(event.request, responseToCache);
+            });
+        }
+        return networkResponse;
+      })
+      .catch(() => {
+        // Si la petición a la red falla (por ejemplo, sin conexión),
+        // intenta obtener el recurso desde la caché.
+        return caches.match(event.request)
+          .then((cachedResponse) => {
+            // Si se encuentra en la caché, la devuelve.
+            if (cachedResponse) {
+              return cachedResponse;
+            }
+            // Si no está ni en la red ni en la caché, la petición fallará.
+            // Opcional: podrías devolver una página de "sin conexión" aquí.
+          });
+      })
+  );
 });
