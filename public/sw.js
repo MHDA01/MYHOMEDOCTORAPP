@@ -1,68 +1,91 @@
+// Import the Firebase app and messaging libraries
+importScripts('https://www.gstatic.com/firebasejs/9.15.0/firebase-app-compat.js');
+importScripts('https://www.gstatic.com/firebasejs/9.15.0/firebase-messaging-compat.js');
 
-const CACHE_NAME = 'my-home-doctor-cache-v1';
+const CACHE_NAME = 'v1-cache';
 const urlsToCache = [
   '/',
-  '/login',
-  '/dashboard',
-  // Es importante no cachear el manifest o el sw.js directamente
-  // Puedes añadir aquí rutas a tus assets principales si lo deseas (CSS, JS)
+  '/manifest.webmanifest',
 ];
 
+// Initialize the Firebase app in the service worker
+const firebaseConfig = {
+  "projectId": "myhomedoctorapp",
+  "appId": "1:138646987953:web:f0f8ee1d83efc34e4dae90",
+  "storageBucket": "myhomedoctorapp.appspot.com",
+  "apiKey": "AIzaSyAp65amh6olkSyo94sYxaBD9E2frbkws44",
+  "authDomain": "myhomedoctorapp.firebaseapp.com",
+  "messagingSenderId": "138646987953"
+};
+
+firebase.initializeApp(firebaseConfig);
+
+// Retrieve an instance of Firebase Messaging so that it can handle background messages.
+const messaging = firebase.messaging();
+
+messaging.onBackgroundMessage((payload) => {
+  console.log('[sw.js] Received background message ', payload);
+  const notificationTitle = payload.notification.title;
+  const notificationOptions = {
+    body: payload.notification.body,
+    icon: '/icon-192x192.png'
+  };
+
+  self.registration.showNotification(notificationTitle, notificationOptions);
+});
+
+
 self.addEventListener('install', event => {
+  console.log('[Service Worker] Install');
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => {
-        console.log('Cache abierto');
+        console.log('[Service Worker] Caching all: app shell and content');
         return cache.addAll(urlsToCache);
       })
   );
 });
 
 self.addEventListener('activate', event => {
-  const cacheWhitelist = [CACHE_NAME];
+  console.log('[Service Worker] Activate');
   event.waitUntil(
     caches.keys().then(cacheNames => {
       return Promise.all(
-        cacheNames.map(cacheName => {
-          if (cacheWhitelist.indexOf(cacheName) === -1) {
-            return caches.delete(cacheName);
+        cacheNames.map(cache => {
+          if (cache !== CACHE_NAME) {
+            console.log('[Service Worker] Deleting old cache:', cache);
+            return caches.delete(cache);
           }
         })
       );
     })
   );
+  return self.clients.claim();
 });
 
+
 self.addEventListener('fetch', event => {
-  event.respondWith(
-    caches.match(event.request)
-      .then(response => {
-        // Cache hit - return response
-        if (response) {
-          return response;
-        }
-
-        return fetch(event.request).then(
-          response => {
-            // Check if we received a valid response
-            if (!response || response.status !== 200 || response.type !== 'basic') {
-              return response;
-            }
-
-            // IMPORTANT: Clone the response. A response is a stream
-            // and because we want the browser to consume the response
-            // as well as the cache consuming the response, we need
-            // to clone it so we have two streams.
-            const responseToCache = response.clone();
-
-            caches.open(CACHE_NAME)
-              .then(cache => {
-                cache.put(event.request, responseToCache);
-              });
-
-            return response;
-          }
+    if (event.request.mode === 'navigate') {
+        event.respondWith(
+            fetch(event.request).catch(() => caches.match('/'))
         );
-      })
-  );
+        return;
+    }
+
+    event.respondWith(
+        caches.open(CACHE_NAME).then(cache => {
+            return fetch(event.request)
+                .then(response => {
+                    if (response.status === 200) {
+                        cache.put(event.request.url, response.clone());
+                    }
+                    return response;
+                })
+                .catch(() => {
+                    return caches.match(event.request).then(response => {
+                        return response || fetch(event.request);
+                    });
+                });
+        })
+    );
 });

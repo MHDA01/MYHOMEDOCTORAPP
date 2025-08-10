@@ -4,7 +4,6 @@ import { app, db } from "./firebase";
 import { doc, setDoc } from "firebase/firestore";
 
 export const setupNotifications = async (userId: string, toast: (options: any) => void) => {
-  // Primero, verificamos si el navegador es compatible con Firebase Messaging
   const supported = await isSupported();
   if (!supported) {
     console.log("Este navegador no soporta notificaciones push de Firebase.");
@@ -12,23 +11,24 @@ export const setupNotifications = async (userId: string, toast: (options: any) =
   }
   
   try {
+    // Wait for the service worker to be ready
+    const registration = await navigator.serviceWorker.ready;
+    
     const messaging = getMessaging(app);
 
-    // 1. Solicitar permiso para notificaciones
     const permission = await Notification.requestPermission();
     
     if (permission === "granted") {
       console.log("Permiso de notificación concedido.");
       
-      // 2. Obtener el token de registro de FCM
       const currentToken = await getToken(messaging, {
         vapidKey: "BOeZ6tQhBw4Z2dYq1_1o4p-gZ8jJ6mD6cQ3xR4eW2kY4vX8Z8jJ6mD6cQ3xR4eW2kY4vX8Z8jJ6mD6cQ3x",
+        serviceWorkerRegistration: registration,
       });
 
       if (currentToken) {
         console.log("Token FCM obtenido:", currentToken);
         
-        // 3. Guardar el token en Firestore
         const userDocRef = doc(db, "users", userId);
         await setDoc(userDocRef, { notificationToken: currentToken }, { merge: true });
         console.log("Token guardado en Firestore.");
@@ -45,7 +45,6 @@ export const setupNotifications = async (userId: string, toast: (options: any) =
       console.log("Permiso de notificación denegado.");
     }
 
-    // Escuchar mensajes en primer plano
     onMessage(messaging, (payload) => {
         console.log('Mensaje recibido en primer plano: ', payload);
         toast({
