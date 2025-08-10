@@ -178,7 +178,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
                   lastName: user.displayName?.split(' ').slice(1).join(' ') || 'Usuario',
                   sex: 'other',
                   dateOfBirth: new Date(),
-                  country: 'chle',
+                  country: 'chile',
                   insuranceProvider: 'Fonasa',
                   insuranceProviderName: ''
               };
