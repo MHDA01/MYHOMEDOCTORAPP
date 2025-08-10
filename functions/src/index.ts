@@ -1,19 +1,11 @@
-
-
-import * as functions from "firebase-functions";
-import * as admin from "firebase-admin";
-
-admin.initializeApp();
-const db = admin.firestore();
-
 /**
- * Scheduled function that runs every minute to check for due alarms.
+ * @fileoverview Archivo principal de Cloud Functions.
+ * Importa y exporta las funciones programadas para que Firebase las despliegue.
+ * Mantiene este archivo limpio y delega la lógica a otros módulos.
  */
-export const checkAlarms = functions
-  .region("us-central1")
-  .pubsub.schedule("every 1 minutes")
-  .onRun(async (context) => {
-    console.log("This function runs every minute.");
-    // Placeholder for future alarm checking logic
-    return null;
-  });
+
+// Importa las funciones de recordatorios desde su propio módulo.
+import { checkAppointmentReminders, checkMedicationReminders } from "./reminders";
+
+// Exporta las funciones para que Firebase las reconozca y las despliegue.
+export { checkAppointmentReminders, checkMedicationReminders };
