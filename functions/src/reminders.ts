@@ -20,11 +20,11 @@ const messaging = admin.messaging();
 
 /**
  * Función programada para verificar y enviar recordatorios de citas.
- * Se ejecuta cada hora (configurable).
+ * Se ejecuta cada 5 minutos para prueba.
  */
 export const checkAppointmentReminders = functions
   .region("us-central1") // Define la región donde se ejecutará la función.
-  .pubsub.schedule("every 60 minutes") // Se ejecuta cada 60 minutos.
+  .pubsub.schedule("every 5 minutes") // Se ejecuta cada 5 minutos.
   .onRun(async (context) => {
     console.log("Iniciando verificación de recordatorios de citas.");
 
@@ -34,7 +34,6 @@ export const checkAppointmentReminders = functions
 
     // --- LÓGICA DE PRUEBA ---
     // Vamos a enviar una notificación de prueba a un usuario específico para verificar.
-    // Reemplaza el UID de abajo con el tuyo para recibir la notificación.
     const TEST_USER_ID = "tRAKDG4GVEXebI6UCuQYMJDs3ZZ2"; 
     try {
         const userDoc = await db.collection("users").doc(TEST_USER_ID).get();
