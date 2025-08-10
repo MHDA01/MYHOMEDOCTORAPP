@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { Pill, PlusCircle, BellRing, MoreVertical, FilePenLine, Trash2, Loader2, BellPlus, Info } from "lucide-react";
+import { Pill, PlusCircle, BellRing, MoreVertical, FilePenLine, Trash2, Loader2 } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -16,7 +16,6 @@ import type { Medication } from '@/lib/types';
 import { useToast } from "@/hooks/use-toast";
 import { UserContext } from '@/context/user-context';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 
 type DialogMode = 'add' | 'edit';
@@ -39,7 +38,7 @@ export function MedicationReminders() {
     const { toast } = useToast();
 
     if (!context) throw new Error("MedicationReminders must be used within a UserProvider");
-    const { medications, addMedication, updateMedication, deleteMedication, loading, setupFCM, fcmState } = context;
+    const { medications, addMedication, updateMedication, deleteMedication, loading } = context;
 
     useEffect(() => {
         if (!isDialogOpen) return;
@@ -59,10 +58,6 @@ export function MedicationReminders() {
         setTimeInputs(newTimes);
 
     }, [frequency, isDialogOpen, selectedMed, dialogMode]);
-
-    const requestNotificationPermission = async () => {
-        await setupFCM();
-    };
 
 
     const resetForm = () => {
@@ -169,36 +164,9 @@ export function MedicationReminders() {
                     <BellRing className="h-6 w-6 text-primary" />
                     <CardTitle className="font-headline text-xl">Recordatorios de Medicamentos</CardTitle>
                 </div>
-                <CardDescription>Mantente al día con tu horario de medicación.</CardDescription>
+                <CardDescription>Mantente al día con tu horario de medicación. Para que las notificaciones funcionen, permite las notificaciones y mantén la app abierta.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-                 {fcmState === 'denied' && (
-                    <Alert variant="destructive">
-                        <AlertTitle>Notificaciones Bloqueadas</AlertTitle>
-                        <AlertDescription>
-                            Has bloqueado las notificaciones. Para recibir recordatorios, por favor habilítalas en la configuración de tu navegador.
-                        </AlertDescription>
-                    </Alert>
-                )}
-                 {fcmState === 'default' && (
-                    <Alert>
-                        <BellPlus className="h-4 w-4" />
-                        <AlertTitle>Activa los Recordatorios</AlertTitle>
-                        <AlertDescription className="flex items-center justify-between">
-                           <span>Permite las notificaciones para recibir recordatorios.</span>
-                           <Button size="sm" onClick={requestNotificationPermission}>Activar</Button>
-                        </AlertDescription>
-                    </Alert>
-                )}
-                 {fcmState === 'unsupported' && (
-                    <Alert variant="destructive">
-                        <Info className="h-4 w-4" />
-                        <AlertTitle>Navegador no compatible</AlertTitle>
-                        <AlertDescription>
-                            Este navegador no es compatible con las notificaciones push. Por favor, utiliza un navegador compatible en escritorio o Android.
-                        </AlertDescription>
-                    </Alert>
-                )}
                 {medications.length === 0 && <p className="text-center text-muted-foreground pt-4">No has añadido ningún medicamento.</p>}
                 {medications.map((med) => (
                     <div key={med.id} className="flex items-center justify-between rounded-lg border p-3">
@@ -210,7 +178,7 @@ export function MedicationReminders() {
                             </div>
                         </div>
                         <div className="flex items-center gap-2">
-                             <Switch checked={med.active} onCheckedChange={() => handleToggleActive(med)} aria-label={`Activar o desactivar recordatorio para ${med.name}`} disabled={fcmState !== 'granted'}/>
+                             <Switch checked={med.active} onCheckedChange={() => handleToggleActive(med)} aria-label={`Activar o desactivar recordatorio para ${med.name}`}/>
                              <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
                                     <Button variant="ghost" size="icon">
@@ -305,5 +273,3 @@ export function MedicationReminders() {
         </Card>
     );
 }
-
-    

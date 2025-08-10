@@ -5,9 +5,8 @@ import { createContext, useState, useEffect, ReactNode, useCallback } from 'reac
 import type { PersonalInfo, HealthInfo, Appointment, Document as DocumentType, Medication } from '@/lib/types';
 import { auth, db } from '@/lib/firebase';
 import { onAuthStateChanged, User, signOut, updateProfile } from 'firebase/auth';
-import { doc, getDoc, setDoc, Timestamp, collection, getDocs, addDoc, updateDoc, deleteDoc, query, orderBy, writeBatch, where, FieldValue } from 'firebase/firestore';
+import { doc, getDoc, setDoc, Timestamp, collection, getDocs, addDoc, updateDoc, deleteDoc, query, orderBy, writeBatch, where } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
-import { scheduleAlarm } from '@/lib/alarms';
 
 // We need a way to serialize Date objects to be stored in Firestore
 // and deserialize them back to Date objects.
@@ -25,8 +24,7 @@ type SerializableDocument = Omit<DocumentType, 'uploadedAt'> & {
 
 type UserDocumentData = {
     personalInfo: SerializablePersonalInfo,
-    healthInfo: HealthInfo,
-    pushSubscription?: PushSubscriptionJSON;
+    healthInfo: HealthInfo
 }
 
 type UserDocument = {
@@ -36,23 +34,6 @@ type UserDocument = {
 
 // Helper function to introduce a delay
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-
-// Helper para convertir la VAPID key
-function urlB64ToUint8Array(base64String: string) {
-  const padding = '='.repeat((4 - base64String.length % 4) % 4);
-  const base64 = (base64String + padding)
-    .replace(/-/g, '+')
-    .replace(/_/g, '/');
-
-  const rawData = window.atob(base64);
-  const outputArray = new Uint8Array(rawData.length);
-
-  for (let i = 0; i < rawData.length; ++i) {
-    outputArray[i] = rawData.charCodeAt(i);
-  }
-  return outputArray;
-}
-
 
 // --- Generic Firestore Functions ---
 
@@ -71,7 +52,7 @@ async function getCollection<T>(userId: string, collectionName: string): Promise
 }
 
 
-async function getUserDocument(userId: string): Promise<UserDocument & { pushSubscription?: PushSubscriptionJSON } | null> {
+async function getUserDocument(userId: string): Promise<UserDocument | null> {
     const docRef = doc(db, 'users', userId);
     const maxRetries = 5;
     let delay = 200;
@@ -88,7 +69,6 @@ async function getUserDocument(userId: string): Promise<UserDocument & { pushSub
                             dateOfBirth: data.personalInfo.dateOfBirth.toDate(),
                         },
                         healthInfo: data.healthInfo,
-                        pushSubscription: data.pushSubscription
                     };
                 }
             }
@@ -108,7 +88,7 @@ async function getUserDocument(userId: string): Promise<UserDocument & { pushSub
     throw new Error('Could not fetch user profile after all retries.');
 }
 
-async function updateUserDocument(userId: string, data: Partial<UserDocument & { pushSubscription?: PushSubscriptionJSON | FieldValue }>): Promise<void> {
+async function updateUserDocument(userId: string, data: Partial<UserDocument>): Promise<void> {
   try {
     const docRef = doc(db, 'users', userId);
     
@@ -149,8 +129,6 @@ interface UserContextType {
   deleteMedication: (id: string) => Promise<void>;
   loading: boolean;
   user: User | null;
-  fcmState: 'denied' | 'granted' | 'default' | 'unsupported';
-  setupFCM: () => Promise<void>;
   signOutUser: () => Promise<void>;
 }
 
@@ -174,8 +152,6 @@ const initialAnonymousHealthInfo: HealthInfo = {
     emergencyContacts: [],
 };
 
-// ¡IMPORTANTE! Reemplaza esta clave con tu CLAVE PÚBLICA VAPID
-const VAPID_PUBLIC_KEY = "BDf_d_3Y1U350z2N_w3A7kAlJ_y6D-yX_K3sZ6e1A2M7q1X7f2Z0n8jR2j3zX5oY_d0zVf7rN6B5w_k";
 
 export const UserProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -185,32 +161,8 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   const [documents, setDocuments] = useState<DocumentType[]>([]);
   const [medications, setMedications] = useState<Medication[]>([]);
   const [loading, setLoading] = useState(true);
-  const [fcmState, setFcmState] = useState<UserContextType['fcmState']>('default');
-  const [swRegistration, setSwRegistration] = useState<ServiceWorkerRegistration | null>(null);
   const { toast } = useToast();
   
-  const updateFcmState = useCallback(() => {
-    const isSupported = 'serviceWorker' in navigator && 'PushManager' in window;
-     if (!isSupported) {
-        setFcmState('unsupported');
-        return;
-    }
-    if ('Notification' in window) {
-      setFcmState(Notification.permission);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
-        navigator.serviceWorker.register('/sw.js')
-            .then(reg => {
-                console.log('Service Worker registrado:', reg);
-                setSwRegistration(reg);
-            })
-            .catch(err => console.log('Error al registrar Service Worker:', err));
-    }
-    updateFcmState();
-  }, [updateFcmState]);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
@@ -309,49 +261,17 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       }
   };
 
-  const setupFCM = async () => {
-    if (!swRegistration || !user) {
-        toast({ variant: 'destructive', title: "El servicio de notificaciones no está listo."});
-        return;
-    }
-
-    // Comprobación de compatibilidad
-    if (!('PushManager' in window)) {
-        setFcmState('unsupported');
-        toast({ variant: 'destructive', title: "Las notificaciones Push no son compatibles con este navegador."});
-        return;
-    }
-
+  const addAlarm = async (userId: string, data: any) => {
     try {
-        // Solicitar permiso
-        const permission = await Notification.requestPermission();
-        
-        // Actualizar estado inmediatamente
-        setFcmState(permission);
-
-        if (permission !== 'granted') {
-            toast({ variant: 'destructive', title: "Permiso de notificaciones no concedido."});
-            return;
-        }
-
-        // Obtener suscripción
-        const applicationServerKey = urlB64ToUint8Array(VAPID_PUBLIC_KEY);
-        const subscription = await swRegistration.pushManager.subscribe({
-            userVisibleOnly: true,
-            applicationServerKey: applicationServerKey
+        await addDoc(collection(db, 'alarms'), {
+            userId,
+            ...data,
+            createdAt: Timestamp.now(),
         });
-
-        console.log('Usuario suscrito:', subscription);
-        await updateUserDocument(user.uid, { pushSubscription: subscription.toJSON() });
-        
-        toast({ title: "¡Notificaciones activadas!"});
-        
-    } catch (err) {
-        console.error('Fallo al suscribir el usuario: ', err);
-        setFcmState('denied');
-        toast({ variant: 'destructive', title: "Error al activar notificaciones."});
+    } catch (error) {
+        console.error("Error adding alarm: ", error);
     }
-};
+  };
 
   // Appointments CRUD
     const addAppointment = async (appointment: Omit<Appointment, 'id'>) => {
@@ -396,23 +316,26 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     // Medications CRUD
     const addMedication = async (med: Omit<Medication, 'id'>) => {
         if (!user) return;
-        
         const newDocRef = doc(collection(db, 'users', user.uid, 'medications'));
         const newMed = { ...med, id: newDocRef.id };
         await setDoc(newDocRef, newMed);
         setMedications(prev => [...prev, newMed]);
         
-        const userDoc = await getUserDocument(user.uid);
-        const subscription = userDoc?.pushSubscription;
-
-        if (med.active && subscription) {
+        if (med.active) {
             for (const time of med.time) {
-                await scheduleAlarm({
-                    userId: user.uid,
+                const [hours, minutes] = time.split(':').map(Number);
+                const alarmDate = new Date();
+                alarmDate.setHours(hours, minutes, 0, 0);
+
+                if (alarmDate < new Date()) {
+                    alarmDate.setDate(alarmDate.getDate() + 1);
+                }
+
+                await addAlarm(user.uid, {
                     medicationId: newMed.id,
                     title: 'Hora de tu Medicina',
                     message: `${med.name} ${med.dosage}`,
-                    localTime: time,
+                    alarmTime: Timestamp.fromDate(alarmDate),
                     clickAction: '/dashboard#medications'
                 });
             }
@@ -433,17 +356,19 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         snapshot.forEach(doc => batch.delete(doc.ref));
         await batch.commit();
 
-        const userDoc = await getUserDocument(user.uid);
-        const subscription = userDoc?.pushSubscription;
-
-        if (fullMed.active && subscription) {
+        if (fullMed.active) {
              for (const time of fullMed.time) {
-                await scheduleAlarm({
-                    userId: user.uid,
+                const [hours, minutes] = time.split(':').map(Number);
+                const alarmDate = new Date();
+                alarmDate.setHours(hours, minutes, 0, 0);
+                 if (alarmDate < new Date()) {
+                    alarmDate.setDate(alarmDate.getDate() + 1);
+                }
+                await addAlarm(user.uid, {
                     medicationId: id,
                     title: 'Hora de tu Medicina',
                     message: `${fullMed.name} ${fullMed.dosage}`,
-                    localTime: time,
+                    alarmTime: Timestamp.fromDate(alarmDate),
                     clickAction: '/dashboard#medications'
                 });
             }
@@ -473,8 +398,6 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         appointments,
         documents,
         medications,
-        fcmState,
-        setupFCM,
         signOutUser,
         updatePersonalInfo,
         updateHealthInfo,
