@@ -48,8 +48,8 @@ export const checkAlarms = functions
                 // If the notification is for a recurring medication, reschedule it.
                 if (alarm.isRecurring) {
                     const nextAlarmTime = new Date(alarm.alarmTime.toDate().getTime());
-                    const intervalHours = alarm.frequency || 24;
-                    nextAlarmTime.setHours(nextAlarmTime.getHours() + intervalHours);
+                    // Reschedule for the next day
+                    nextAlarmTime.setDate(nextAlarmTime.getDate() + 1);
                     
                     const reschedulePromise = doc.ref.update({
                         alarmTime: admin.firestore.Timestamp.fromDate(nextAlarmTime)
@@ -57,7 +57,7 @@ export const checkAlarms = functions
                     console.log(`Rescheduled recurring alarm for ${nextAlarmTime.toISOString()}`);
                     return reschedulePromise;
                 } else {
-                    // If it's a one-time alarm, delete it after sending.
+                    // If it's a one-time alarm (like for an appointment), delete it after sending.
                     return doc.ref.delete();
                 }
             })

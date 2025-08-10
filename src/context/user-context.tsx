@@ -35,9 +35,6 @@ type UserDocument = {
     fcmToken?: string;
 }
 
-// Helper function to introduce a delay
-const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-
 // --- Generic Firestore Functions ---
 
 async function getCollection<T>(userId: string, collectionName: string): Promise<T[]> {
@@ -57,39 +54,21 @@ async function getCollection<T>(userId: string, collectionName: string): Promise
 
 async function getUserDocument(userId: string): Promise<UserDocument | null> {
     const docRef = doc(db, 'users', userId);
-    const maxRetries = 5;
-    let delay = 200;
-
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
-        try {
-            const docSnap = await getDoc(docRef);
-            if (docSnap.exists()) {
-                const data = docSnap.data() as UserDocumentData;
-                if (data && data.personalInfo && data.personalInfo.dateOfBirth) {
-                     return {
-                        personalInfo: {
-                            ...data.personalInfo,
-                            dateOfBirth: data.personalInfo.dateOfBirth.toDate(),
-                        },
-                        healthInfo: data.healthInfo,
-                        fcmToken: data.fcmToken
-                    };
-                }
-            }
-            return null; 
-        } catch (error: any) {
-             const isPermissionError = error.code === 'permission-denied' || error.code === 'unauthenticated';
-            if (isPermissionError && attempt < maxRetries) {
-                console.warn(`Attempt ${attempt} to fetch profile failed due to permissions. Retrying in ${delay}ms...`);
-                await sleep(delay);
-                delay *= 2; 
-            } else {
-                console.error(`Error getting user profile after ${attempt} attempts:`, error);
-                throw new Error('Could not fetch user profile.');
-            }
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists()) {
+        const data = docSnap.data() as UserDocumentData;
+        if (data && data.personalInfo && data.personalInfo.dateOfBirth) {
+                return {
+                personalInfo: {
+                    ...data.personalInfo,
+                    dateOfBirth: data.personalInfo.dateOfBirth.toDate(),
+                },
+                healthInfo: data.healthInfo,
+                fcmToken: data.fcmToken
+            };
         }
     }
-    throw new Error('Could not fetch user profile after all retries.');
+    return null; 
 }
 
 async function updateUserDocument(userId: string, data: Partial<UserDocument>): Promise<void> {
@@ -177,10 +156,9 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   
 
   const checkNotificationSupportAndPermission = useCallback(async () => {
-    const isSupportedResult = await isSupported();
-    if (!isSupportedResult || !('Notification' in window) || !('PushManager' in window)) {
-      setFcmPermissionState('unsupported');
-      return;
+    if (typeof window === 'undefined' || !('Notification' in window) || !('serviceWorker' in navigator) || !('PushManager' in window)) {
+        setFcmPermissionState('unsupported');
+        return;
     }
     setFcmPermissionState(Notification.permission);
   }, []);
@@ -337,6 +315,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
 
   const addAlarm = async (data: any) => {
     try {
+        // Use a collection at the root level for alarms
         await addDoc(collection(db, 'alarms'), {
             ...data,
             createdAt: Timestamp.now(),
@@ -348,11 +327,12 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
 
     const deleteAlarmsForParent = async (parentId: string, type: 'medicationId' | 'appointmentId') => {
         if (!user) return;
-        const q = query(collection(db, "alarms"), where(type, "==", parentId));
+        const q = query(collection(db, "alarms"), where(type, "==", parentId), where("userId", "==", user.uid));
         const snapshot = await getDocs(q);
         const batch = writeBatch(db);
         snapshot.forEach(doc => batch.delete(doc.ref));
         await batch.commit();
+        console.log(`Deleted ${snapshot.size} alarms for ${type}: ${parentId}`);
     }
 
   // Appointments CRUD
@@ -361,7 +341,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         const newDocRef = doc(collection(db, 'users', user.uid, 'appointments'));
         const newAppointment = { ...appointment, id: newDocRef.id };
         await setDoc(newDocRef, { ...appointment, date: Timestamp.fromDate(appointment.date) });
-        setAppointments(prev => [...prev, newAppointment].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()));
+        setAppointments(prev => [...prev, newAppointment].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
         
         if (fcmToken && appointment.reminder && appointment.reminder !== 'none') {
              const reminderTimeMap: {[key: string]: number} = {'1h': 60, '2h': 120, '24h': 1440, '2d': 2880 };
@@ -385,22 +365,25 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         const appointmentDocRef = doc(db, 'users', user.uid, 'appointments', id);
         const data = appointment.date ? { ...appointment, date: Timestamp.fromDate(new Date(appointment.date)) } : appointment;
         await updateDoc(appointmentDocRef, data);
-        setAppointments(prev => prev.map(a => a.id === id ? { ...a, ...appointment } : a).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
+
+        // Optimistic update in UI
+        const updatedAppointmentData = { ...appointments.find(a => a.id === id), ...appointment } as Appointment;
+        setAppointments(prev => prev.map(a => a.id === id ? updatedAppointmentData : a).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
         
         // Update associated alarm
         await deleteAlarmsForParent(id, 'appointmentId');
-        const updatedAppointment = { ...appointments.find(a => a.id === id), ...appointment };
-        if (fcmToken && updatedAppointment.reminder && updatedAppointment.reminder !== 'none' && updatedAppointment.date) {
+
+        if (fcmToken && updatedAppointmentData.reminder && updatedAppointmentData.reminder !== 'none' && updatedAppointmentData.date) {
             const reminderTimeMap: {[key: string]: number} = {'1h': 60, '2h': 120, '24h': 1440, '2d': 2880 };
-             const minutesBefore = reminderTimeMap[updatedAppointment.reminder];
+             const minutesBefore = reminderTimeMap[updatedAppointmentData.reminder];
              if(minutesBefore) {
-                 const alarmTime = new Date(new Date(updatedAppointment.date).getTime() - minutesBefore * 60 * 1000);
+                 const alarmTime = new Date(new Date(updatedAppointmentData.date).getTime() - minutesBefore * 60 * 1000);
                  await addAlarm({
                     userId: user.uid,
                     appointmentId: id,
                     fcmToken,
                     title: "Recordatorio de Cita Actualizado",
-                    message: `Tu cita con ${updatedAppointment.doctor} (${updatedAppointment.specialty}) es pronto.`,
+                    message: `Tu cita con ${updatedAppointmentData.doctor} (${updatedAppointmentData.specialty}) es pronto.`,
                     alarmTime: Timestamp.fromDate(alarmTime),
                     clickAction: '/dashboard#appointments'
                 });
@@ -444,10 +427,10 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         if (med.active && fcmToken) {
             for (const time of med.time) {
                 const [hours, minutes] = time.split(':').map(Number);
-                const alarmTime = new Date();
-                alarmTime.setHours(hours, minutes, 0, 0);
+                const now = new Date();
+                const alarmTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hours, minutes, 0, 0);
 
-                if (alarmTime < new Date()) {
+                if (alarmTime < now) {
                     alarmTime.setDate(alarmTime.getDate() + 1);
                 }
 
@@ -458,8 +441,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
                     title: 'Hora de tu Medicina',
                     message: `${med.name} ${med.dosage}`,
                     alarmTime: Timestamp.fromDate(alarmTime),
-                    isRecurring: true, 
-                    frequency: med.frequency,
+                    isRecurring: true,
                     clickAction: '/dashboard#medications'
                 });
             }
@@ -469,21 +451,20 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     const updateMedication = async (id: string, med: Partial<Medication>) => {
         if (!user) return;
         
-        const fullMedRef = doc(db, 'users', user.uid, 'medications', id);
-        await updateDoc(fullMedRef, med);
-        setMedications(prev => prev.map(m => m.id === id ? { ...m, ...med } : m));
-        
-        const updatedMedDocSnap = await getDoc(fullMedRef);
-        const fullMed = updatedMedDocSnap.data() as Medication;
-
         await deleteAlarmsForParent(id, 'medicationId');
-
+        
+        const medicationDocRef = doc(db, 'users', user.uid, 'medications', id);
+        await updateDoc(medicationDocRef, med);
+        const fullMed = { ...medications.find(m => m.id === id), ...med } as Medication;
+        setMedications(prev => prev.map(m => m.id === id ? fullMed : m));
+        
         if (fullMed.active && fcmToken) {
              for (const time of fullMed.time) {
                 const [hours, minutes] = time.split(':').map(Number);
-                const alarmTime = new Date();
-                alarmTime.setHours(hours, minutes, 0, 0);
-                 if (alarmTime < new Date()) {
+                const now = new Date();
+                const alarmTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hours, minutes, 0, 0);
+
+                 if (alarmTime < now) {
                     alarmTime.setDate(alarmTime.getDate() + 1);
                 }
                 await addAlarm({
@@ -494,7 +475,6 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
                     message: `${fullMed.name} ${fullMed.dosage}`,
                     alarmTime: Timestamp.fromDate(alarmTime),
                     isRecurring: true,
-                    frequency: fullMed.frequency,
                     clickAction: '/dashboard#medications'
                 });
             }
