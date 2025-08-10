@@ -190,9 +190,9 @@ export function PersonalInfo() {
                     <p className="text-muted-foreground">{personalInfo.insuranceProvider}</p>
                 </div>
             )}
-            {requiresProviderName && (
+            {requiresProviderName && personalInfo.insuranceProviderName && (
                 <div>
-                    <strong>Nombre de la Entidad:</strong>
+                    <strong>{countryHealthData[personalInfo.country].inputLabel(personalInfo.insuranceProvider)}:</strong>
                     <p className="text-muted-foreground">{personalInfo.insuranceProviderName}</p>
                 </div>
             )}
@@ -277,7 +277,7 @@ export function PersonalInfo() {
                         </div>
                     )}
                     
-                    {editableInfo.country && countryHealthData[editableInfo.country]?.requiresInputFor.includes(editableInfo.insuranceProvider) && (
+                    {editableInfo.country && editableInfo.insuranceProvider && countryHealthData[editableInfo.country]?.requiresInputFor.includes(editableInfo.insuranceProvider) && (
                         <div className="grid gap-2">
                             <Label htmlFor="insuranceProviderName">{countryHealthData[editableInfo.country].inputLabel(editableInfo.insuranceProvider)}</Label>
                             <Input id="insuranceProviderName" value={editableInfo.insuranceProviderName || ''} onChange={(e) => setEditableInfo({...editableInfo, insuranceProviderName: e.target.value})} />
