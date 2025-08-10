@@ -285,10 +285,12 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
 
         try {
             const permission = await Notification.requestPermission();
+            // This is the key change: update the state immediately after the user decides.
             setFcmState(permission);
 
             if (permission === 'granted') {
                 const messaging = getMessaging(auth.app);
+                // IMPORTANT: You need to get this VAPID key from your Firebase project settings.
                 const VAPID_KEY = "BDC_g-k_7o3t8z5Jq_r-r8w8A_Qj_6h_4wX8g_V_y_Z_6k_8J_1n_7m_3T_0n_9S_2c"; 
                 const currentToken = await getToken(messaging, { vapidKey: VAPID_KEY });
                 
