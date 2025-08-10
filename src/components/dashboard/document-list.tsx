@@ -3,7 +3,6 @@
 
 import { useState, useRef, useEffect, useCallback, useContext } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { MoreVertical, FileText, View, Trash2, Camera, FilePenLine, RefreshCcw, SwitchCamera, Loader2 } from "lucide-react";
@@ -245,24 +244,18 @@ export function DocumentList() {
                 <CardDescription>Sube, visualiza y gestiona tus expedientes médicos.</CardDescription>
             </CardHeader>
             <CardContent>
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead>Nombre</TableHead>
-                            <TableHead className="hidden sm:table-cell">Categoría</TableHead>
-                            <TableHead className="hidden md:table-cell">Subido</TableHead>
-                            <TableHead className="text-right">Acciones</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
+                {documents.length > 0 ? (
+                    <div className="space-y-3">
                         {documents.map((doc) => (
-                            <TableRow key={doc.id}>
-                                <TableCell className="font-medium">{doc.name}</TableCell>
-                                <TableCell className="hidden sm:table-cell">
-                                    <Badge variant="secondary">{getCategoryLabel(doc.category)}</Badge>
-                                </TableCell>
-                                <TableCell className="hidden md:table-cell">{format(doc.uploadedAt, 'PP', { locale: es })}</TableCell>
-                                <TableCell className="text-right">
+                           <div key={doc.id} className="flex items-center justify-between gap-3 rounded-lg border p-3">
+                                <div className="flex-1 min-w-0">
+                                    <p className="font-medium truncate">{doc.name}</p>
+                                    <div className="text-sm text-muted-foreground flex flex-wrap gap-x-3 items-center">
+                                        <Badge variant="secondary" className="mt-1">{getCategoryLabel(doc.category)}</Badge>
+                                        <span className="mt-1">{format(doc.uploadedAt, 'PP', { locale: es })}</span>
+                                    </div>
+                                </div>
+                                <div className="flex-shrink-0">
                                     <DropdownMenu>
                                         <DropdownMenuTrigger asChild>
                                             <Button variant="ghost" size="icon">
@@ -277,11 +270,13 @@ export function DocumentList() {
                                             </DropdownMenuItem>
                                         </DropdownMenuContent>
                                     </DropdownMenu>
-                                </TableCell>
-                            </TableRow>
+                                </div>
+                           </div>
                         ))}
-                    </TableBody>
-                </Table>
+                    </div>
+                ) : (
+                    <p className="text-center text-muted-foreground py-8">No has subido ningún documento.</p>
+                )}
             </CardContent>
             <CardFooter>
                 <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
