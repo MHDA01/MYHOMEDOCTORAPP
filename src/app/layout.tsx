@@ -10,15 +10,6 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
 
-  useEffect(() => {
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker
-        .register('/sw.js')
-        .then((registration) => console.log('Service Worker registrado con éxito:', registration))
-        .catch((error) => console.log('Error en el registro del Service Worker:', error));
-    }
-  }, []);
-
   return (
     <html lang="es" suppressHydrationWarning>
       <head>
@@ -37,7 +28,7 @@ export default function RootLayout({
         <meta name="format-detection" content="telephone=no" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="theme-color" content="#35577C" />
-        <link rel="apple-touch-icon" href="https://i.postimg.cc/J7N5r89y/LOGO-1.png" />
+        <link rel="apple-touch-icon" href="/icons/icon-192x192.png" />
       </head>
       <body className="font-body antialiased">
         {children}
