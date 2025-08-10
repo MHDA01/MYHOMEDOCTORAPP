@@ -1,3 +1,4 @@
+
 /**
  * @fileoverview Lógica para los recordatorios de citas y medicamentos.
  * Contiene las Cloud Functions programadas que se encargan de enviar
@@ -33,8 +34,8 @@ export const checkAppointmentReminders = functions
 
     // --- LÓGICA DE PRUEBA ---
     // Vamos a enviar una notificación de prueba a un usuario específico para verificar.
-    // Asegúrate de que este ID de usuario exista en tu Firestore y tenga un `notificationToken`.
-    const TEST_USER_ID = "gNyzfI3SmYYILnH03p9T6y90mHl1"; // Reemplaza con un ID de usuario válido de tu DB
+    // Reemplaza el UID de abajo con el tuyo para recibir la notificación.
+    const TEST_USER_ID = "REEMPLAZAR_CON_TU_USER_ID"; 
     try {
         const userDoc = await db.collection("users").doc(TEST_USER_ID).get();
         const user = userDoc.data();
@@ -206,3 +207,5 @@ export const checkMedicationReminders = functions
     
     return null;
   });
+
+    
