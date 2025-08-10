@@ -1,24 +1,21 @@
 {
-  "name": "MyHomeDoctor App",
-  "short_name": "MHD",
-  "start_url": "/",
+  "name": "MiDoctorDeCasaApp",
+  "short_name": "MiDoctor",
+  "description": "Tu asistente personal de gestión de salud.",
+  "start_url": "/dashboard",
   "display": "standalone",
-  "background_color": "#ffffff",
+  "background_color": "#F8F6F3",
   "theme_color": "#35577C",
-  "description": "Una aplicación web progresiva para la gestión de la salud con soporte para notificaciones push.",
   "icons": [
     {
       "src": "https://i.postimg.cc/J7N5r89y/LOGO-1.png",
       "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any maskable"
+      "type": "image/png"
     },
     {
       "src": "https://i.postimg.cc/J7N5r89y/LOGO-1.png",
       "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any maskable"
+      "type": "image/png"
     }
-  ],
-  "gcm_sender_id": "103953800507"
+  ]
 }
