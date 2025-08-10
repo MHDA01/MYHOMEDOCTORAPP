@@ -1,39 +1,38 @@
-// Define a version for your cache
-const CACHE_NAME = 'my-home-doctor-app-cache-v1';
 
-// List the files you want to cache
+const CACHE_NAME = 'my-home-doctor-cache-v1';
+const DYNAMIC_CACHE_NAME = 'dynamic-cache-v1';
+
+// URLs a cachear durante la instalación.
+// Es importante incluir las rutas principales y los recursos estáticos.
 const urlsToCache = [
   '/',
   '/login',
   '/dashboard',
   '/manifest.webmanifest',
-  // Add other important assets like CSS, JS, and key images
+  '/favicon.ico'
 ];
 
-// Install a service worker
 self.addEventListener('install', event => {
   console.log('Service Worker: Instalando...');
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => {
-        console.log('Service Worker: Cache abierto');
+        console.log('Service Worker: Abriendo caché y cacheando archivos estáticos');
         return cache.addAll(urlsToCache);
       })
-      .then(() => self.skipWaiting()) // Activate the new SW immediately
+      .then(() => self.skipWaiting())
   );
 });
 
-// Activate the service worker and clean up old caches
 self.addEventListener('activate', event => {
   console.log('Service Worker: Activando...');
-  const cacheWhitelist = [CACHE_NAME];
   event.waitUntil(
     caches.keys().then(cacheNames => {
       return Promise.all(
-        cacheNames.map(cacheName => {
-          if (cacheWhitelist.indexOf(cacheName) === -1) {
-            console.log('Service Worker: Limpiando cache antiguo', cacheName);
-            return caches.delete(cacheName);
+        cacheNames.map(cache => {
+          if (cache !== CACHE_NAME && cache !== DYNAMIC_CACHE_NAME) {
+            console.log('Service Worker: Limpiando caché antigua', cache);
+            return caches.delete(cache);
           }
         })
       );
@@ -42,45 +41,61 @@ self.addEventListener('activate', event => {
   return self.clients.claim();
 });
 
-// Intercept fetch requests
 self.addEventListener('fetch', event => {
-  const url = new URL(event.request.url);
+  const { request } = event;
+  const url = new URL(request.url);
 
-  // Ignore non-http/https requests (like chrome-extension://)
-  if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+  // No cachear peticiones a Firebase ni extensiones de Chrome.
+  if (url.origin.startsWith('https://firestore.googleapis.com') || url.protocol === 'chrome-extension:') {
     return;
   }
   
-  // Strategy: Network falling back to cache
+  // Estrategia Stale-While-Revalidate para páginas y assets de Next.js
+  if (url.origin === self.location.origin) {
+    event.respondWith(
+      caches.open(DYNAMIC_CACHE_NAME).then(async (cache) => {
+        const cachedResponse = await cache.match(request);
+        
+        const fetchPromise = fetch(request).then(networkResponse => {
+          // Si la respuesta es válida, la cacheamos
+          if (networkResponse.ok) {
+            cache.put(request, networkResponse.clone());
+          }
+          return networkResponse;
+        }).catch(() => {
+          // Si la red falla, y no hay nada en caché para esta petición específica
+          // (por ejemplo, un recurso de _next/static), podemos intentar devolver
+          // la página de inicio como fallback para la navegación.
+          if (request.mode === 'navigate') {
+            return caches.match('/');
+          }
+        });
+
+        // Devolvemos la respuesta de la caché si existe, mientras la red actualiza.
+        // Si no está en caché, esperamos a la respuesta de la red.
+        return cachedResponse || fetchPromise;
+      })
+    );
+    return;
+  }
+  
+  // Estrategia Cache First para recursos externos como fuentes e imágenes
   event.respondWith(
-    fetch(event.request)
-      .then(response => {
-        // Check if we received a valid response
-        if (!response || response.status !== 200 || response.type !== 'basic') {
-          return response;
-        }
-
-        // IMPORTANT: Clone the response. A response is a stream
-        // and because we want the browser to consume the response
-        // as well as the cache consuming the response, we need
-        // to clone it so we have two streams.
-        const responseToCache = response.clone();
-
-        caches.open(CACHE_NAME)
-          .then(cache => {
-            cache.put(event.request, responseToCache);
-          });
-
-        return response;
-      })
-      .catch(() => {
-        // If the network request fails, try to get it from the cache.
-        return caches.match(event.request)
-          .then(response => {
-            if (response) {
-              return response;
-            }
-          });
-      })
+    caches.match(request).then(cachedResponse => {
+      return cachedResponse || fetch(request).then(networkResponse => {
+        // Cachear recursos externos válidos para futuras visitas
+        const cacheable = networkResponse.clone();
+        caches.open(DYNAMIC_CACHE_NAME).then(cache => {
+          cache.put(request, cacheable);
+        });
+        return networkResponse;
+      });
+    })
   );
+});
+
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
 });
