@@ -6,9 +6,9 @@ import type { PersonalInfo, HealthInfo, Appointment, Document as DocumentType, M
 import { auth, db } from '@/lib/firebase';
 import { onAuthStateChanged, User, signOut, updateProfile } from 'firebase/auth';
 import { doc, getDoc, setDoc, Timestamp, collection, getDocs, addDoc, updateDoc, deleteDoc, query, orderBy, writeBatch, where } from 'firebase/firestore';
-import { getMessaging, getToken, isSupported } from 'firebase/messaging';
+import { getMessaging, getToken, isSupported, onMessage } from 'firebase/messaging';
 import { scheduleAlarm } from '@/lib/alarms';
-
+import { useToast } from '@/hooks/use-toast';
 
 // We need a way to serialize Date objects to be stored in Firestore
 // and deserialize them back to Date objects.
@@ -167,13 +167,47 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
   const [fcmToken, setFcmToken] = useState<string | null>(null);
   const [fcmState, setFcmState] = useState<UserContextType['fcmState']>('default');
+  const { toast } = useToast();
   
-  useEffect(() => {
-    // Universal method to check notification permission status, compatible with all browsers.
-    if ('Notification' in window) {
+  const updateFcmState = () => {
+     if ('Notification' in window) {
       setFcmState(Notification.permission);
     }
+  }
+
+  useEffect(() => {
+    updateFcmState();
   }, []);
+
+  // Set up foreground message listener
+  useEffect(() => {
+    if (typeof window === 'undefined' || !('Notification' in window)) {
+        return;
+    }
+
+    const initMessaging = async () => {
+        if (await isSupported()) {
+            const messaging = getMessaging(auth.app);
+            const unsubscribe = onMessage(messaging, (payload) => {
+                console.log('Foreground message received.', payload);
+                toast({
+                    title: payload.notification?.title || 'Nueva Notificación',
+                    description: payload.notification?.body || '',
+                });
+            });
+            return unsubscribe;
+        }
+    };
+
+    let unsubscribe: (() => void) | undefined;
+    initMessaging().then(unsub => { unsubscribe = unsub });
+
+    return () => {
+        if (unsubscribe) {
+            unsubscribe();
+        }
+    };
+  }, [toast]);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
@@ -181,7 +215,6 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       if (currentUser) {
         setUser(currentUser);
       } else {
-        // User is signed out
         setUser(null);
         setPersonalInfo(null);
         setHealthInfo(null);
@@ -205,7 +238,6 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
               setPersonalInfo(userDoc.personalInfo);
               setHealthInfo(userDoc.healthInfo);
           } else {
-              // This case happens for new users, especially anonymous ones
               const isAnon = user.isAnonymous;
               const defaultPersonalInfo: PersonalInfo = isAnon ? initialAnonymousPersonalInfo : {
                   firstName: user.displayName?.split(' ')[0] || 'Nuevo',
@@ -226,7 +258,6 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
               setHealthInfo(defaultHealthInfo);
           }
           
-          // Fetch subcollections
           const [appointmentsData, documentsData, medicationsData] = await Promise.all([
               getCollection<SerializableAppointment>(user.uid, 'appointments'),
               getCollection<SerializableDocument>(user.uid, 'documents'),
@@ -260,7 +291,6 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
 
   const updatePersonalInfo = async (info: PersonalInfo) => {
     if (user) {
-      // Optimistic update
       setPersonalInfo(info);
       if(auth.currentUser && auth.currentUser.displayName !== `${info.firstName} ${info.lastName}`) {
           await updateProfile(auth.currentUser, { displayName: `${info.firstName} ${info.lastName}` });
@@ -276,7 +306,6 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       }
   };
 
-
     const setupFCM = async () => {
         if (!(await isSupported())) {
             console.log("FCM is not supported in this browser.");
@@ -285,12 +314,10 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
 
         try {
             const permission = await Notification.requestPermission();
-            // This is the key change: update the state immediately after the user decides.
-            setFcmState(permission);
+            updateFcmState(); // Update state immediately after user action
 
             if (permission === 'granted') {
                 const messaging = getMessaging(auth.app);
-                // IMPORTANT: You need to get this VAPID key from your Firebase project settings.
                 const VAPID_KEY = "BDC_g-k_7o3t8z5Jq_r-r8w8A_Qj_6h_4wX8g_V_y_Z_6k_8J_1n_7m_3T_0n_9S_2c"; 
                 const currentToken = await getToken(messaging, { vapidKey: VAPID_KEY });
                 
@@ -300,7 +327,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
                         await setDoc(doc(db, 'users', user.uid), { fcmToken: currentToken }, { merge: true });
                     }
                 } else {
-                    console.warn('No registration token available. Request permission to generate one.');
+                    console.warn('No registration token available.');
                 }
             } else {
                  console.warn('Notification permission denied.');
@@ -314,22 +341,17 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   // Appointments CRUD
     const addAppointment = async (appointment: Omit<Appointment, 'id'>) => {
         if (!user) return;
-        
         const newDocRef = doc(collection(db, 'users', user.uid, 'appointments'));
         const newAppointment = { ...appointment, id: newDocRef.id };
-        
         await setDoc(newDocRef, { ...appointment, date: Timestamp.fromDate(appointment.date) });
-
         setAppointments(prev => [...prev, newAppointment].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()));
     };
     const updateAppointment = async (id: string, appointment: Partial<Appointment>) => {
         if (!user) return;
-        
         const appointmentDocRef = doc(db, 'users', user.uid, 'appointments', id);
         const data = appointment.date ? { ...appointment, date: Timestamp.fromDate(new Date(appointment.date)) } : appointment;
         await updateDoc(appointmentDocRef, data);
         setAppointments(prev => prev.map(a => a.id === id ? { ...a, ...appointment } : a).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
-
     };
     const deleteAppointment = async (id: string) => {
         if (!user) return;
@@ -416,13 +438,11 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     const deleteMedication = async (id: string) => {
         if (!user) return;
         await deleteDoc(doc(db, 'users', user.uid, 'medications', id));
-        
         const q = query(collection(db, "alarms"), where("userId", "==", user.uid), where("medicationId", "==", id));
         const snapshot = await getDocs(q);
         const batch = writeBatch(db);
         snapshot.forEach(doc => batch.delete(doc.ref));
         await batch.commit();
-
         setMedications(prev => prev.filter(m => m.id !== id));
     };
 

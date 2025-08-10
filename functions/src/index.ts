@@ -31,11 +31,15 @@ exports.checkAlarms = functions
         notification: {
           title: alarm.title || "¡Alarma!",
           body: alarm.message || "Es la hora de tu recordatorio.",
+          icon: "https://i.postimg.cc/J7N5r89y/LOGO-1.png",
         },
         token: alarm.fcmToken,
         webpush: {
             fcmOptions: {
                 link: alarm.clickAction || '/'
+            },
+            notification: {
+                badge: "https://i.postimg.cc/J7N5r89y/LOGO-1.png",
             }
         }
       };
@@ -47,7 +51,9 @@ exports.checkAlarms = functions
         })
         .catch(error => {
           console.error("Error al enviar notificación:", error);
+          // Si el token no es válido, borramos la alarma para no reintentar
           if (error.code === 'messaging/registration-token-not-registered') {
+            console.log(`Token inválido ${alarm.fcmToken}. Borrando alarma.`);
             return doc.ref.delete();
           }
           return null;
