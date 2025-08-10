@@ -1,11 +1,13 @@
 'use client';
-import { getMessaging, getToken, onMessage } from "firebase/messaging";
+import { getMessaging, getToken, onMessage, isSupported } from "firebase/messaging";
 import { app, db } from "./firebase";
 import { doc, setDoc } from "firebase/firestore";
 
 export const setupNotifications = async (userId: string, toast: (options: any) => void) => {
-  if (typeof window === 'undefined' || !('serviceWorker' in navigator)) {
-    console.log("Este navegador no soporta notificaciones push.");
+  // Primero, verificamos si el navegador es compatible con Firebase Messaging
+  const supported = await isSupported();
+  if (!supported) {
+    console.log("Este navegador no soporta notificaciones push de Firebase.");
     return;
   }
   
