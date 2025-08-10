@@ -5,9 +5,8 @@ import { createContext, useState, useEffect, ReactNode, useCallback } from 'reac
 import type { PersonalInfo, HealthInfo, Appointment, Document as DocumentType, Medication } from '@/lib/types';
 import { auth, db } from '@/lib/firebase';
 import { onAuthStateChanged, User, signOut, updateProfile } from 'firebase/auth';
-import { doc, getDoc, setDoc, Timestamp, collection, getDocs, addDoc, updateDoc, deleteDoc, query, orderBy, writeBatch, where } from 'firebase/firestore';
+import { doc, getDoc, setDoc, Timestamp, collection, getDocs, addDoc, updateDoc, deleteDoc, query, orderBy } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
-import { getMessaging, getToken, onMessage, isSupported } from 'firebase/messaging';
 
 // We need a way to serialize Date objects to be stored in Firestore
 // and deserialize them back to Date objects.
@@ -25,14 +24,12 @@ type SerializableDocument = Omit<DocumentType, 'uploadedAt'> & {
 
 type UserDocumentData = {
     personalInfo: SerializablePersonalInfo,
-    healthInfo: HealthInfo,
-    fcmToken?: string;
+    healthInfo: HealthInfo
 }
 
 type UserDocument = {
     personalInfo: PersonalInfo;
     healthInfo: HealthInfo;
-    fcmToken?: string;
 }
 
 // --- Generic Firestore Functions ---
@@ -64,7 +61,6 @@ async function getUserDocument(userId: string): Promise<UserDocument | null> {
                     dateOfBirth: data.personalInfo.dateOfBirth.toDate(),
                 },
                 healthInfo: data.healthInfo,
-                fcmToken: data.fcmToken
             };
         }
     }
@@ -93,10 +89,6 @@ async function updateUserDocument(userId: string, data: Partial<UserDocument>): 
   }
 }
 
-// Type for the state of FCM/Push Notifications
-type FcmPermissionState = 'granted' | 'denied' | 'default' | 'unsupported';
-
-
 interface UserContextType {
   personalInfo: PersonalInfo | null;
   healthInfo: HealthInfo | null;
@@ -117,8 +109,6 @@ interface UserContextType {
   loading: boolean;
   user: User | null;
   signOutUser: () => Promise<void>;
-  fcmPermissionState: FcmPermissionState;
-  requestNotificationPermission: () => Promise<void>;
 }
 
 export const UserContext = createContext<UserContextType | undefined>(undefined);
@@ -150,55 +140,9 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   const [documents, setDocuments] = useState<DocumentType[]>([]);
   const [medications, setMedications] = useState<Medication[]>([]);
   const [loading, setLoading] = useState(true);
-  const [fcmPermissionState, setFcmPermissionState] = useState<FcmPermissionState>('default');
-  const [fcmToken, setFcmToken] = useState<string | null>(null);
+  
   const { toast } = useToast();
   
-
-  const checkNotificationSupportAndPermission = useCallback(async () => {
-    if (typeof window === 'undefined' || !('Notification' in window) || !('serviceWorker' in navigator) || !('PushManager' in window)) {
-        setFcmPermissionState('unsupported');
-        return;
-    }
-    setFcmPermissionState(Notification.permission);
-  }, []);
-
-  useEffect(() => {
-    checkNotificationSupportAndPermission();
-  }, [checkNotificationSupportAndPermission]);
-
-
-  const requestNotificationPermission = async () => {
-    if (fcmPermissionState !== 'default') return;
-
-    try {
-      const permission = await Notification.requestPermission();
-      setFcmPermissionState(permission); // Update state immediately
-
-      if (permission === 'granted' && user) {
-        toast({ title: "Permiso concedido", description: "Obteniendo token..." });
-        const messaging = getMessaging();
-        // IMPORTANT: Replace with your actual VAPID key
-        const newFcmToken = await getToken(messaging, { vapidKey: 'BDSm_gZ27Y6gW6S_q0CEy_yO25OHj-bCFsM0eyIu5m_4tA_gI4-XjJ8g_1o2hZ8w_8Y9c9Z8w9_X_8x8y_A' });
-        
-        if (newFcmToken) {
-            setFcmToken(newFcmToken);
-            await updateUserDocument(user.uid, { fcmToken: newFcmToken });
-            toast({ title: "¡Éxito!", description: "Las notificaciones han sido activadas." });
-        } else {
-             toast({ variant: 'destructive', title: "Error", description: "No se pudo obtener el token de notificación." });
-        }
-      } else if (permission === 'denied') {
-        toast({ variant: 'destructive', title: "Permiso denegado", description: "Las notificaciones están bloqueadas en la configuración de tu navegador." });
-      }
-
-    } catch (error) {
-      console.error('Error requesting notification permission:', error);
-      toast({ variant: 'destructive', title: "Error de Notificación", description: "Ocurrió un error al solicitar el permiso." });
-    }
-  };
-
-
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setLoading(true);
@@ -227,7 +171,6 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
           if (userDoc) {
               setPersonalInfo(userDoc.personalInfo);
               setHealthInfo(userDoc.healthInfo);
-              setFcmToken(userDoc.fcmToken || null);
           } else {
               const isAnon = user.isAnonymous;
               const defaultPersonalInfo: PersonalInfo = isAnon ? initialAnonymousPersonalInfo : {
@@ -272,22 +215,6 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [user]);
 
-  // Set up foreground message handler
-  useEffect(() => {
-    if (typeof window !== 'undefined' && 'serviceWorker' in navigator && fcmPermissionState === 'granted') {
-        const messaging = getMessaging();
-        const unsubscribe = onMessage(messaging, (payload) => {
-            console.log('Foreground message received.', payload);
-            toast({
-                title: payload.notification?.title,
-                description: payload.notification?.body,
-            });
-        });
-        return () => unsubscribe();
-    }
-  }, [fcmPermissionState, toast]);
-
-
   const signOutUser = async () => {
     try {
         await signOut(auth);
@@ -313,28 +240,6 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       }
   };
 
-  const addAlarm = async (data: any) => {
-    try {
-        // Use a collection at the root level for alarms
-        await addDoc(collection(db, 'alarms'), {
-            ...data,
-            createdAt: Timestamp.now(),
-        });
-    } catch (error) {
-        console.error("Error adding alarm: ", error);
-    }
-  };
-
-    const deleteAlarmsForParent = async (parentId: string, type: 'medicationId' | 'appointmentId') => {
-        if (!user) return;
-        const q = query(collection(db, "alarms"), where(type, "==", parentId), where("userId", "==", user.uid));
-        const snapshot = await getDocs(q);
-        const batch = writeBatch(db);
-        snapshot.forEach(doc => batch.delete(doc.ref));
-        await batch.commit();
-        console.log(`Deleted ${snapshot.size} alarms for ${type}: ${parentId}`);
-    }
-
   // Appointments CRUD
     const addAppointment = async (appointment: Omit<Appointment, 'id'>) => {
         if (!user) return;
@@ -342,58 +247,18 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         const newAppointment = { ...appointment, id: newDocRef.id };
         await setDoc(newDocRef, { ...appointment, date: Timestamp.fromDate(appointment.date) });
         setAppointments(prev => [...prev, newAppointment].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
-        
-        if (fcmToken && appointment.reminder && appointment.reminder !== 'none') {
-             const reminderTimeMap: {[key: string]: number} = {'1h': 60, '2h': 120, '24h': 1440, '2d': 2880 };
-             const minutesBefore = reminderTimeMap[appointment.reminder];
-             if(minutesBefore) {
-                 const alarmTime = new Date(appointment.date.getTime() - minutesBefore * 60 * 1000);
-                 await addAlarm({
-                    userId: user.uid,
-                    appointmentId: newDocRef.id,
-                    fcmToken,
-                    title: "Recordatorio de Cita",
-                    message: `Tu cita con ${appointment.doctor} (${appointment.specialty}) es pronto.`,
-                    alarmTime: Timestamp.fromDate(alarmTime),
-                    clickAction: '/dashboard#appointments'
-                });
-             }
-        }
     };
     const updateAppointment = async (id: string, appointment: Partial<Appointment>) => {
         if (!user) return;
         const appointmentDocRef = doc(db, 'users', user.uid, 'appointments', id);
         const data = appointment.date ? { ...appointment, date: Timestamp.fromDate(new Date(appointment.date)) } : appointment;
         await updateDoc(appointmentDocRef, data);
-
-        // Optimistic update in UI
         const updatedAppointmentData = { ...appointments.find(a => a.id === id), ...appointment } as Appointment;
         setAppointments(prev => prev.map(a => a.id === id ? updatedAppointmentData : a).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
-        
-        // Update associated alarm
-        await deleteAlarmsForParent(id, 'appointmentId');
-
-        if (fcmToken && updatedAppointmentData.reminder && updatedAppointmentData.reminder !== 'none' && updatedAppointmentData.date) {
-            const reminderTimeMap: {[key: string]: number} = {'1h': 60, '2h': 120, '24h': 1440, '2d': 2880 };
-             const minutesBefore = reminderTimeMap[updatedAppointmentData.reminder];
-             if(minutesBefore) {
-                 const alarmTime = new Date(new Date(updatedAppointmentData.date).getTime() - minutesBefore * 60 * 1000);
-                 await addAlarm({
-                    userId: user.uid,
-                    appointmentId: id,
-                    fcmToken,
-                    title: "Recordatorio de Cita Actualizado",
-                    message: `Tu cita con ${updatedAppointmentData.doctor} (${updatedAppointmentData.specialty}) es pronto.`,
-                    alarmTime: Timestamp.fromDate(alarmTime),
-                    clickAction: '/dashboard#appointments'
-                });
-             }
-        }
     };
     const deleteAppointment = async (id: string) => {
         if (!user) return;
         await deleteDoc(doc(db, 'users', user.uid, 'appointments', id));
-        await deleteAlarmsForParent(id, 'appointmentId');
         setAppointments(prev => prev.filter(a => a.id !== id));
     };
 
@@ -423,68 +288,19 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         const newMed = { ...med, id: newDocRef.id };
         await setDoc(newDocRef, newMed);
         setMedications(prev => [...prev, newMed]);
-        
-        if (med.active && fcmToken) {
-            for (const time of med.time) {
-                const [hours, minutes] = time.split(':').map(Number);
-                const now = new Date();
-                const alarmTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hours, minutes, 0, 0);
-
-                if (alarmTime < now) {
-                    alarmTime.setDate(alarmTime.getDate() + 1);
-                }
-
-                await addAlarm({
-                    userId: user.uid,
-                    medicationId: newMed.id,
-                    fcmToken: fcmToken,
-                    title: 'Hora de tu Medicina',
-                    message: `${med.name} ${med.dosage}`,
-                    alarmTime: Timestamp.fromDate(alarmTime),
-                    isRecurring: true,
-                    clickAction: '/dashboard#medications'
-                });
-            }
-        }
     };
 
     const updateMedication = async (id: string, med: Partial<Medication>) => {
         if (!user) return;
-        
-        await deleteAlarmsForParent(id, 'medicationId');
-        
         const medicationDocRef = doc(db, 'users', user.uid, 'medications', id);
         await updateDoc(medicationDocRef, med);
         const fullMed = { ...medications.find(m => m.id === id), ...med } as Medication;
         setMedications(prev => prev.map(m => m.id === id ? fullMed : m));
-        
-        if (fullMed.active && fcmToken) {
-             for (const time of fullMed.time) {
-                const [hours, minutes] = time.split(':').map(Number);
-                const now = new Date();
-                const alarmTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hours, minutes, 0, 0);
-
-                 if (alarmTime < now) {
-                    alarmTime.setDate(alarmTime.getDate() + 1);
-                }
-                await addAlarm({
-                    userId: user.uid,
-                    medicationId: id,
-                    fcmToken: fcmToken,
-                    title: 'Hora de tu Medicina',
-                    message: `${fullMed.name} ${fullMed.dosage}`,
-                    alarmTime: Timestamp.fromDate(alarmTime),
-                    isRecurring: true,
-                    clickAction: '/dashboard#medications'
-                });
-            }
-        }
     };
     
     const deleteMedication = async (id: string) => {
         if (!user) return;
         await deleteDoc(doc(db, 'users', user.uid, 'medications', id));
-        await deleteAlarmsForParent(id, 'medicationId');
         setMedications(prev => prev.filter(m => m.id !== id));
     };
 
@@ -510,8 +326,6 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         addMedication,
         updateMedication,
         deleteMedication,
-        fcmPermissionState,
-        requestNotificationPermission
     }}>
       {children}
     </UserContext.Provider>

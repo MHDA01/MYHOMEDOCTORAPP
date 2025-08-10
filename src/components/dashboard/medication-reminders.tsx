@@ -39,9 +39,7 @@ export function MedicationReminders() {
     const { toast } = useToast();
 
     if (!context) throw new Error("MedicationReminders must be used within a UserProvider");
-    const { medications, addMedication, updateMedication, deleteMedication, loading, fcmPermissionState, requestNotificationPermission } = context;
-
-    const notificationsEnabled = fcmPermissionState === 'granted';
+    const { medications, addMedication, updateMedication, deleteMedication, loading } = context;
 
     useEffect(() => {
         if (!isDialogOpen) return;
@@ -170,25 +168,6 @@ export function MedicationReminders() {
                  <CardDescription>Mantente al día con tu horario de medicación. Activa las notificaciones para recibir las alertas.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-                 {fcmPermissionState === 'default' && (
-                    <Alert>
-                        <Info className="h-4 w-4" />
-                        <AlertTitle>Activar Recordatorios</AlertTitle>
-                        <AlertDescription>
-                            Para recibir notificaciones push, debes dar permiso a la aplicación.
-                            <Button className="mt-2" size="sm" onClick={requestNotificationPermission}>Activar</Button>
-                        </AlertDescription>
-                    </Alert>
-                )}
-                 {fcmPermissionState === 'denied' && (
-                    <Alert variant="destructive">
-                        <AlertTriangle className="h-4 w-4" />
-                        <AlertTitle>Notificaciones Bloqueadas</AlertTitle>
-                        <AlertDescription>
-                           Has bloqueado las notificaciones. Para recibir recordatorios, debes activarlas manualmente en la configuración de tu navegador.
-                        </AlertDescription>
-                    </Alert>
-                )}
                 {medications.length === 0 && <p className="text-center text-muted-foreground pt-4">No has añadido ningún medicamento.</p>}
                 {medications.map((med) => (
                     <div key={med.id} className="flex items-center justify-between rounded-lg border p-3">
@@ -295,5 +274,3 @@ export function MedicationReminders() {
         </Card>
     );
 }
-
-    

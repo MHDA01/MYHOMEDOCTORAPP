@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect, useContext, useCallback } from 'react';
+import { useState, useEffect, useContext } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Calendar as CalendarIcon, CalendarClock, PlusCircle, MoreVertical, FilePenLine, Trash2, Bell, Loader2 } from "lucide-react";
@@ -53,13 +53,11 @@ export function Appointments() {
     const [isPopoverOpen, setIsPopoverOpen] = useState(false);
 
     if (!context) throw new Error("Appointments must be used within a UserProvider");
-    const { appointments, addAppointment, updateAppointment, deleteAppointment, loading, fcmPermissionState } = context;
+    const { appointments, addAppointment, updateAppointment, deleteAppointment, loading } = context;
     
     const [upcomingAppointments, setUpcomingAppointments] = useState<Appointment[]>([]);
     const [pastAppointments, setPastAppointments] = useState<Appointment[]>([]);
     
-    const notificationsEnabled = fcmPermissionState === 'granted';
-
     useEffect(() => {
         const now = new Date();
         const sortedAppointments = [...appointments].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
@@ -237,7 +235,7 @@ export function Appointments() {
                             </div>
                             <div className="grid gap-2">
                                 <Label htmlFor="reminder">Recordatorio</Label>
-                                <Select value={reminder} onValueChange={setReminder} disabled={!notificationsEnabled}>
+                                <Select value={reminder} onValueChange={setReminder}>
                                     <SelectTrigger id="reminder">
                                         <SelectValue placeholder="Selecciona un recordatorio" />
                                     </SelectTrigger>
@@ -249,7 +247,6 @@ export function Appointments() {
                                         <SelectItem value="none">Sin recordatorio</SelectItem>
                                     </SelectContent>
                                 </Select>
-                                {!notificationsEnabled && <p className="text-xs text-muted-foreground">Activa las notificaciones para usar esta función.</p>}
                             </div>
                         </div>
                         <DialogFooter>
