@@ -132,7 +132,7 @@ interface UserContextType {
   loading: boolean;
   user: User | null;
   fcmToken: string | null;
-  fcmState: 'denied' | 'granted' | 'default' | 'prompt';
+  fcmState: 'denied' | 'granted' | 'default';
   setupFCM: () => Promise<void>;
   signOutUser: () => Promise<void>;
 }
@@ -169,29 +169,10 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   const [fcmState, setFcmState] = useState<UserContextType['fcmState']>('default');
   
   useEffect(() => {
-    const checkNotificationPermission = async () => {
-        if (!('permissions' in navigator)) {
-            if ('Notification' in window) {
-              setFcmState(Notification.permission as UserContextType['fcmState']);
-            }
-            return;
-        }
-        try {
-            const permissionStatus = await navigator.permissions.query({ name: 'notifications' });
-            setFcmState(permissionStatus.state);
-
-            permissionStatus.onchange = () => {
-                setFcmState(permissionStatus.state);
-            };
-        } catch (error) {
-            console.error("Error querying notification permissions:", error);
-            if ('Notification' in window) {
-              setFcmState(Notification.permission as UserContextType['fcmState']);
-            }
-        }
+    // Universal method to check notification permission status, compatible with all browsers.
+    if ('Notification' in window) {
+      setFcmState(Notification.permission);
     }
-
-    checkNotificationPermission();
   }, []);
 
   useEffect(() => {
@@ -308,7 +289,6 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
 
             if (permission === 'granted') {
                 const messaging = getMessaging(auth.app);
-                // NOTE: Replace with your actual VAPID key
                 const VAPID_KEY = "BDC_g-k_7o3t8z5Jq_r-r8w8A_Qj_6h_4wX8g_V_y_Z_6k_8J_1n_7m_3T_0n_9S_2c"; 
                 const currentToken = await getToken(messaging, { vapidKey: VAPID_KEY });
                 
@@ -474,5 +454,3 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     </UserContext.Provider>
   );
 };
-
-    
