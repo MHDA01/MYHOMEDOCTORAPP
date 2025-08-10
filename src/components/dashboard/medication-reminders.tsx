@@ -200,7 +200,7 @@ export function MedicationReminders() {
                             </div>
                         </div>
                         <div className="flex items-center gap-2">
-                             <Switch checked={med.active} onCheckedChange={() => handleToggleActive(med)} disabled={!notificationsEnabled} aria-label={`Activar o desactivar recordatorio para ${med.name}`}/>
+                             <Switch checked={med.active} onCheckedChange={() => handleToggleActive(med)} aria-label={`Activar o desactivar recordatorio para ${med.name}`}/>
                              <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
                                     <Button variant="ghost" size="icon">
@@ -295,3 +295,5 @@ export function MedicationReminders() {
         </Card>
     );
 }
+
+    
