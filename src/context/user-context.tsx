@@ -178,7 +178,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
 
   const checkNotificationSupportAndPermission = useCallback(async () => {
     const supported = await isSupported();
-    if (!supported) {
+    if (!supported || !('PushManager' in window)) {
       setFcmPermissionState('unsupported');
       return;
     }
@@ -195,13 +195,13 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
 
     try {
       const permission = await Notification.requestPermission();
+      // This will re-trigger the check in the useEffect, updating the state
       setFcmPermissionState(permission);
 
       if (permission === 'granted' && user) {
         toast({ title: "Permiso concedido", description: "Obteniendo token..." });
         const messaging = getMessaging();
-        // IMPORTANT: You need to generate this VAPID key in your Firebase project settings.
-        const newFcmToken = await getToken(messaging, { vapidKey: 'BMD2gU6r_yGv5o73amZJFPj2yDQW-iFqGllzO_Vp_2Bw2UqSgoyJ0k_8yF8bXpYt9V9Z9w8c_8a8J8H8b8C8B8c' });
+        const newFcmToken = await getToken(messaging, { vapidKey: 'BDSm_gZ27Y6gW6S_q0CEy_yO25OHj-bCFsM0eyIu5m_4tA_gI4-XjJ8g_1o2hZ8w_8Y9c9Z8w9_X_8x8y_A' });
         
         if (newFcmToken) {
             setFcmToken(newFcmToken);
@@ -348,7 +348,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
 
     const deleteAlarmsForParent = async (parentId: string, type: 'medicationId' | 'appointmentId') => {
         if (!user) return;
-        const q = query(collection(db, "alarms"), where("userId", "==", user.uid), where(type, "==", parentId));
+        const q = query(collection(db, "alarms"), where(type, "==", parentId));
         const snapshot = await getDocs(q);
         const batch = writeBatch(db);
         snapshot.forEach(doc => batch.delete(doc.ref));
@@ -435,13 +435,13 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
 
     // Medications CRUD
     const addMedication = async (med: Omit<Medication, 'id'>) => {
-        if (!user || !fcmToken) return;
+        if (!user) return;
         const newDocRef = doc(collection(db, 'users', user.uid, 'medications'));
         const newMed = { ...med, id: newDocRef.id };
         await setDoc(newDocRef, newMed);
         setMedications(prev => [...prev, newMed]);
         
-        if (med.active) {
+        if (med.active && fcmToken) {
             for (const time of med.time) {
                 const [hours, minutes] = time.split(':').map(Number);
                 const alarmTime = new Date();
@@ -458,7 +458,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
                     title: 'Hora de tu Medicina',
                     message: `${med.name} ${med.dosage}`,
                     alarmTime: Timestamp.fromDate(alarmTime),
-                    isRecurring: true, // For daily medications
+                    isRecurring: true, 
                     frequency: med.frequency,
                     clickAction: '/dashboard#medications'
                 });
@@ -467,7 +467,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     };
 
     const updateMedication = async (id: string, med: Partial<Medication>) => {
-        if (!user || !fcmToken) return;
+        if (!user) return;
         
         const fullMedRef = doc(db, 'users', user.uid, 'medications', id);
         await updateDoc(fullMedRef, med);
@@ -476,7 +476,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
 
         await deleteAlarmsForParent(id, 'medicationId');
 
-        if (fullMed.active) {
+        if (fullMed.active && fcmToken) {
              for (const time of fullMed.time) {
                 const [hours, minutes] = time.split(':').map(Number);
                 const alarmTime = new Date();
