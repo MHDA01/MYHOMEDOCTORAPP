@@ -1,42 +1,35 @@
 
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, Timestamp } from 'firebase/firestore';
 import { db } from './firebase';
 
 export async function scheduleAlarm(params: {
-  userId: string;
-  title: string;
-  body: string;
-  localISO: string; // fecha/hora local del usuario en ISO
-  tz?: string;
-  clickAction?: string;
   fcmToken: string;
-  recurring?: {
-    frequency: number; // in hours
-  };
-  medicationId?: string;
+  message: string;
+  localTime: string; // HH:mm format
+  title: string;
+  clickAction: string;
+  userId: string;
+  medicationId: string;
 }) {
-  const scheduled = new Date(params.localISO);
-  // Convertimos a UTC ISO (Date almacena internamente UTC)
-  const scheduledAt = scheduled.toISOString();
+    // Build the alarm date
+    const [hours, minutes] = params.localTime.split(':').map(Number);
+    const alarmDate = new Date();
+    alarmDate.setHours(hours, minutes, 0, 0);
 
-  const alarmData: any = {
-    userId: params.userId,
-    title: params.title,
-    body: params.body,
-    scheduledAt,
-    tz: params.tz || Intl.DateTimeFormat().resolvedOptions().timeZone,
-    clickAction: params.clickAction || '/',
-    fcmToken: params.fcmToken,
-    sent: false,
-    createdAt: serverTimestamp()
-  };
+    // If the time has already passed today, schedule it for tomorrow
+    if (alarmDate < new Date()) {
+        alarmDate.setDate(alarmDate.getDate() + 1);
+    }
 
-  if (params.recurring) {
-    alarmData.recurring = params.recurring;
-  }
-  if (params.medicationId) {
-    alarmData.medicationId = params.medicationId;
-  }
-
-  await addDoc(collection(db, 'alarms'), alarmData);
+    // Save the alarm in Firestore
+    await addDoc(collection(db, "alarms"), {
+        fcmToken: params.fcmToken,
+        title: params.title,
+        message: params.message,
+        alarmTime: Timestamp.fromDate(alarmDate),
+        clickAction: params.clickAction,
+        userId: params.userId,
+        medicationId: params.medicationId,
+        createdAt: serverTimestamp()
+    });
 }

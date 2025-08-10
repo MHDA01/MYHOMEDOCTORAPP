@@ -1,5 +1,3 @@
-'use strict';
-
 /* eslint-disable no-undef */
 importScripts('https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js');
@@ -19,12 +17,12 @@ const messaging = firebase.messaging();
 
 // Notificaciones en background
 messaging.onBackgroundMessage((payload) => {
-  const { title, body } = payload.notification || {};
+  const { title, body, icon, badge, click_action } = payload.notification || {};
   const options = {
     body,
-    icon: 'https://i.postimg.cc/J7N5r89y/LOGO-1.png',
-    badge: 'https://i.postimg.cc/J7N5r89y/LOGO-1.png',
-    data: { click_action: payload?.fcmOptions?.link || '/' }
+    icon: icon || 'https://i.postimg.cc/J7N5r89y/LOGO-1.png',
+    badge: badge || 'https://i.postimg.cc/J7N5r89y/LOGO-1.png',
+    data: { click_action: click_action || '/' }
   };
   self.registration.showNotification(title || 'Recordatorio', options);
 });

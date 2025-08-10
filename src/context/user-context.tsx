@@ -338,26 +338,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         
         await setDoc(newDocRef, { ...appointment, date: Timestamp.fromDate(appointment.date) });
 
-        setAppointments(prev => [...prev, newAppointment].sort((a, b) => b.date.getTime() - a.date.getTime()));
-
-        const currentFcmToken = fcmToken;
-        if (currentFcmToken && appointment.reminder && appointment.reminder !== 'none') {
-            const reminderMinutes: { [key: string]: number } = { '1h': 60, '2h': 120, '24h': 1440, '2d': 2880 };
-            const reminderValue = reminderMinutes[appointment.reminder];
-            if(reminderValue) {
-                const alarmTime = new Date(appointment.date.getTime() - reminderValue * 60 * 1000);
-                if (alarmTime > new Date()) {
-                    await scheduleAlarm({
-                        userId: user.uid,
-                        fcmToken: currentFcmToken,
-                        title: 'Recordatorio de Cita',
-                        body: `Tu cita con ${appointment.doctor} es pronto.`,
-                        localISO: alarmTime.toISOString(),
-                        clickAction: '/dashboard#appointments'
-                    });
-                }
-            }
-        }
+        setAppointments(prev => [...prev, newAppointment].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
     };
     const updateAppointment = async (id: string, appointment: Partial<Appointment>) => {
         if (!user) return;
@@ -404,68 +385,52 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
 
         const currentFcmToken = fcmToken;
         if (med.active && currentFcmToken) {
-            const today = new Date();
-            med.time.forEach(t => {
-                const [hours, minutes] = t.split(':').map(Number);
-                const localAlarmTime = new Date(today.getFullYear(), today.getMonth(), today.getDate(), hours, minutes);
-
-                scheduleAlarm({
+            for (const time of med.time) {
+                await scheduleAlarm({
                     userId: user.uid,
+                    medicationId: newMed.id,
                     fcmToken: currentFcmToken,
                     title: 'Hora de tu Medicina',
-                    body: `${med.name} ${med.dosage}`,
-                    localISO: localAlarmTime.toISOString(),
-                    clickAction: '/dashboard#medications',
-                    recurring: {
-                        frequency: med.frequency
-                    },
-                    medicationId: newMed.id
+                    message: `${med.name} ${med.dosage}`,
+                    localTime: time,
+                    clickAction: '/dashboard#medications'
                 });
-            });
+            }
         }
     };
+
     const updateMedication = async (id: string, med: Partial<Medication>) => {
         if (!user) return;
-        // First, update the medication document in its subcollection
+        
         await updateDoc(doc(db, 'users', user.uid, 'medications', id), med);
         
-        // Then, delete existing alarms for this medication to avoid duplicates or old schedules
         const q = query(collection(db, "alarms"), where("userId", "==", user.uid), where("medicationId", "==", id));
         const snapshot = await getDocs(q);
         const batch = writeBatch(db);
         snapshot.forEach(doc => batch.delete(doc.ref));
         await batch.commit();
 
-        // Now, get the full updated medication data to schedule new alarms
         const updatedMedDoc = await getDoc(doc(db, 'users', user.uid, 'medications', id));
         const fullMed = updatedMedDoc.data() as Medication;
 
         const currentFcmToken = fcmToken;
-        // If the medication is active and we have a token, create new alarms
         if (fullMed.active && currentFcmToken) {
-            const today = new Date();
-            fullMed.time.forEach(t => {
-                const [hours, minutes] = t.split(':').map(Number);
-                const localAlarmTime = new Date(today.getFullYear(), today.getMonth(), today.getDate(), hours, minutes);
-
-                scheduleAlarm({
+             for (const time of fullMed.time) {
+                await scheduleAlarm({
                     userId: user.uid,
+                    medicationId: id,
                     fcmToken: currentFcmToken,
                     title: 'Hora de tu Medicina',
-                    body: `${fullMed.name} ${fullMed.dosage}`,
-                    localISO: localAlarmTime.toISOString(),
-                    clickAction: '/dashboard#medications',
-                    recurring: {
-                        frequency: fullMed.frequency
-                    },
-                    medicationId: id,
+                    message: `${fullMed.name} ${fullMed.dosage}`,
+                    localTime: time,
+                    clickAction: '/dashboard#medications'
                 });
-            });
+            }
         }
         
-        // Finally, update the local state
-        setMedications(prev => prev.map(m => m.id === id ? { ...m, ...med } : m));
+        setMedications(prev => prev.map(m => m.id === id ? { ...m, ...fullMed } : m));
     };
+    
     const deleteMedication = async (id: string) => {
         if (!user) return;
         await deleteDoc(doc(db, 'users', user.uid, 'medications', id));
