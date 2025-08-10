@@ -6,20 +6,24 @@ admin.initializeApp();
 const db = admin.firestore();
 const fcm = admin.messaging();
 
-// Cloud function que se ejecuta cada minuto
-exports.checkAlarms = functions
-  .region("us-central1")
+/**
+ * Scheduled function that runs every minute to check for due alarms.
+ */
+export const checkAlarms = functions
+  .region("us-central1") // You can change this to your preferred region
   .pubsub.schedule("every 1 minutes")
   .onRun(async (context) => {
-    console.log("Verificando alarmas...");
+    console.log("Checking for due alarms...");
 
     const now = admin.firestore.Timestamp.now();
 
+    // Query for alarms that are due.
+    // We look for alarms with a timestamp less than or equal to the current time.
     const query = db.collection("alarms").where("alarmTime", "<=", now);
     const alarmsSnapshot = await query.get();
 
     if (alarmsSnapshot.empty) {
-      console.log("No hay alarmas pendientes.");
+      console.log("No pending alarms found.");
       return null;
     }
 
@@ -28,44 +32,54 @@ exports.checkAlarms = functions
     for (const doc of alarmsSnapshot.docs) {
       const alarm = doc.data();
       
-      const userDoc = await db.collection('users').doc(alarm.userId).get();
-      const userToken = userDoc.data()?.fcmToken;
-
-      if (userToken) {
+      if (alarm.fcmToken) {
           const payload = {
               notification: {
-                  title: alarm.title || "¡Alarma!",
+                  title: alarm.title || "¡Recordatorio!",
                   body: alarm.message || "Es la hora de tu recordatorio.",
                   icon: "https://i.postimg.cc/J7N5r89y/LOGO-1.png",
                   click_action: alarm.clickAction || '/',
               }
           };
 
-          const sendPromise = fcm.sendToDevice(userToken, payload)
+          const sendPromise = fcm.sendToDevice(alarm.fcmToken, payload)
             .then(response => {
-                console.log("Notificación enviada con éxito:", response);
-                // Si la enviamos, borramos la alarma para no volver a enviarla.
-                return doc.ref.delete();
+                console.log("Notification sent successfully:", response);
+                // If the notification is for a recurring medication, reschedule it.
+                if (alarm.isRecurring) {
+                    const nextAlarmTime = new Date(alarm.alarmTime.toDate().getTime());
+                    const intervalHours = alarm.frequency || 24;
+                    nextAlarmTime.setHours(nextAlarmTime.getHours() + intervalHours);
+                    
+                    const reschedulePromise = doc.ref.update({
+                        alarmTime: admin.firestore.Timestamp.fromDate(nextAlarmTime)
+                    });
+                    console.log(`Rescheduled recurring alarm for ${nextAlarmTime.toISOString()}`);
+                    return reschedulePromise;
+                } else {
+                    // If it's a one-time alarm, delete it after sending.
+                    return doc.ref.delete();
+                }
             })
             .catch(error => {
-                console.error("Error al enviar notificación:", error);
-                // Si el token no es válido, lo borramos del perfil de usuario.
+                console.error("Error sending notification:", error);
+                 // If the token is no longer valid, delete the alarm.
                  if (error.code === 'messaging/registration-token-not-registered') {
-                    console.log("Token no válido. Borrando del usuario.");
-                    return userDoc.ref.update({ fcmToken: admin.firestore.FieldValue.delete() });
+                    console.log("Invalid token. Deleting alarm.");
+                    return doc.ref.delete();
                  }
                  return null;
             });
 
           promises.push(sendPromise);
       } else {
-         // Si no hay token, borramos la alarma para no reintentar
-         console.log(`Usuario ${alarm.userId} no tiene token FCM. Borrando alarma.`);
+         // If there's no token, we can't send a notification. Delete the alarm.
+         console.log(`Alarm ${doc.id} has no FCM token. Deleting.`);
          promises.push(doc.ref.delete());
       }
     }
 
     await Promise.all(promises);
-    console.log(`Procesadas ${alarmsSnapshot.size} alarmas.`);
+    console.log(`Processed ${alarmsSnapshot.size} alarms.`);
     return null;
   });

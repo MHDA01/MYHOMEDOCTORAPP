@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { Pill, PlusCircle, BellRing, MoreVertical, FilePenLine, Trash2, Loader2 } from "lucide-react";
+import { Pill, PlusCircle, BellRing, MoreVertical, FilePenLine, Trash2, Loader2, AlertTriangle, Info } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -16,6 +16,7 @@ import type { Medication } from '@/lib/types';
 import { useToast } from "@/hooks/use-toast";
 import { UserContext } from '@/context/user-context';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
 
 
 type DialogMode = 'add' | 'edit';
@@ -38,7 +39,9 @@ export function MedicationReminders() {
     const { toast } = useToast();
 
     if (!context) throw new Error("MedicationReminders must be used within a UserProvider");
-    const { medications, addMedication, updateMedication, deleteMedication, loading } = context;
+    const { medications, addMedication, updateMedication, deleteMedication, loading, fcmPermissionState, requestNotificationPermission } = context;
+
+    const notificationsEnabled = fcmPermissionState === 'granted';
 
     useEffect(() => {
         if (!isDialogOpen) return;
@@ -164,9 +167,28 @@ export function MedicationReminders() {
                     <BellRing className="h-6 w-6 text-primary" />
                     <CardTitle className="font-headline text-xl">Recordatorios de Medicamentos</CardTitle>
                 </div>
-                <CardDescription>Mantente al día con tu horario de medicación. Para que las notificaciones funcionen, permite las notificaciones y mantén la app abierta.</CardDescription>
+                 <CardDescription>Mantente al día con tu horario de medicación. Activa las notificaciones para recibir las alertas.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+                {fcmPermissionState === 'default' && (
+                    <Alert>
+                        <Info className="h-4 w-4" />
+                        <AlertTitle>Activar Recordatorios</AlertTitle>
+                        <AlertDescription>
+                            Para recibir notificaciones push, debes dar permiso a la aplicación.
+                            <Button className="mt-2" onClick={requestNotificationPermission}>Activar</Button>
+                        </AlertDescription>
+                    </Alert>
+                )}
+                 {fcmPermissionState === 'denied' && (
+                    <Alert variant="destructive">
+                        <AlertTriangle className="h-4 w-4" />
+                        <AlertTitle>Notificaciones Bloqueadas</AlertTitle>
+                        <AlertDescription>
+                           Has bloqueado las notificaciones. Para recibir recordatorios, debes activarlas manualmente en la configuración de tu navegador.
+                        </AlertDescription>
+                    </Alert>
+                )}
                 {medications.length === 0 && <p className="text-center text-muted-foreground pt-4">No has añadido ningún medicamento.</p>}
                 {medications.map((med) => (
                     <div key={med.id} className="flex items-center justify-between rounded-lg border p-3">
@@ -178,7 +200,7 @@ export function MedicationReminders() {
                             </div>
                         </div>
                         <div className="flex items-center gap-2">
-                             <Switch checked={med.active} onCheckedChange={() => handleToggleActive(med)} aria-label={`Activar o desactivar recordatorio para ${med.name}`}/>
+                             <Switch checked={med.active} onCheckedChange={() => handleToggleActive(med)} disabled={!notificationsEnabled} aria-label={`Activar o desactivar recordatorio para ${med.name}`}/>
                              <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
                                     <Button variant="ghost" size="icon">
@@ -200,7 +222,7 @@ export function MedicationReminders() {
             <CardFooter>
                  <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                     <DialogTrigger asChild>
-                        <Button><PlusCircle className="mr-2"/>Añadir Medicamento</Button>
+                        <Button disabled={!notificationsEnabled}><PlusCircle className="mr-2"/>Añadir Medicamento</Button>
                     </DialogTrigger>
                     <DialogContent>
                         <DialogHeader>

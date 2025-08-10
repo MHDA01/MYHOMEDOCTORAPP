@@ -53,11 +53,13 @@ export function Appointments() {
     const [isPopoverOpen, setIsPopoverOpen] = useState(false);
 
     if (!context) throw new Error("Appointments must be used within a UserProvider");
-    const { appointments, addAppointment, updateAppointment, deleteAppointment, loading } = context;
+    const { appointments, addAppointment, updateAppointment, deleteAppointment, loading, fcmPermissionState } = context;
     
     const [upcomingAppointments, setUpcomingAppointments] = useState<Appointment[]>([]);
     const [pastAppointments, setPastAppointments] = useState<Appointment[]>([]);
     
+    const notificationsEnabled = fcmPermissionState === 'granted';
+
     useEffect(() => {
         const now = new Date();
         const sortedAppointments = [...appointments].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
@@ -183,7 +185,7 @@ export function Appointments() {
             <CardFooter>
                  <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                     <DialogTrigger asChild>
-                        <Button onClick={() => handleOpenDialog('add')}><PlusCircle className="mr-2"/>Programar Cita</Button>
+                        <Button><PlusCircle className="mr-2"/>Programar Cita</Button>
                     </DialogTrigger>
                     <DialogContent modal={true}>
                         <DialogHeader>
@@ -235,7 +237,7 @@ export function Appointments() {
                             </div>
                             <div className="grid gap-2">
                                 <Label htmlFor="reminder">Recordatorio</Label>
-                                <Select value={reminder} onValueChange={setReminder}>
+                                <Select value={reminder} onValueChange={setReminder} disabled={!notificationsEnabled}>
                                     <SelectTrigger id="reminder">
                                         <SelectValue placeholder="Selecciona un recordatorio" />
                                     </SelectTrigger>
@@ -247,6 +249,7 @@ export function Appointments() {
                                         <SelectItem value="none">Sin recordatorio</SelectItem>
                                     </SelectContent>
                                 </Select>
+                                {!notificationsEnabled && <p className="text-xs text-muted-foreground">Activa las notificaciones para usar esta función.</p>}
                             </div>
                         </div>
                         <DialogFooter>

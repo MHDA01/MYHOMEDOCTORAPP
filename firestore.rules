@@ -4,16 +4,27 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    function isSignedIn() { 
-      return request.auth != null; 
+    // Helper function to check if the user is signed in
+    function isSignedIn() {
+      return request.auth != null;
     }
-
-    match /users/{uid}/{document=**} {
-      allow read, write: if isSignedIn() && request.auth.uid == uid;
+    
+    // Users can only read and write to their own user document.
+    match /users/{userId} {
+      allow read, write: if isSignedIn() && request.auth.uid == userId;
+      
+      // Users can manage their own subcollections (appointments, documents, etc.)
+      match /{collection}/{docId} {
+        allow read, write, delete: if isSignedIn() && request.auth.uid == userId;
+      }
     }
-
+    
+    // Rules for the top-level 'alarms' collection
     match /alarms/{alarmId} {
+        // A user can create an alarm only if the alarm's userId matches their own UID.
       allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      
+      // A user can read, update, or delete an alarm only if they are the owner.
       allow read, update, delete: if isSignedIn() && resource.data.userId == request.auth.uid;
     }
   }
