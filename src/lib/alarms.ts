@@ -3,13 +3,12 @@ import { collection, addDoc, serverTimestamp, Timestamp } from 'firebase/firesto
 import { db } from './firebase';
 
 export async function scheduleAlarm(params: {
-  fcmToken: string;
-  message: string;
-  localTime: string; // HH:mm format
-  title: string;
-  clickAction: string;
   userId: string;
   medicationId: string;
+  title: string;
+  message: string;
+  localTime: string; // HH:mm format
+  clickAction: string;
 }) {
     // Build the alarm date
     const [hours, minutes] = params.localTime.split(':').map(Number);
@@ -23,13 +22,12 @@ export async function scheduleAlarm(params: {
 
     // Save the alarm in Firestore
     await addDoc(collection(db, "alarms"), {
-        fcmToken: params.fcmToken,
+        userId: params.userId,
+        medicationId: params.medicationId,
         title: params.title,
         message: params.message,
         alarmTime: Timestamp.fromDate(alarmDate),
         clickAction: params.clickAction,
-        userId: params.userId,
-        medicationId: params.medicationId,
         createdAt: serverTimestamp()
     });
 }

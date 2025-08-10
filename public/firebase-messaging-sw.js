@@ -1,113 +1,48 @@
-// Importar e inicializar el SDK de Firebase
-self.importScripts('https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js');
-self.importScripts('https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js');
 
+'use strict';
 
-const firebaseConfig = {
-  "projectId": "myhomedoctorapp",
-  "appId": "1:138646987953:web:f0f8ee1d83efc34e4dae90",
-  "storageBucket": "myhomedoctorapp.appspot.com",
-  "apiKey": "AIzaSyAp65amh6olkSyo94sYxaBD9E2frbkws44",
-  "authDomain": "myhomedoctorapp.firebaseapp.com",
-  "messagingSenderId": "138646987953"
-};
+/* eslint-env browser, serviceworker, es6 */
 
-// Inicializar Firebase
-firebase.initializeApp(firebaseConfig);
-const messaging = firebase.messaging();
+self.addEventListener('push', function(event) {
+  console.log('[Service Worker] Push Recibido.');
+  
+  let data = {};
+  if (event.data) {
+    data = event.data.json();
+  }
 
-// Manejar notificaciones en segundo plano
-messaging.onBackgroundMessage((payload) => {
-  console.log('[firebase-messaging-sw.js] Mensaje recibido en segundo plano:', payload);
-
-  const notificationTitle = payload.notification?.title || 'Nueva notificación';
-  const notificationOptions = {
-    body: payload.notification?.body || 'Tienes un nuevo mensaje',
-    icon: 'https://i.postimg.cc/J7N5r89y/LOGO-1.png',
-    badge: 'https://i.postimg.cc/J7N5r89y/LOGO-1.png',
-    data: payload.data,
-    actions: [
-      {
-        action: 'view',
-        title: 'Ver',
-      },
-      {
-        action: 'close',
-        title: 'Cerrar',
-      }
-    ],
-    vibrate: [200, 100, 200],
-    requireInteraction: true
+  const title = data.title || 'MiDoctorDeCasaApp';
+  const options = {
+    body: data.body || 'Tienes una nueva notificación.',
+    icon: data.icon || '/icon-192x192.png',
+    badge: data.badge || '/badge.png',
+    data: data.data || { url: '/' }
   };
 
-  return self.registration.showNotification(notificationTitle, notificationOptions);
+  event.waitUntil(self.registration.showNotification(title, options));
 });
 
+self.addEventListener('notificationclick', function(event) {
+  console.log('[Service Worker] Clic en notificación recibido.');
 
-// Manejar clics en notificaciones
-self.addEventListener('notificationclick', (event) => {
-  console.log('[Service Worker] Notificación clickeada:', event);
-  
   event.notification.close();
-  
-  const clickAction = event.notification.data?.clickAction || '/';
 
-  if (event.action === 'close') {
-      return;
-  }
-  
+  const urlToOpen = event.notification.data.url || '/';
+
   event.waitUntil(
-    clients.matchAll({ type: 'window', includeUncontrolled: true })
-      .then((clientList) => {
-        for (const client of clientList) {
-            // Si el cliente ya está abierto y es visible, enfocarlo.
-            if (new URL(client.url).pathname === new URL(clickAction, self.location.origin).pathname && 'focus' in client) {
-                return client.focus();
-            }
+    clients.matchAll({
+      type: 'window',
+      includeUncontrolled: true
+    }).then(function(clientList) {
+      for (let i = 0; i < clientList.length; i++) {
+        const client = clientList[i];
+        if (client.url === urlToOpen && 'focus' in client) {
+          return client.focus();
         }
-        // Si no hay un cliente abierto con esa URL, abrir una nueva ventana.
-        if (clients.openWindow) {
-          return clients.openWindow(clickAction);
-        }
-      })
-  );
-});
-
-// Estrategia de caché para PWA
-const CACHE_NAME = 'myhomedoctorapp-cache-v1';
-
-self.addEventListener('install', (event) => {
-  console.log('[Service Worker] Instalando...');
-  event.waitUntil(
-    caches.open(CACHE_NAME).then(cache => {
-      return cache.addAll([
-        '/',
-        '/manifest.webmanifest',
-        'https://i.postimg.cc/J7N5r89y/LOGO-1.png'
-      ]);
-    })
-  );
-});
-
-self.addEventListener('activate', (event) => {
-  console.log('[Service Worker] Activando...');
-  event.waitUntil(
-    caches.keys().then(cacheNames => {
-      return Promise.all(
-        cacheNames.map(cache => {
-          if (cache !== CACHE_NAME) {
-            return caches.delete(cache);
-          }
-        })
-      );
-    })
-  );
-});
-
-self.addEventListener('fetch', (event) => {
-  event.respondWith(
-    caches.match(event.request).then(response => {
-      return response || fetch(event.request);
+      }
+      if (clients.openWindow) {
+        return clients.openWindow(urlToOpen);
+      }
     })
   );
 });

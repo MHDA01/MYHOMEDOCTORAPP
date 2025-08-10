@@ -5,10 +5,9 @@ import { createContext, useState, useEffect, ReactNode, useCallback } from 'reac
 import type { PersonalInfo, HealthInfo, Appointment, Document as DocumentType, Medication } from '@/lib/types';
 import { auth, db } from '@/lib/firebase';
 import { onAuthStateChanged, User, signOut, updateProfile } from 'firebase/auth';
-import { doc, getDoc, setDoc, Timestamp, collection, getDocs, addDoc, updateDoc, deleteDoc, query, orderBy, writeBatch, where } from 'firebase/firestore';
-import { getMessaging, getToken, isSupported, onMessage } from 'firebase/messaging';
-import { scheduleAlarm } from '@/lib/alarms';
+import { doc, getDoc, setDoc, Timestamp, collection, getDocs, addDoc, updateDoc, deleteDoc, query, orderBy, writeBatch, where, FieldValue } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
+import { scheduleAlarm } from '@/lib/alarms';
 
 // We need a way to serialize Date objects to be stored in Firestore
 // and deserialize them back to Date objects.
@@ -27,6 +26,7 @@ type SerializableDocument = Omit<DocumentType, 'uploadedAt'> & {
 type UserDocumentData = {
     personalInfo: SerializablePersonalInfo,
     healthInfo: HealthInfo,
+    pushSubscription?: PushSubscriptionJSON;
 }
 
 type UserDocument = {
@@ -36,6 +36,23 @@ type UserDocument = {
 
 // Helper function to introduce a delay
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+// Helper para convertir la VAPID key
+function urlB64ToUint8Array(base64String: string) {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding)
+    .replace(/-/g, '+')
+    .replace(/_/g, '/');
+
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+}
+
 
 // --- Generic Firestore Functions ---
 
@@ -70,7 +87,7 @@ async function getUserDocument(userId: string): Promise<UserDocument | null> {
                             ...data.personalInfo,
                             dateOfBirth: data.personalInfo.dateOfBirth.toDate(),
                         },
-                        healthInfo: data.healthInfo
+                        healthInfo: data.healthInfo,
                     };
                 }
             }
@@ -90,7 +107,7 @@ async function getUserDocument(userId: string): Promise<UserDocument | null> {
     throw new Error('Could not fetch user profile after all retries.');
 }
 
-async function updateUserDocument(userId: string, data: Partial<UserDocument>): Promise<void> {
+async function updateUserDocument(userId: string, data: Partial<UserDocument & { pushSubscription?: PushSubscriptionJSON | FieldValue }>): Promise<void> {
   try {
     const docRef = doc(db, 'users', userId);
     
@@ -131,7 +148,6 @@ interface UserContextType {
   deleteMedication: (id: string) => Promise<void>;
   loading: boolean;
   user: User | null;
-  fcmToken: string | null;
   fcmState: 'denied' | 'granted' | 'default';
   setupFCM: () => Promise<void>;
   signOutUser: () => Promise<void>;
@@ -157,6 +173,9 @@ const initialAnonymousHealthInfo: HealthInfo = {
     emergencyContacts: [],
 };
 
+// ¡IMPORTANTE! Reemplaza esta clave con tu CLAVE PÚBLICA VAPID
+const VAPID_PUBLIC_KEY = "YOUR_PUBLIC_VAPID_KEY_HERE";
+
 export const UserProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [personalInfo, setPersonalInfo] = useState<PersonalInfo | null>(null);
@@ -165,49 +184,27 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   const [documents, setDocuments] = useState<DocumentType[]>([]);
   const [medications, setMedications] = useState<Medication[]>([]);
   const [loading, setLoading] = useState(true);
-  const [fcmToken, setFcmToken] = useState<string | null>(null);
   const [fcmState, setFcmState] = useState<UserContextType['fcmState']>('default');
+  const [swRegistration, setSwRegistration] = useState<ServiceWorkerRegistration | null>(null);
   const { toast } = useToast();
   
-  const updateFcmState = () => {
+  const updateFcmState = useCallback(() => {
      if ('Notification' in window) {
       setFcmState(Notification.permission);
     }
-  }
-
-  useEffect(() => {
-    updateFcmState();
   }, []);
 
-  // Set up foreground message listener
   useEffect(() => {
-    if (typeof window === 'undefined' || !('Notification' in window)) {
-        return;
+    if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/sw.js')
+            .then(reg => {
+                console.log('Service Worker registrado:', reg);
+                setSwRegistration(reg);
+            })
+            .catch(err => console.log('Error al registrar Service Worker:', err));
     }
-
-    const initMessaging = async () => {
-        if (await isSupported()) {
-            const messaging = getMessaging(auth.app);
-            const unsubscribe = onMessage(messaging, (payload) => {
-                console.log('Foreground message received.', payload);
-                toast({
-                    title: payload.notification?.title || 'Nueva Notificación',
-                    description: payload.notification?.body || '',
-                });
-            });
-            return unsubscribe;
-        }
-    };
-
-    let unsubscribe: (() => void) | undefined;
-    initMessaging().then(unsub => { unsubscribe = unsub });
-
-    return () => {
-        if (unsubscribe) {
-            unsubscribe();
-        }
-    };
-  }, [toast]);
+    updateFcmState();
+  }, [updateFcmState]);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
@@ -306,37 +303,38 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       }
   };
 
-    const setupFCM = async () => {
-        if (!(await isSupported())) {
-            console.log("FCM is not supported in this browser.");
-            return;
-        }
+  const setupFCM = async () => {
+    if (!swRegistration || !user) {
+        toast({ variant: 'destructive', title: "El servicio de notificaciones no está listo."});
+        return;
+    }
 
-        try {
-            const permission = await Notification.requestPermission();
-            updateFcmState(); // Update state immediately after user action
+    const permission = await Notification.requestPermission();
+    updateFcmState();
 
-            if (permission === 'granted') {
-                const messaging = getMessaging(auth.app);
-                const VAPID_KEY = "BDC_g-k_7o3t8z5Jq_r-r8w8A_Qj_6h_4wX8g_V_y_Z_6k_8J_1n_7m_3T_0n_9S_2c"; 
-                const currentToken = await getToken(messaging, { vapidKey: VAPID_KEY });
-                
-                if (currentToken) {
-                    setFcmToken(currentToken);
-                    if (user) {
-                        await setDoc(doc(db, 'users', user.uid), { fcmToken: currentToken }, { merge: true });
-                    }
-                } else {
-                    console.warn('No registration token available.');
-                }
-            } else {
-                 console.warn('Notification permission denied.');
-            }
-        } catch (err) {
-            console.error('An error occurred while setting up FCM. ', err);
-        }
-    };
+    if(permission !== 'granted') {
+        toast({ variant: 'destructive', title: "Permiso de notificaciones denegado."});
+        return;
+    }
 
+    try {
+        const applicationServerKey = urlB64ToUint8Array(VAPID_PUBLIC_KEY);
+        const subscription = await swRegistration.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: applicationServerKey
+        });
+
+        console.log('Usuario suscrito:', subscription);
+        await updateUserDocument(user.uid, { pushSubscription: subscription.toJSON() });
+        
+        toast({ title: "¡Notificaciones activadas!"});
+        updateFcmState();
+
+    } catch (err) {
+        console.error('Fallo al suscribir el usuario: ', err);
+        toast({ variant: 'destructive', title: "Error al activar notificaciones."});
+    }
+};
 
   // Appointments CRUD
     const addAppointment = async (appointment: Omit<Appointment, 'id'>) => {
@@ -387,13 +385,11 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         await setDoc(newDocRef, newMed);
         setMedications(prev => [...prev, newMed]);
 
-        const currentFcmToken = fcmToken;
-        if (med.active && currentFcmToken) {
+        if (med.active) {
             for (const time of med.time) {
                 await scheduleAlarm({
                     userId: user.uid,
                     medicationId: newMed.id,
-                    fcmToken: currentFcmToken,
                     title: 'Hora de tu Medicina',
                     message: `${med.name} ${med.dosage}`,
                     localTime: time,
@@ -417,13 +413,11 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         snapshot.forEach(doc => batch.delete(doc.ref));
         await batch.commit();
 
-        const currentFcmToken = fcmToken;
-        if (fullMed.active && currentFcmToken) {
+        if (fullMed.active) {
              for (const time of fullMed.time) {
                 await scheduleAlarm({
                     userId: user.uid,
                     medicationId: id,
-                    fcmToken: currentFcmToken,
                     title: 'Hora de tu Medicina',
                     message: `${fullMed.name} ${fullMed.dosage}`,
                     localTime: time,
@@ -456,7 +450,6 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         appointments,
         documents,
         medications,
-        fcmToken,
         fcmState,
         setupFCM,
         signOutUser,
