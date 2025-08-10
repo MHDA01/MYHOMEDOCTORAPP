@@ -8,7 +8,12 @@ import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
 
 // Inicializa la app de Firebase Admin para poder acceder a los servicios.
-admin.initializeApp();
+try {
+  admin.initializeApp();
+} catch (e) {
+  console.log("Admin ya inicializado.");
+}
+
 const db = admin.firestore();
 const messaging = admin.messaging();
 
@@ -26,12 +31,39 @@ export const checkAppointmentReminders = functions
     // Clona la fecha actual y le suma una hora para definir el rango de búsqueda.
     const oneHourFromNow = new Date(now.getTime() + 60 * 60 * 1000);
 
+    // --- LÓGICA DE PRUEBA ---
+    // Vamos a enviar una notificación de prueba a un usuario específico para verificar.
+    // Asegúrate de que este ID de usuario exista en tu Firestore y tenga un `notificationToken`.
+    const TEST_USER_ID = "gNyzfI3SmYYILnH03p9T6y90mHl1"; // Reemplaza con un ID de usuario válido de tu DB
+    try {
+        const userDoc = await db.collection("users").doc(TEST_USER_ID).get();
+        const user = userDoc.data();
+        const token = user?.notificationToken;
+
+        if (token) {
+            const testMessage = {
+                notification: {
+                    title: "Prueba de Notificación ✅",
+                    body: "Si recibes esto, ¡la infraestructura de notificaciones está funcionando!",
+                },
+                token: token,
+            };
+            await messaging.send(testMessage);
+            console.log(`Notificación de prueba enviada con éxito a ${TEST_USER_ID}`);
+        } else {
+            console.log(`Usuario de prueba ${TEST_USER_ID} no encontrado o sin token.`);
+        }
+    } catch (error) {
+        console.error("Error al enviar la notificación de prueba:", error);
+    }
+    // --- FIN DE LÓGICA DE PRUEBA ---
+
     try {
       // Consulta todas las citas en la colección 'citas'.
       const appointmentsSnapshot = await db.collection("citas").get();
 
       // Array para mantener todas las promesas de envío de notificaciones.
-      const notificationPromises = [];
+      const notificationPromises: Promise<any>[] = [];
 
       for (const doc of appointmentsSnapshot.docs) {
         const cita = doc.data();
@@ -111,7 +143,7 @@ export const checkMedicationReminders = functions
     try {
       // Obtiene todos los usuarios para iterar sobre sus medicamentos.
       const usersSnapshot = await db.collection("users").get();
-      const notificationPromises = [];
+      const notificationPromises: Promise<any>[] = [];
 
       for (const userDoc of usersSnapshot.docs) {
         const user = userDoc.data();
