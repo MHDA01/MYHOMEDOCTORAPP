@@ -3,7 +3,7 @@ import { initializeApp, getApps, getApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 import { getFunctions } from "firebase/functions";
-
+import { getMessaging } from "firebase/messaging";
 
 const firebaseConfig = {
   "projectId": "myhomedoctorapp",
@@ -20,4 +20,8 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 const functions = getFunctions(app);
 
-export { app, auth, db, functions };
+// Initialize Firebase Cloud Messaging and get a reference to the service
+const messaging = (typeof window !== 'undefined') ? getMessaging(app) : null;
+
+
+export { app, auth, db, functions, messaging };
