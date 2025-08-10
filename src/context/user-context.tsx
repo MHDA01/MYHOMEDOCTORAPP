@@ -71,7 +71,7 @@ async function getCollection<T>(userId: string, collectionName: string): Promise
 }
 
 
-async function getUserDocument(userId: string): Promise<UserDocument | null> {
+async function getUserDocument(userId: string): Promise<UserDocument & { pushSubscription?: PushSubscriptionJSON } | null> {
     const docRef = doc(db, 'users', userId);
     const maxRetries = 5;
     let delay = 200;
@@ -88,6 +88,7 @@ async function getUserDocument(userId: string): Promise<UserDocument | null> {
                             dateOfBirth: data.personalInfo.dateOfBirth.toDate(),
                         },
                         healthInfo: data.healthInfo,
+                        pushSubscription: data.pushSubscription
                     };
                 }
             }
@@ -148,7 +149,7 @@ interface UserContextType {
   deleteMedication: (id: string) => Promise<void>;
   loading: boolean;
   user: User | null;
-  fcmState: 'denied' | 'granted' | 'default';
+  fcmState: 'denied' | 'granted' | 'default' | 'unsupported';
   setupFCM: () => Promise<void>;
   signOutUser: () => Promise<void>;
 }
@@ -174,7 +175,7 @@ const initialAnonymousHealthInfo: HealthInfo = {
 };
 
 // ¡IMPORTANTE! Reemplaza esta clave con tu CLAVE PÚBLICA VAPID
-const VAPID_PUBLIC_KEY = "YOUR_PUBLIC_VAPID_KEY_HERE";
+const VAPID_PUBLIC_KEY = "BDf_d_3Y1U350z2N_w3A7kAlJ_y6D-yX_K3sZ6e1A2M7q1X7f2Z0n8jR2j3zX5oY_d0zVf7rN6B5w_k";
 
 export const UserProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -189,7 +190,12 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   const { toast } = useToast();
   
   const updateFcmState = useCallback(() => {
-     if ('Notification' in window) {
+    const isSupported = 'serviceWorker' in navigator && 'PushManager' in window;
+     if (!isSupported) {
+        setFcmState('unsupported');
+        return;
+    }
+    if ('Notification' in window) {
       setFcmState(Notification.permission);
     }
   }, []);
@@ -309,15 +315,26 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         return;
     }
 
-    const permission = await Notification.requestPermission();
-    updateFcmState();
-
-    if(permission !== 'granted') {
-        toast({ variant: 'destructive', title: "Permiso de notificaciones denegado."});
+    // Comprobación de compatibilidad
+    if (!('PushManager' in window)) {
+        setFcmState('unsupported');
+        toast({ variant: 'destructive', title: "Las notificaciones Push no son compatibles con este navegador."});
         return;
     }
 
     try {
+        // Solicitar permiso
+        const permission = await Notification.requestPermission();
+        
+        // Actualizar estado inmediatamente
+        setFcmState(permission);
+
+        if (permission !== 'granted') {
+            toast({ variant: 'destructive', title: "Permiso de notificaciones no concedido."});
+            return;
+        }
+
+        // Obtener suscripción
         const applicationServerKey = urlB64ToUint8Array(VAPID_PUBLIC_KEY);
         const subscription = await swRegistration.pushManager.subscribe({
             userVisibleOnly: true,
@@ -328,10 +345,10 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         await updateUserDocument(user.uid, { pushSubscription: subscription.toJSON() });
         
         toast({ title: "¡Notificaciones activadas!"});
-        updateFcmState();
-
+        
     } catch (err) {
         console.error('Fallo al suscribir el usuario: ', err);
+        setFcmState('denied');
         toast({ variant: 'destructive', title: "Error al activar notificaciones."});
     }
 };
@@ -384,8 +401,11 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         const newMed = { ...med, id: newDocRef.id };
         await setDoc(newDocRef, newMed);
         setMedications(prev => [...prev, newMed]);
+        
+        const userDoc = await getUserDocument(user.uid);
+        const subscription = userDoc?.pushSubscription;
 
-        if (med.active) {
+        if (med.active && subscription) {
             for (const time of med.time) {
                 await scheduleAlarm({
                     userId: user.uid,
@@ -413,7 +433,10 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         snapshot.forEach(doc => batch.delete(doc.ref));
         await batch.commit();
 
-        if (fullMed.active) {
+        const userDoc = await getUserDocument(user.uid);
+        const subscription = userDoc?.pushSubscription;
+
+        if (fullMed.active && subscription) {
              for (const time of fullMed.time) {
                 await scheduleAlarm({
                     userId: user.uid,

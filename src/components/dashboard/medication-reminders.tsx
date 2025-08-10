@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { Pill, PlusCircle, BellRing, MoreVertical, FilePenLine, Trash2, Loader2, BellPlus } from "lucide-react";
+import { Pill, PlusCircle, BellRing, MoreVertical, FilePenLine, Trash2, Loader2, BellPlus, Info } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -187,6 +187,15 @@ export function MedicationReminders() {
                         <AlertDescription className="flex items-center justify-between">
                            <span>Permite las notificaciones para recibir recordatorios.</span>
                            <Button size="sm" onClick={requestNotificationPermission}>Activar</Button>
+                        </AlertDescription>
+                    </Alert>
+                )}
+                 {fcmState === 'unsupported' && (
+                    <Alert variant="destructive">
+                        <Info className="h-4 w-4" />
+                        <AlertTitle>Navegador no compatible</AlertTitle>
+                        <AlertDescription>
+                            Este navegador no es compatible con las notificaciones push. Por favor, utiliza un navegador compatible en escritorio o Android.
                         </AlertDescription>
                     </Alert>
                 )}
