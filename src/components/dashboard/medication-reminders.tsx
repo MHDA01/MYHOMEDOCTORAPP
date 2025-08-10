@@ -170,13 +170,13 @@ export function MedicationReminders() {
                  <CardDescription>Mantente al día con tu horario de medicación. Activa las notificaciones para recibir las alertas.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-                {fcmPermissionState === 'default' && (
+                 {fcmPermissionState === 'default' && (
                     <Alert>
                         <Info className="h-4 w-4" />
                         <AlertTitle>Activar Recordatorios</AlertTitle>
                         <AlertDescription>
                             Para recibir notificaciones push, debes dar permiso a la aplicación.
-                            <Button className="mt-2" onClick={requestNotificationPermission}>Activar</Button>
+                            <Button className="mt-2" size="sm" onClick={requestNotificationPermission}>Activar</Button>
                         </AlertDescription>
                     </Alert>
                 )}

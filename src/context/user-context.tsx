@@ -177,8 +177,8 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   
 
   const checkNotificationSupportAndPermission = useCallback(async () => {
-    const supported = await isSupported();
-    if (!supported || !('PushManager' in window)) {
+    const isSupportedResult = await isSupported();
+    if (!isSupportedResult || !('Notification' in window) || !('PushManager' in window)) {
       setFcmPermissionState('unsupported');
       return;
     }
@@ -195,12 +195,12 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
 
     try {
       const permission = await Notification.requestPermission();
-      // This will re-trigger the check in the useEffect, updating the state
-      setFcmPermissionState(permission);
+      setFcmPermissionState(permission); // Update state immediately
 
       if (permission === 'granted' && user) {
         toast({ title: "Permiso concedido", description: "Obteniendo token..." });
         const messaging = getMessaging();
+        // IMPORTANT: Replace with your actual VAPID key
         const newFcmToken = await getToken(messaging, { vapidKey: 'BDSm_gZ27Y6gW6S_q0CEy_yO25OHj-bCFsM0eyIu5m_4tA_gI4-XjJ8g_1o2hZ8w_8Y9c9Z8w9_X_8x8y_A' });
         
         if (newFcmToken) {
@@ -471,6 +471,8 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         
         const fullMedRef = doc(db, 'users', user.uid, 'medications', id);
         await updateDoc(fullMedRef, med);
+        setMedications(prev => prev.map(m => m.id === id ? { ...m, ...med } : m));
+        
         const updatedMedDocSnap = await getDoc(fullMedRef);
         const fullMed = updatedMedDocSnap.data() as Medication;
 
@@ -497,8 +499,6 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
                 });
             }
         }
-        
-        setMedications(prev => prev.map(m => m.id === id ? { ...m, ...fullMed, ...med } : m));
     };
     
     const deleteMedication = async (id: string) => {
