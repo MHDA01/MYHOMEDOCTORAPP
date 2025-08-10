@@ -118,16 +118,20 @@ export function Appointments() {
             status: 'Upcoming' as 'Upcoming',
         };
         
-        if (dialogMode === 'add') {
-            await addAppointment(appointmentData);
-            toast({ title: "Cita programada con éxito." });
-        } else if (selectedAppointment) {
-            await updateAppointment(selectedAppointment.id, appointmentData);
-            toast({ title: "Cita actualizada con éxito." });
+        try {
+            if (dialogMode === 'add') {
+                await addAppointment(appointmentData);
+                toast({ title: "Cita programada con éxito." });
+            } else if (selectedAppointment) {
+                await updateAppointment(selectedAppointment.id, appointmentData);
+                toast({ title: "Cita actualizada con éxito." });
+            }
+        } catch (error) {
+             toast({ variant: 'destructive', title: "Error al guardar la cita." });
+        } finally {
+            setIsSaving(false);
+            setIsDialogOpen(false);
         }
-
-        setIsSaving(false);
-        setIsDialogOpen(false);
     }
 
      const handleDateSelect = (selectedDate: Date | undefined) => {

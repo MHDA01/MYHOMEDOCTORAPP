@@ -106,16 +106,20 @@ export function MedicationReminders() {
         setIsSaving(true);
         const medData = { name, dosage, frequency, administrationPeriod, time: timeInputs, active };
 
-        if (dialogMode === 'add') {
-            await addMedication(medData);
-            toast({ title: 'Recordatorio añadido' });
-        } else if (selectedMed) {
-            await updateMedication(selectedMed.id, medData);
-            toast({ title: 'Recordatorio actualizado' });
+        try {
+            if (dialogMode === 'add') {
+                await addMedication(medData);
+                toast({ title: 'Recordatorio añadido' });
+            } else if (selectedMed) {
+                await updateMedication(selectedMed.id, medData);
+                toast({ title: 'Recordatorio actualizado' });
+            }
+        } catch (error) {
+             toast({ variant: 'destructive', title: "Error al guardar el medicamento." });
+        } finally {
+            setIsSaving(false);
+            setIsDialogOpen(false);
         }
-
-        setIsSaving(false);
-        setIsDialogOpen(false);
     };
 
     const handleToggleActive = async (med: Medication) => {

@@ -3,11 +3,10 @@
 
 import { createContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import type { PersonalInfo, HealthInfo, Appointment, Document as DocumentType, Medication } from '@/lib/types';
-import { auth, db, functions } from '@/lib/firebase';
+import { auth, db } from '@/lib/firebase';
 import { onAuthStateChanged, User, signOut, updateProfile } from 'firebase/auth';
-import { doc, getDoc, setDoc, Timestamp, collection, getDocs, addDoc, updateDoc, deleteDoc, query, orderBy, writeBatch } from 'firebase/firestore';
+import { doc, getDoc, setDoc, Timestamp, collection, getDocs, addDoc, updateDoc, deleteDoc, query, orderBy } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
-import { httpsCallable } from 'firebase/functions';
 
 // We need a way to serialize Date objects to be stored in Firestore
 // and deserialize them back to Date objects.
@@ -55,8 +54,9 @@ async function getUserDocument(userId: string): Promise<UserDocument | null> {
     const docSnap = await getDoc(docRef);
     if (docSnap.exists()) {
         const data = docSnap.data() as UserDocumentData;
+        // Basic check for data integrity
         if (data && data.personalInfo && data.personalInfo.dateOfBirth) {
-                return {
+             return {
                 personalInfo: {
                     ...data.personalInfo,
                     dateOfBirth: data.personalInfo.dateOfBirth.toDate(),
@@ -73,13 +73,12 @@ async function updateUserDocument(userId: string, data: Partial<UserDocument>): 
     const docRef = doc(db, 'users', userId);
     
     const serializableData: Partial<any> = { ...data };
+
     if (data.personalInfo && data.personalInfo.dateOfBirth) {
-         const dob = data.personalInfo.dateOfBirth instanceof Date 
-            ? data.personalInfo.dateOfBirth 
-            : new Date(data.personalInfo.dateOfBirth);
+        const dob = data.personalInfo.dateOfBirth;
         serializableData.personalInfo = {
             ...data.personalInfo,
-            dateOfBirth: Timestamp.fromDate(dob),
+            dateOfBirth: dob instanceof Timestamp ? dob : Timestamp.fromDate(dob),
         }
     }
     
@@ -99,7 +98,7 @@ interface UserContextType {
   updatePersonalInfo: (info: PersonalInfo) => Promise<void>;
   updateHealthInfo: (info: HealthInfo) => Promise<void>;
   addAppointment: (appointment: Omit<Appointment, 'id'>) => Promise<void>;
-  updateAppointment: (id: string, appointment: Partial<Appointment>) => Promise<void>;
+  updateAppointment: (id: string, appointment: Partial<Omit<Appointment, 'id'>>) => Promise<void>;
   deleteAppointment: (id: string) => Promise<void>;
   addDocument: (doc: Omit<DocumentType, 'id'>) => Promise<void>;
   updateDocument: (id: string, doc: Partial<DocumentType>) => Promise<void>;
@@ -205,6 +204,11 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
 
         } catch (error) {
            console.error("Failed to manage user profile:", error);
+           toast({
+               variant: 'destructive',
+               title: 'Error de Carga',
+               description: 'No se pudieron cargar los datos del perfil.'
+           })
         } finally {
            setLoading(false);
         }
@@ -214,7 +218,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     if(user) {
       manageUserProfile();
     }
-  }, [user]);
+  }, [user, toast]);
 
   const signOutUser = async () => {
     try {
@@ -249,7 +253,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         await setDoc(newDocRef, { ...appointment, date: Timestamp.fromDate(appointment.date) });
         setAppointments(prev => [...prev, newAppointment].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
     };
-    const updateAppointment = async (id: string, appointment: Partial<Appointment>) => {
+    const updateAppointment = async (id: string, appointment: Partial<Omit<Appointment, 'id'>>) => {
         if (!user) return;
         const appointmentDocRef = doc(db, 'users', user.uid, 'appointments', id);
         const data = appointment.date ? { ...appointment, date: Timestamp.fromDate(new Date(appointment.date)) } : appointment;

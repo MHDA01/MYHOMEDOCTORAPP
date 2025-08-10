@@ -139,7 +139,7 @@ export function PersonalInfo() {
   const displayDob = getValidDate(personalInfo?.dateOfBirth);
   
   const selectedCountryData = personalInfo ? countryHealthData[personalInfo.country] : null;
-  const requiresProviderName = selectedCountryData && selectedCountryData.requiresInputFor.includes(personalInfo?.insuranceProvider || '');
+  const requiresProviderName = selectedCountryData && personalInfo?.insuranceProvider && selectedCountryData.requiresInputFor.includes(personalInfo.insuranceProvider);
 
 
   if (loading || !personalInfo) {
@@ -280,7 +280,7 @@ export function PersonalInfo() {
                     {editableInfo.country && countryHealthData[editableInfo.country]?.requiresInputFor.includes(editableInfo.insuranceProvider) && (
                         <div className="grid gap-2">
                             <Label htmlFor="insuranceProviderName">{countryHealthData[editableInfo.country].inputLabel(editableInfo.insuranceProvider)}</Label>
-                            <Input id="insuranceProviderName" value={editableInfo.insuranceProviderName} onChange={(e) => setEditableInfo({...editableInfo, insuranceProviderName: e.target.value})} />
+                            <Input id="insuranceProviderName" value={editableInfo.insuranceProviderName || ''} onChange={(e) => setEditableInfo({...editableInfo, insuranceProviderName: e.target.value})} />
                         </div>
                     )}
                 </div>
