@@ -205,7 +205,7 @@ export function MedicationReminders() {
             <CardFooter>
                  <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                     <DialogTrigger asChild>
-                        <Button><PlusCircle className="mr-2"/>Añadir Medicamento</Button>
+                        <Button onClick={() => handleOpenDialog('add')}><PlusCircle className="mr-2"/>Añadir Medicamento</Button>
                     </DialogTrigger>
                     <DialogContent>
                         <DialogHeader>

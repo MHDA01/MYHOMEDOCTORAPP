@@ -187,7 +187,7 @@ export function Appointments() {
             <CardFooter>
                  <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                     <DialogTrigger asChild>
-                        <Button><PlusCircle className="mr-2"/>Programar Cita</Button>
+                        <Button onClick={() => handleOpenDialog('add')}><PlusCircle className="mr-2"/>Programar Cita</Button>
                     </DialogTrigger>
                     <DialogContent modal={true}>
                         <DialogHeader>

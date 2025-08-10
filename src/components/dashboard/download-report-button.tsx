@@ -56,7 +56,7 @@ export function DownloadReportButton() {
             ['Nombre Completo:', `${personalInfo.firstName} ${personalInfo.lastName}`],
             ['Fecha de Nacimiento:', `${formatDate(personalInfo.dateOfBirth)} (${calculateAge(personalInfo.dateOfBirth)})`],
             ['Sexo:', personalInfo.sex === 'male' ? 'Masculino' : personalInfo.sex === 'female' ? 'Femenino' : 'Indeterminado'],
-            ['Previsión:', `${personalInfo.insuranceProvider}${personalInfo.isapreName ? ` - ${personalInfo.isapreName}` : ''}`],
+            ['Previsión:', `${personalInfo.insuranceProvider}${personalInfo.insuranceProviderName ? ` - ${personalInfo.insuranceProviderName}` : ''}`],
         ];
         autoTable(doc, {
             startY: y,
