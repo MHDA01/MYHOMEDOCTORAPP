@@ -35,7 +35,7 @@ export const checkAppointmentReminders = functions
     // --- LÓGICA DE PRUEBA ---
     // Vamos a enviar una notificación de prueba a un usuario específico para verificar.
     // Reemplaza el UID de abajo con el tuyo para recibir la notificación.
-    const TEST_USER_ID = "REEMPLAZAR_CON_TU_USER_ID"; 
+    const TEST_USER_ID = "tRAKDG4GVEXebI6UCuQYMJDs3ZZ2"; 
     try {
         const userDoc = await db.collection("users").doc(TEST_USER_ID).get();
         const user = userDoc.data();
