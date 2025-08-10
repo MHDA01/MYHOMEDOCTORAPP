@@ -3,10 +3,11 @@
 
 import { createContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import type { PersonalInfo, HealthInfo, Appointment, Document as DocumentType, Medication } from '@/lib/types';
-import { auth, db } from '@/lib/firebase';
+import { auth, db, functions } from '@/lib/firebase';
 import { onAuthStateChanged, User, signOut, updateProfile } from 'firebase/auth';
-import { doc, getDoc, setDoc, Timestamp, collection, getDocs, addDoc, updateDoc, deleteDoc, query, orderBy } from 'firebase/firestore';
+import { doc, getDoc, setDoc, Timestamp, collection, getDocs, addDoc, updateDoc, deleteDoc, query, orderBy, writeBatch } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
+import { httpsCallable } from 'firebase/functions';
 
 // We need a way to serialize Date objects to be stored in Firestore
 // and deserialize them back to Date objects.
