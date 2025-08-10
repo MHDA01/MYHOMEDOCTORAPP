@@ -338,7 +338,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         
         await setDoc(newDocRef, { ...appointment, date: Timestamp.fromDate(appointment.date) });
 
-        setAppointments(prev => [...prev, newAppointment].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
+        setAppointments(prev => [...prev, newAppointment].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()));
     };
     const updateAppointment = async (id: string, appointment: Partial<Appointment>) => {
         if (!user) return;
@@ -402,16 +402,16 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     const updateMedication = async (id: string, med: Partial<Medication>) => {
         if (!user) return;
         
-        await updateDoc(doc(db, 'users', user.uid, 'medications', id), med);
-        
+        const fullMedRef = doc(db, 'users', user.uid, 'medications', id);
+        await updateDoc(fullMedRef, med);
+        const updatedMedDocSnap = await getDoc(fullMedRef);
+        const fullMed = updatedMedDocSnap.data() as Medication;
+
         const q = query(collection(db, "alarms"), where("userId", "==", user.uid), where("medicationId", "==", id));
         const snapshot = await getDocs(q);
         const batch = writeBatch(db);
         snapshot.forEach(doc => batch.delete(doc.ref));
         await batch.commit();
-
-        const updatedMedDoc = await getDoc(doc(db, 'users', user.uid, 'medications', id));
-        const fullMed = updatedMedDoc.data() as Medication;
 
         const currentFcmToken = fcmToken;
         if (fullMed.active && currentFcmToken) {
@@ -428,7 +428,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
             }
         }
         
-        setMedications(prev => prev.map(m => m.id === id ? { ...m, ...fullMed } : m));
+        setMedications(prev => prev.map(m => m.id === id ? { ...m, ...fullMed, ...med } : m));
     };
     
     const deleteMedication = async (id: string) => {
@@ -474,3 +474,5 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     </UserContext.Provider>
   );
 };
+
+    
