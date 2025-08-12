@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { MoreVertical, FileText, View, Trash2, Camera, FilePenLine, RefreshCcw, SwitchCamera, Loader2 } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose, DialogDescription } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -18,7 +18,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { UserContext } from '@/context/user-context';
 import { Skeleton } from '@/components/ui/skeleton';
-
+import Image from 'next/image';
 
 type DialogMode = 'add' | 'edit';
 
@@ -32,6 +32,7 @@ export function DocumentList() {
     const [capturedImage, setCapturedImage] = useState<string | null>(null);
     const [videoDevices, setVideoDevices] = useState<MediaDeviceInfo[]>([]);
     const [currentDeviceIndex, setCurrentDeviceIndex] = useState(0);
+    const [viewingDoc, setViewingDoc] = useState<Document | null>(null);
 
     // Form state
     const [docName, setDocName] = useState('');
@@ -182,8 +183,6 @@ export function DocumentList() {
         const docData = {
             name: docName,
             category: docCategory,
-            // In a real app, you would upload the image to a storage service and get a URL.
-            // For now, we'll store the data URI but this is not recommended for production.
             url: capturedImage || selectedDoc?.url || '#',
             uploadedAt: new Date(),
         };
@@ -263,7 +262,7 @@ export function DocumentList() {
                                             </Button>
                                         </DropdownMenuTrigger>
                                         <DropdownMenuContent align="end">
-                                            <DropdownMenuItem><View className="mr-2 h-4 w-4" /> Ver</DropdownMenuItem>
+                                            <DropdownMenuItem onClick={() => setViewingDoc(doc)}><View className="mr-2 h-4 w-4" /> Ver</DropdownMenuItem>
                                             <DropdownMenuItem onClick={() => handleOpenDialog('edit', doc)}><FilePenLine className="mr-2 h-4 w-4" /> Editar</DropdownMenuItem>
                                             <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(doc.id)}>
                                                 <Trash2 className="mr-2 h-4 w-4" /> Eliminar
@@ -355,6 +354,30 @@ export function DocumentList() {
                     </DialogContent>
                 </Dialog>
             </CardFooter>
+            
+            <Dialog open={!!viewingDoc} onOpenChange={(open) => !open && setViewingDoc(null)}>
+                <DialogContent className="max-w-3xl">
+                    <DialogHeader>
+                        <DialogTitle>{viewingDoc?.name}</DialogTitle>
+                         <DialogDescription>
+                            {getCategoryLabel(viewingDoc?.category ?? 'Other')} - Subido el {viewingDoc ? format(viewingDoc.uploadedAt, 'PPp', {locale: es}) : ''}
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="relative mt-4" style={{'aspectRatio': '1/1.41'}}>
+                        {viewingDoc?.url && (
+                            <Image src={viewingDoc.url} alt={`Vista previa de ${viewingDoc.name}`} layout="fill" objectFit="contain" />
+                        )}
+                    </div>
+                     <DialogFooter>
+                        <DialogClose asChild>
+                            <Button variant="outline">Cerrar</Button>
+                        </DialogClose>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
         </Card>
     );
 }
+
+    
