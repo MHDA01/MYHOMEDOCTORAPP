@@ -40,17 +40,17 @@ export function DownloadReportButton() {
 
         const addHeader = () => {
             const logoUrl = 'https://i.postimg.cc/J7N5r89y/LOGO-1.png';
-            doc.addImage(logoUrl, 'PNG', pageMargin, 30, 100, 40);
+            doc.addImage(logoUrl, 'PNG', pageMargin, 30, 100, 50);
 
             doc.setFontSize(22);
             doc.setFont('helvetica', 'bold');
             doc.setTextColor(primaryColor);
-            doc.text('Resumen de Salud', pageWidth - pageMargin, 65, { align: 'right' });
+            doc.text('Resumen de Salud', pageWidth - pageMargin, 60, { align: 'right' });
 
             doc.setFontSize(10);
             doc.setFont('helvetica', 'normal');
             doc.setTextColor(textColor);
-            doc.text(`Generado el: ${format(new Date(), 'dd/MM/yyyy HH:mm')}`, pageWidth - pageMargin, 80, { align: 'right' });
+            doc.text(`Generado el: ${format(new Date(), 'dd/MM/yyyy HH:mm')}`, pageWidth - pageMargin, 75, { align: 'right' });
 
             doc.setDrawColor('#E5E7EB');
             doc.line(pageMargin, 110, pageWidth - pageMargin, 110);
