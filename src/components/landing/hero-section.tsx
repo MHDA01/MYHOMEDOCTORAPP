@@ -1,10 +1,14 @@
 import Link from 'next/link';
+import { Logo } from '@/components/logo';
 
 export default function HeroSection() {
   return (
     <section id="hero-section" className="bg-background pt-24 pb-16 md:pt-32 md:pb-20 text-center overflow-hidden w-full">
       <div className="w-full max-w-5xl mx-auto px-6">
-        <div className="relative z-10">
+        <div className="relative z-10 flex flex-col items-center">
+            <div className="mb-8">
+              <Logo />
+            </div>
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold text-slate-800 leading-tight mb-6">
             Tu Salud, Organizada y a tu Alcance.
             </h1>
