@@ -68,7 +68,7 @@ export function SidebarNav() {
   if (context?.loading || !context?.personalInfo) {
     return (
         <>
-            <SidebarHeader>
+            <SidebarHeader className="items-center">
                 <Logo />
             </SidebarHeader>
             <SidebarContent className="p-2 space-y-2">
@@ -97,7 +97,7 @@ export function SidebarNav() {
 
   return (
     <>
-      <SidebarHeader>
+      <SidebarHeader className="items-center">
         <Logo />
       </SidebarHeader>
       <SidebarContent className="p-2">
