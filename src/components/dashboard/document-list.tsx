@@ -422,13 +422,13 @@ export function DocumentList() {
                             {getCategoryLabel(viewingDoc?.category ?? 'Other')} - Estudiado el {viewingDoc ? format(viewingDoc.studyDate || viewingDoc.uploadedAt, 'PPp', {locale: es}) : ''}
                         </DialogDescription>
                     </DialogHeader>
-                    {viewingDoc?.urls && viewingDoc.urls.length > 0 && (
+                    {viewingDoc?.urls && viewingDoc.urls.length > 0 ? (
                         <Carousel className="w-full">
                             <CarouselContent>
                                 {viewingDoc.urls.map((url, index) => (
                                     <CarouselItem key={index}>
                                         <div className="p-1">
-                                            <div className="relative aspect-[1/1.41] w-full">
+                                            <div className="relative aspect-[3/4] w-full bg-muted rounded-md overflow-hidden">
                                                 <Image src={url} alt={`Vista previa de ${viewingDoc.name} - Página ${index + 1}`} layout="fill" objectFit="contain" />
                                             </div>
                                              <p className="text-center text-sm text-muted-foreground mt-2">Página {index + 1} de {viewingDoc.urls.length}</p>
@@ -439,6 +439,8 @@ export function DocumentList() {
                             <CarouselPrevious />
                             <CarouselNext />
                         </Carousel>
+                    ) : (
+                        <div className="py-12 text-center text-muted-foreground">No hay imágenes para mostrar.</div>
                     )}
                      <DialogFooter>
                         <DialogClose asChild>
