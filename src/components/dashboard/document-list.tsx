@@ -5,7 +5,7 @@ import { useState, useRef, useEffect, useCallback, useContext } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { MoreVertical, FileText, View, Trash2, Camera, FilePenLine, RefreshCcw, SwitchCamera, Loader2, CalendarIcon } from "lucide-react";
+import { MoreVertical, FileText, View, Trash2, Camera, FilePenLine, RefreshCcw, SwitchCamera, Loader2, CalendarIcon, X } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose, DialogDescription } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -22,6 +22,8 @@ import Image from 'next/image';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { cn } from '@/lib/utils';
 import { Calendar } from '../ui/calendar';
+import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
+
 
 type DialogMode = 'add' | 'edit';
 
@@ -32,7 +34,7 @@ export function DocumentList() {
     const [dialogMode, setDialogMode] = useState<DialogMode>('add');
     const [selectedDoc, setSelectedDoc] = useState<Document | null>(null);
     const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
-    const [capturedImage, setCapturedImage] = useState<string | null>(null);
+    const [capturedImages, setCapturedImages] = useState<string[]>([]);
     const [videoDevices, setVideoDevices] = useState<MediaDeviceInfo[]>([]);
     const [currentDeviceIndex, setCurrentDeviceIndex] = useState(0);
     const [viewingDoc, setViewingDoc] = useState<Document | null>(null);
@@ -113,27 +115,27 @@ export function DocumentList() {
     }, [dialogMode, isDialogOpen, stopStream, currentDeviceIndex, startStream, toast]);
 
     useEffect(() => {
-        if (isDialogOpen && dialogMode === 'add' && !capturedImage) {
+        if (isDialogOpen && dialogMode === 'add') {
            initializeCamera();
         } else {
             stopStream();
         }
         
         return () => stopStream();
-    }, [isDialogOpen, dialogMode, capturedImage, initializeCamera, stopStream]);
+    }, [isDialogOpen, dialogMode, initializeCamera, stopStream]);
     
      useEffect(() => {
-        if (videoDevices.length > 0 && isDialogOpen && dialogMode === 'add' && !capturedImage) {
+        if (videoDevices.length > 0 && isDialogOpen && dialogMode === 'add') {
             const deviceId = videoDevices[currentDeviceIndex]?.deviceId;
             startStream(deviceId);
         }
-    }, [currentDeviceIndex, videoDevices, isDialogOpen, dialogMode, capturedImage, startStream]);
+    }, [currentDeviceIndex, videoDevices, isDialogOpen, dialogMode, startStream]);
 
     const resetForm = () => {
         setDocName('');
         setDocCategory('Other');
         setStudyDate(new Date());
-        setCapturedImage(null);
+        setCapturedImages([]);
         setCurrentDeviceIndex(0);
     };
 
@@ -152,7 +154,7 @@ export function DocumentList() {
     };
 
     const handleCapture = () => {
-        if (videoRef.current && canvasRef.current) {
+        if (videoRef.current && canvasRef.current && capturedImages.length < 10) {
             const video = videoRef.current;
             const canvas = canvasRef.current;
             canvas.width = video.videoWidth;
@@ -161,14 +163,13 @@ export function DocumentList() {
             if(context) {
                 context.drawImage(video, 0, 0, video.videoWidth, video.videoHeight);
                 const dataUrl = canvas.toDataURL('image/png');
-                setCapturedImage(dataUrl);
-                stopStream();
+                setCapturedImages(prev => [...prev, dataUrl]);
             }
         }
     };
 
-    const handleRetake = () => {
-        setCapturedImage(null);
+    const handleRemoveImage = (index: number) => {
+        setCapturedImages(prev => prev.filter((_, i) => i !== index));
     };
 
     const handleCameraSwitch = () => {
@@ -189,8 +190,8 @@ export function DocumentList() {
             toast({ variant: "destructive", title: "Por favor complete todos los campos" });
             return;
         }
-        if (dialogMode === 'add' && !capturedImage) {
-            toast({ variant: "destructive", title: "Por favor, capture una foto del documento." });
+        if (dialogMode === 'add' && capturedImages.length === 0) {
+            toast({ variant: "destructive", title: "Por favor, capture al menos una foto del documento." });
             return;
         }
         
@@ -198,7 +199,7 @@ export function DocumentList() {
         const docData = {
             name: docName,
             category: docCategory,
-            url: capturedImage || selectedDoc?.url || '#',
+            urls: capturedImages,
             uploadedAt: dialogMode === 'add' ? new Date() : selectedDoc!.uploadedAt,
             studyDate: studyDate || new Date()
         };
@@ -311,15 +312,6 @@ export function DocumentList() {
                         <div className="grid gap-4 py-4 max-h-[70vh] overflow-y-auto pr-4">
                             {dialogMode === 'add' && (
                                 <div className="space-y-4">
-                                 {capturedImage ? (
-                                     <div className="space-y-4 text-center">
-                                         <img src={capturedImage} alt="Documento capturado" className="rounded-md w-full" />
-                                         <Button variant="outline" onClick={handleRetake}>
-                                             <RefreshCcw className="mr-2 h-4 w-4" />
-                                             Tomar de Nuevo
-                                         </Button>
-                                     </div>
-                                 ) : (
                                      <div className="space-y-4 text-center">
                                          <video ref={videoRef} className="w-full aspect-video rounded-md bg-muted" autoPlay muted playsInline />
                                          {hasCameraPermission === false && (
@@ -336,13 +328,27 @@ export function DocumentList() {
                                                         <SwitchCamera className="mr-2" /> Cambiar Cámara
                                                     </Button>
                                                 )}
-                                                <Button onClick={handleCapture} disabled={hasCameraPermission !== true}>
-                                                        <Camera className="mr-2" /> Tomar Foto
+                                                <Button onClick={handleCapture} disabled={hasCameraPermission !== true || capturedImages.length >= 10}>
+                                                        <Camera className="mr-2" /> Tomar Foto ({capturedImages.length}/10)
                                                 </Button>
                                           </div>
                                      </div>
-                                 )}
                                  <canvas ref={canvasRef} className="hidden" />
+                                 {capturedImages.length > 0 && (
+                                     <div className="space-y-2">
+                                         <Label>Imágenes Capturadas</Label>
+                                         <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
+                                             {capturedImages.map((imgSrc, index) => (
+                                                 <div key={index} className="relative">
+                                                     <Image src={imgSrc} alt={`Captura ${index + 1}`} width={100} height={100} className="rounded-md object-cover w-full aspect-square" />
+                                                     <Button size="icon" variant="destructive" className="absolute -top-2 -right-2 h-6 w-6 rounded-full" onClick={() => handleRemoveImage(index)}>
+                                                         <X className="h-4 w-4" />
+                                                     </Button>
+                                                 </div>
+                                             ))}
+                                         </div>
+                                     </div>
+                                 )}
                                 </div>
                             )}
                             <div className="grid gap-2">
@@ -399,7 +405,7 @@ export function DocumentList() {
                            <DialogClose asChild>
                                <Button variant="outline" disabled={isSaving}>Cancelar</Button>
                            </DialogClose>
-                             <Button type="submit" onClick={handleSubmit} disabled={isSaving || (dialogMode === 'add' && !capturedImage)}>
+                             <Button type="submit" onClick={handleSubmit} disabled={isSaving || (dialogMode === 'add' && capturedImages.length === 0)}>
                                 {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                 Guardar Documento
                             </Button>
@@ -416,11 +422,24 @@ export function DocumentList() {
                             {getCategoryLabel(viewingDoc?.category ?? 'Other')} - Estudiado el {viewingDoc ? format(viewingDoc.studyDate || viewingDoc.uploadedAt, 'PPp', {locale: es}) : ''}
                         </DialogDescription>
                     </DialogHeader>
-                    <div className="relative mt-4" style={{'aspectRatio': '1/1.41'}}>
-                        {viewingDoc?.url && (
-                            <Image src={viewingDoc.url} alt={`Vista previa de ${viewingDoc.name}`} layout="fill" objectFit="contain" />
-                        )}
-                    </div>
+                    {viewingDoc && viewingDoc.urls.length > 0 && (
+                        <Carousel className="w-full">
+                            <CarouselContent>
+                                {viewingDoc.urls.map((url, index) => (
+                                    <CarouselItem key={index}>
+                                        <div className="p-1">
+                                            <div className="relative aspect-[1/1.41] w-full">
+                                                <Image src={url} alt={`Vista previa de ${viewingDoc.name} - Página ${index + 1}`} layout="fill" objectFit="contain" />
+                                            </div>
+                                             <p className="text-center text-sm text-muted-foreground mt-2">Página {index + 1} de {viewingDoc.urls.length}</p>
+                                        </div>
+                                    </CarouselItem>
+                                ))}
+                            </CarouselContent>
+                            <CarouselPrevious />
+                            <CarouselNext />
+                        </Carousel>
+                    )}
                      <DialogFooter>
                         <DialogClose asChild>
                             <Button variant="outline">Cerrar</Button>

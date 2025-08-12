@@ -269,10 +269,12 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     };
     const updateDocument = async (id: string, docData: Partial<DocumentType>) => {
         if (!user) return;
-        const dataToUpdate: Partial<SerializableDocument> = { ...docData };
+        const dataToUpdate: Partial<SerializableDocument> & { [key: string]: any } = { ...docData };
         if (docData.studyDate) {
             dataToUpdate.studyDate = Timestamp.fromDate(docData.studyDate);
         }
+        delete dataToUpdate.urls; // Do not update urls on edit for now
+        
         await updateDoc(doc(db, 'users', user.uid, 'documents', id), dataToUpdate);
         setDocuments(prev => prev.map(d => d.id === id ? { ...d, ...docData } : d));
     };

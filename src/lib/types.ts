@@ -5,7 +5,7 @@ export type Document = {
   name: string;
   category: 'Lab Result' | 'Prescription' | 'Imaging Report' | 'Other';
   uploadedAt: Date;
-  url: string;
+  urls: string[];
   studyDate?: Date;
 };
 
