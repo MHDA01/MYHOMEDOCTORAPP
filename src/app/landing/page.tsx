@@ -1,2 +1,11 @@
-// This file is no longer needed as the landing page is now served from the root path.
-// You can safely delete this file.
+import { LandingPage } from '@/components/landing/landing-page';
+import Header from '@/components/landing/header';
+
+export default function Landing() {
+  return (
+    <>
+      <Header />
+      <LandingPage />
+    </>
+  );
+}
