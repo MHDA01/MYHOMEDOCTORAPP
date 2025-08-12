@@ -40,11 +40,11 @@ export function DownloadReportButton() {
 
         const addHeader = () => {
             const logoUrl = 'https://i.postimg.cc/SsRdwdzD/LOGO-1-transparent.png';
-            const logoWidth = 98; // Incremented by 40% from 70
-            const logoHeight = 73.5; // Maintain aspect ratio (98 * 0.75)
+            const logoWidth = 157; // Incremented by 60% from 98
+            const logoHeight = 117.75; // Maintain aspect ratio (157 * 0.75)
             
             // Dibuja la imagen del logo
-            doc.addImage(logoUrl, 'PNG', pageMargin, 50, logoWidth, logoHeight);
+            doc.addImage(logoUrl, 'PNG', pageMargin, 40, logoWidth, logoHeight);
 
             // Título y subtítulo a la derecha
             doc.setFont('helvetica', 'bold');
@@ -59,8 +59,8 @@ export function DownloadReportButton() {
 
             // Línea separadora
             doc.setDrawColor('#E5E7EB');
-            doc.line(pageMargin, 130, pageWidth - pageMargin, 130);
-            y = 150;
+            doc.line(pageMargin, 160, pageWidth - pageMargin, 160);
+            y = 180;
         };
         
         const addSectionHeader = (title: string) => {
@@ -172,7 +172,7 @@ export function DownloadReportButton() {
             const sortedDocuments = [...documents].sort((a,b) => (new Date(b.studyDate || b.uploadedAt)).getTime() - (new Date(a.studyDate || a.uploadedAt)).getTime());
 
             for (const d of sortedDocuments) {
-                if (y > doc.internal.pageSize.getHeight() - 100) { doc.addPage(); addHeader(); y = 150; }
+                if (y > doc.internal.pageSize.getHeight() - 100) { doc.addPage(); addHeader(); y = 180; }
                 
                 doc.setFontSize(12);
                 doc.setFont('helvetica', 'bold');
