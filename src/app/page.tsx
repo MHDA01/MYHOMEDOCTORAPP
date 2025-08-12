@@ -1,15 +1,13 @@
+import { LandingPage } from '@/components/landing/landing-page';
+import Header from '@/components/landing/header';
 
-'use client';
-
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 
 export default function Home() {
-  const router = useRouter();
-
-  useEffect(() => {
-    router.replace('/login');
-  }, [router]);
-
-  return null; 
+  return (
+    <>
+    <Header/>
+    <LandingPage />
+    </>
+    
+  );
 }
