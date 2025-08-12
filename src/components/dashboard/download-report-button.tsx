@@ -163,19 +163,42 @@ export function DownloadReportButton() {
             if(y > 250) { doc.addPage(); y = 20; }
             doc.setFontSize(16);
             doc.setFont('helvetica', 'bold');
-            doc.text('6. Documentos', 14, y);
+            doc.text('6. Documentos y Resúmenes IA', 14, y);
             y += 8;
-            autoTable(doc, {
-                startY: y,
-                head: [['Fecha de Carga', 'Nombre', 'Categoría']],
-                body: documents.map(d => [
-                    formatDate(d.uploadedAt),
-                    d.name,
-                    d.category
-                ]),
-                theme: 'striped',
-                headStyles: { fillColor: [35, 87, 124] },
-            });
+
+            const sortedDocuments = [...documents].sort((a,b) => (b.studyDate || b.uploadedAt).getTime() - (a.studyDate || a.uploadedAt).getTime());
+
+            for (const d of sortedDocuments) {
+                if (y > 260) {
+                    doc.addPage();
+                    y = 20;
+                }
+                doc.setFontSize(12);
+                doc.setFont('helvetica', 'bold');
+                doc.text(d.name, 14, y);
+                y += 5;
+
+                doc.setFontSize(10);
+                doc.setFont('helvetica', 'normal');
+                doc.text(`Categoría: ${d.category} | Fecha Estudio: ${formatDate(d.studyDate || d.uploadedAt)}`, 14, y);
+                y += 7;
+
+                if (d.aiSummary) {
+                    doc.setFontSize(10);
+                    doc.setFont('helvetica', 'bold');
+                    doc.text('Resumen IA:', 14, y);
+                    y += 5;
+
+                    doc.setFont('helvetica', 'normal');
+                    const summaryLines = doc.splitTextToSize(d.aiSummary, 180);
+                    doc.text(summaryLines, 14, y);
+                    y += (summaryLines.length * 4) + 5;
+                } else {
+                    doc.setFont('helvetica', 'italic');
+                    doc.text('Sin resumen de IA.', 14, y);
+                    y += 7;
+                }
+            }
         }
         
         doc.save(`resumen_salud_${personalInfo.firstName.toLowerCase()}_${personalInfo.lastName.toLowerCase()}.pdf`);
