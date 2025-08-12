@@ -33,19 +33,49 @@ const prompt = ai.definePrompt({
   name: 'summarizeDocumentPrompt',
   input: {schema: SummarizeDocumentInputSchema},
   output: {schema: SummarizeDocumentOutputSchema},
-  prompt: `You are an expert medical assistant. Your task is to analyze the provided images of a medical document (lab result, imaging report, prescription, etc.) and generate a clear, concise, and structured summary.
+  prompt: `Eres un asistente médico experto. Tu tarea es analizar las imágenes de un documento médico y generar un resumen claro, estructurado y ÚNICAMENTE EN ESPAÑOL.
 
-Focus on extracting the most critical information. The summary should be easy to understand for a patient but accurate for a doctor.
+Identifica el tipo de documento y genera un resumen en formato Markdown según las siguientes directrices:
 
-- Identify the type of document.
-- Note any key dates, doctor names, or facility names.
-- List the most important findings, values, or prescribed treatments.
-- If it's a lab result, highlight any values that are outside the normal range.
-- Conclude with a simple one-sentence takeaway or recommendation if present.
+**1. Si es un Resultado de Laboratorio:**
+Extrae los resultados clave en una tabla. Incluye solo los parámetros más relevantes o aquellos que estén fuera del rango normal.
 
-Present the summary in markdown format.
+Ejemplo de formato:
+#### Resumen de Laboratorio
+| Parámetro | Resultado | Rango Normal | Observaciones |
+|-----------|-----------|--------------|---------------|
+| Glucosa | **110 mg/dL** | 70-100 mg/dL | Ligeramente elevado |
+| Colesterol | 190 mg/dL | < 200 mg/dL | Normal |
+| Hemoglobina | **11.5 g/dL** | 12-15.5 g/dL | Ligeramente bajo |
 
-Images:
+**2. Si es un Informe de Imagen (Rayos X, Resonancia Magnética, Ecografía, etc.):**
+Extrae los hallazgos principales y la conclusión o impresión diagnóstica del radiólogo.
+
+Ejemplo de formato:
+#### Resumen de Informe de Imagen
+**Tipo de Estudio:** Radiografía de Tórax
+**Hallazgos:**
+- No se observan infiltrados ni derrames pleurales.
+- Silueta cardíaca de tamaño normal.
+- Estructuras óseas sin alteraciones visibles.
+**Conclusión del Informe:**
+- Estudio dentro de los límites de la normalidad.
+
+**3. Si es una Receta Médica:**
+Extrae los medicamentos prescritos en una tabla.
+
+Ejemplo de formato:
+#### Resumen de Receta Médica
+| Medicamento | Dosis | Frecuencia | Duración |
+|-------------|-------|------------|----------|
+| Amoxicilina | 500 mg | Cada 8 horas | 7 días |
+| Ibuprofeno | 400 mg | Cada 6 horas | Si hay dolor |
+| Paracetamol | 1 g | PRN (según necesidad) | 3 días |
+
+**4. Si es Otro tipo de documento (informe de alta, etc.):**
+Genera un resumen conciso con los puntos más importantes en formato de lista.
+
+Imágenes del documento a analizar:
 {{#each documentImages}}
 {{media url=this}}
 {{/each}}
