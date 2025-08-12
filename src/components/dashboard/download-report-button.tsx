@@ -40,22 +40,22 @@ export function DownloadReportButton() {
 
         const addHeader = () => {
             const logoUrl = 'https://i.postimg.cc/SsRdwdzD/LOGO-1-transparent.png';
-            const logoWidth = 70; // Increased logo size
-            const logoHeight = 52.5; // Maintain aspect ratio
+            const logoWidth = 98; // Incremented by 40% from 70
+            const logoHeight = 73.5; // Maintain aspect ratio (98 * 0.75)
             
             // Dibuja la imagen del logo
-            doc.addImage(logoUrl, 'PNG', pageMargin, 55, logoWidth, logoHeight);
+            doc.addImage(logoUrl, 'PNG', pageMargin, 50, logoWidth, logoHeight);
 
             // Título y subtítulo a la derecha
             doc.setFont('helvetica', 'bold');
             doc.setFontSize(24);
             doc.setTextColor(primaryColor);
-            doc.text('Resumen de Salud', pageWidth - pageMargin, 80, { align: 'right' });
+            doc.text('Resumen de Salud', pageWidth - pageMargin, 85, { align: 'right' });
 
             doc.setFont('helvetica', 'normal');
             doc.setFontSize(10);
             doc.setTextColor(textColor);
-            doc.text(`Generado el: ${format(new Date(), 'dd/MM/yyyy HH:mm')}`, pageWidth - pageMargin, 95, { align: 'right' });
+            doc.text(`Generado el: ${format(new Date(), 'dd/MM/yyyy HH:mm')}`, pageWidth - pageMargin, 100, { align: 'right' });
 
             // Línea separadora
             doc.setDrawColor('#E5E7EB');
