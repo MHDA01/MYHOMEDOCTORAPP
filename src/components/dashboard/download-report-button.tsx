@@ -39,7 +39,7 @@ export function DownloadReportButton() {
         let y = 0;
 
         const addHeader = () => {
-            const logoUrl = 'https://i.postimg.cc/J7N5r89y/LOGO-1.png';
+            const logoUrl = 'https://i.postimg.cc/SsRdwdzD/LOGO-1-transparent.png';
             
             // Dibuja la imagen del logo
             doc.addImage(logoUrl, 'PNG', pageMargin, 40, 90, 67.5);
