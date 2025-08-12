@@ -20,6 +20,13 @@ const formatDate = (date: Date | undefined): string => {
     return format(date, "d 'de' MMMM 'de' yyyy", { locale: es });
 }
 
+const countryHealthData = {
+    argentina: { label: 'Obra Social' },
+    colombia: { label: 'Seguridad Social' },
+    chile: { label: 'Previsión' },
+};
+
+
 export function DownloadReportButton() {
     const context = useContext(UserContext);
     const [isGenerating, setIsGenerating] = React.useState(false);
@@ -40,13 +47,11 @@ export function DownloadReportButton() {
 
         const addHeader = () => {
             const logoUrl = 'https://i.postimg.cc/SsRdwdzD/LOGO-1-transparent.png';
-            const logoWidth = 157; // Incremented by 60% from 98
-            const logoHeight = 117.75; // Maintain aspect ratio (157 * 0.75)
+            const logoWidth = 157; 
+            const logoHeight = 117.75; 
             
-            // Dibuja la imagen del logo
             doc.addImage(logoUrl, 'PNG', pageMargin, 40, logoWidth, logoHeight);
 
-            // Título y subtítulo a la derecha
             doc.setFont('helvetica', 'bold');
             doc.setFontSize(24);
             doc.setTextColor(primaryColor);
@@ -57,7 +62,6 @@ export function DownloadReportButton() {
             doc.setTextColor(textColor);
             doc.text(`Generado el: ${format(new Date(), 'dd/MM/yyyy HH:mm')}`, pageWidth - pageMargin, 100, { align: 'right' });
 
-            // Línea separadora
             doc.setDrawColor('#E5E7EB');
             doc.line(pageMargin, 160, pageWidth - pageMargin, 160);
             y = 180;
@@ -68,7 +72,7 @@ export function DownloadReportButton() {
                 doc.addPage();
                 addHeader();
             }
-            const barHeight = 28; // Increased bar height
+            const barHeight = 28;
             doc.setFillColor(primaryColor);
             doc.rect(pageMargin, y, pageContentWidth, barHeight, 'F');
             doc.setFontSize(14);
@@ -82,6 +86,9 @@ export function DownloadReportButton() {
 
         addSectionHeader('1. Información Personal');
         doc.setFont('helvetica', 'normal');
+
+        const healthProviderLabel = countryHealthData[personalInfo.country]?.label || 'Previsión';
+
         autoTable(doc, {
             startY: y,
             body: [
@@ -89,7 +96,7 @@ export function DownloadReportButton() {
                 ['Fecha de Nacimiento:', `${formatDate(personalInfo.dateOfBirth)} (${calculateAge(personalInfo.dateOfBirth)})`],
                 ['Sexo:', personalInfo.sex === 'male' ? 'Masculino' : personalInfo.sex === 'female' ? 'Femenino' : 'Indeterminado'],
                 ['País:', personalInfo.country.charAt(0).toUpperCase() + personalInfo.country.slice(1)],
-                ['Previsión:', `${personalInfo.insuranceProvider}${personalInfo.insuranceProviderName ? ` - ${personalInfo.insuranceProviderName}` : ''}`],
+                [`${healthProviderLabel}:`, `${personalInfo.insuranceProvider}${personalInfo.insuranceProviderName ? ` - ${personalInfo.insuranceProviderName}` : ''}`],
             ],
             theme: 'plain',
             styles: { cellPadding: { top: 6, right: 4, bottom: 6, left: 2}, fontSize: 11, font: 'helvetica', textColor: textColor },
@@ -279,3 +286,5 @@ export function DownloadReportButton() {
         </Button>
     )
 }
+
+    
