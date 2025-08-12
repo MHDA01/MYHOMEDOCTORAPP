@@ -422,7 +422,7 @@ export function DocumentList() {
                             {getCategoryLabel(viewingDoc?.category ?? 'Other')} - Estudiado el {viewingDoc ? format(viewingDoc.studyDate || viewingDoc.uploadedAt, 'PPp', {locale: es}) : ''}
                         </DialogDescription>
                     </DialogHeader>
-                    {viewingDoc && viewingDoc.urls.length > 0 && (
+                    {viewingDoc?.urls && viewingDoc.urls.length > 0 && (
                         <Carousel className="w-full">
                             <CarouselContent>
                                 {viewingDoc.urls.map((url, index) => (
