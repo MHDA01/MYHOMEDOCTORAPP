@@ -22,7 +22,7 @@ const problems = [
 
 export default function ProblemSection() {
   return (
-    <section id="problem-section" className="py-16 md:py-24 bg-secondary pt-36 md:pt-40">
+    <section id="problem-section" className="py-16 md:py-24 bg-secondary">
       <div className="container mx-auto text-center px-6">
         <h2 className="text-3xl md:text-4xl font-bold text-slate-800 mb-4">¿Te identificas con esto?</h2>
         <p className="text-lg text-slate-600 mb-12">Las frustraciones más comunes en la gestión de tu salud.</p>
