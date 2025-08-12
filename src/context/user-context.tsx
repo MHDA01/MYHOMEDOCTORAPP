@@ -34,16 +34,8 @@ type UserDocument = {
 
 // --- Generic Firestore Functions ---
 
-async function getCollection<T>(userId: string, collectionName: string): Promise<T[]> {
-    let q;
-    if (collectionName === 'appointments') {
-        q = query(collection(db, 'users', userId, collectionName), orderBy('date', 'desc'));
-    } else if (collectionName === 'documents') {
-        q = query(collection(db, 'users', userId, collectionName), orderBy('uploadedAt', 'desc'));
-    } else {
-        q = query(collection(db, 'users', userId, collectionName));
-    }
-    
+async function getCollection<T>(userId: string, collectionName: string, orderByField: string, orderDirection: 'asc' | 'desc' = 'desc'): Promise<T[]> {
+    const q = query(collection(db, 'users', userId, collectionName), orderBy(orderByField, orderDirection));
     const snapshot = await getDocs(q);
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as T));
 }
@@ -143,11 +135,62 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   
   const { toast } = useToast();
   
+  const loadUserData = useCallback(async (currentUser: User) => {
+    setLoading(true);
+    try {
+        const userDoc = await getUserDocument(currentUser.uid);
+        
+        if (userDoc) {
+            setPersonalInfo(userDoc.personalInfo);
+            setHealthInfo(userDoc.healthInfo);
+        } else {
+            const isAnon = currentUser.isAnonymous;
+            const defaultPersonalInfo: PersonalInfo = isAnon ? initialAnonymousPersonalInfo : {
+                firstName: currentUser.displayName?.split(' ')[0] || 'Nuevo',
+                lastName: currentUser.displayName?.split(' ').slice(1).join(' ') || 'Usuario',
+                sex: 'other',
+                dateOfBirth: new Date(),
+                country: 'chile',
+                insuranceProvider: 'Fonasa',
+                insuranceProviderName: ''
+            };
+            const defaultHealthInfo = isAnon ? initialAnonymousHealthInfo : {
+                allergies: [], medications: [], pathologicalHistory: '', surgicalHistory: '',
+                gynecologicalHistory: '', emergencyContacts: [],
+            };
+            
+            await updateUserDocument(currentUser.uid, { personalInfo: defaultPersonalInfo, healthInfo: defaultHealthInfo });
+            setPersonalInfo(defaultPersonalInfo);
+            setHealthInfo(defaultHealthInfo);
+        }
+        
+        const [appointmentsData, documentsData, medicationsData] = await Promise.all([
+            getCollection<SerializableAppointment>(currentUser.uid, 'appointments', 'date'),
+            getCollection<SerializableDocument>(currentUser.uid, 'documents', 'uploadedAt'),
+            getCollection<Medication>(currentUser.uid, 'name', 'asc'),
+        ]);
+
+        setAppointments(appointmentsData.map(a => ({...a, date: a.date.toDate() })));
+        setDocuments(documentsData.map(d => ({...d, uploadedAt: d.uploadedAt.toDate() })));
+        setMedications(medicationsData);
+
+    } catch (error) {
+       console.error("Failed to manage user profile:", error);
+       toast({
+           variant: 'destructive',
+           title: 'Error de Carga',
+           description: 'No se pudieron cargar los datos del perfil.'
+       })
+    } finally {
+       setLoading(false);
+    }
+  }, [toast]);
+
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
-      setLoading(true);
       if (currentUser) {
         setUser(currentUser);
+        await loadUserData(currentUser);
       } else {
         setUser(null);
         setPersonalInfo(null);
@@ -159,67 +202,8 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       }
     });
     return () => unsubscribe();
-  }, []);
-
-  useEffect(() => {
-    const manageUserProfile = async () => {
-      if (user) {
-        setLoading(true);
-        try {
-          const userDoc = await getUserDocument(user.uid);
-          
-          if (userDoc) {
-              setPersonalInfo(userDoc.personalInfo);
-              setHealthInfo(userDoc.healthInfo);
-          } else {
-              const isAnon = user.isAnonymous;
-              const defaultPersonalInfo: PersonalInfo = isAnon ? initialAnonymousPersonalInfo : {
-                  firstName: user.displayName?.split(' ')[0] || 'Nuevo',
-                  lastName: user.displayName?.split(' ').slice(1).join(' ') || 'Usuario',
-                  sex: 'other',
-                  dateOfBirth: new Date(),
-                  country: 'chile',
-                  insuranceProvider: 'Fonasa',
-                  insuranceProviderName: ''
-              };
-              const defaultHealthInfo = isAnon ? initialAnonymousHealthInfo : {
-                  allergies: [], medications: [], pathologicalHistory: '', surgicalHistory: '',
-                  gynecologicalHistory: '', emergencyContacts: [],
-              };
-              
-              await updateUserDocument(user.uid, { personalInfo: defaultPersonalInfo, healthInfo: defaultHealthInfo });
-              setPersonalInfo(defaultPersonalInfo);
-              setHealthInfo(defaultHealthInfo);
-          }
-          
-          const [appointmentsData, documentsData, medicationsData] = await Promise.all([
-              getCollection<SerializableAppointment>(user.uid, 'appointments'),
-              getCollection<SerializableDocument>(user.uid, 'documents'),
-              getCollection<Medication>(user.uid, 'medications'),
-          ]);
-
-          setAppointments(appointmentsData.map(a => ({...a, date: a.date.toDate() })));
-          setDocuments(documentsData.map(d => ({...d, uploadedAt: d.uploadedAt.toDate() })));
-          setMedications(medicationsData);
-
-        } catch (error) {
-           console.error("Failed to manage user profile:", error);
-           toast({
-               variant: 'destructive',
-               title: 'Error de Carga',
-               description: 'No se pudieron cargar los datos del perfil.'
-           })
-        } finally {
-           setLoading(false);
-        }
-      }
-    };
-    
-    if(user) {
-      manageUserProfile();
-    }
-  }, [user, toast]);
-
+  }, [loadUserData]);
+  
   const signOutUser = async () => {
     try {
         await signOut(auth);
@@ -292,7 +276,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         const newDocRef = doc(collection(db, 'users', user.uid, 'medications'));
         const newMed = { ...med, id: newDocRef.id };
         await setDoc(newDocRef, newMed);
-        setMedications(prev => [...prev, newMed]);
+        setMedications(prev => [...prev, newMed].sort((a, b) => a.name.localeCompare(b.name)));
     };
 
     const updateMedication = async (id: string, med: Partial<Medication>) => {
@@ -300,7 +284,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         const medicationDocRef = doc(db, 'users', user.uid, 'medications', id);
         await updateDoc(medicationDocRef, med);
         const fullMed = { ...medications.find(m => m.id === id), ...med } as Medication;
-        setMedications(prev => prev.map(m => m.id === id ? fullMed : m));
+        setMedications(prev => prev.map(m => m.id === id ? fullMed : m).sort((a, b) => a.name.localeCompare(b.name)));
     };
     
     const deleteMedication = async (id: string) => {
@@ -336,3 +320,5 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     </UserContext.Provider>
   );
 };
+
+    

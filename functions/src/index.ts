@@ -1,11 +1,4 @@
-/**
- * @fileoverview Archivo principal de Cloud Functions.
- * Importa y exporta las funciones programadas para que Firebase las despliegue.
- * Mantiene este archivo limpio y delega la lógica a otros módulos.
- */
+// Este archivo ya no es necesario, su contenido ha sido movido a /functions/index.ts para simplificar la estructura.
+// Puedes eliminarlo si lo deseas, o dejarlo vacío.
 
-// Importa las funciones de recordatorios desde su propio módulo.
-import { checkAppointmentReminders, checkMedicationReminders } from "./reminders";
-
-// Exporta las funciones para que Firebase las reconozca y las despliegue.
-export { checkAppointmentReminders, checkMedicationReminders };
+    
