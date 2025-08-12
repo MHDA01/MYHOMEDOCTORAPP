@@ -295,7 +295,6 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         if (docData.studyDate) {
             dataToUpdate.studyDate = Timestamp.fromDate(docData.studyDate);
         }
-        delete dataToUpdate.urls; // Do not update urls on edit for now
         
         await updateDoc(doc(db, 'users', user.uid, 'documents', id), dataToUpdate);
         setDocuments(prev => prev.map(d => d.id === id ? { ...d, ...docData } : d));
