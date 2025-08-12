@@ -5,6 +5,14 @@ export default function HeroSection() {
   return (
     <section id="hero-section" className="bg-white pt-16 pb-12 md:pt-24 md:pb-16 text-center overflow-hidden">
       <div className="container mx-auto px-6">
+        <div className="absolute top-5 right-5 z-20">
+             <Link
+                href="/login"
+                className="hidden md:inline-block bg-primary text-primary-foreground font-bold py-3 px-8 rounded-full shadow-lg hover:bg-primary/90 transform hover:scale-105 transition-all duration-300 ease-in-out"
+              >
+                Vamos a la App
+              </Link>
+        </div>
         <div className="flex justify-center mb-8">
           <Image
             src="https://i.postimg.cc/J7N5r89y/LOGO-1.png"
@@ -26,7 +34,7 @@ export default function HeroSection() {
             <div className="mt-10 mb-12">
               <Link
                 href="/login"
-                className="bg-primary text-primary-foreground font-bold py-4 px-10 rounded-full shadow-lg hover:bg-primary/90 transform hover:scale-105 transition-all duration-300 ease-in-out text-lg"
+                className="bg-primary text-primary-foreground font-bold py-4 px-10 rounded-full shadow-lg hover:bg-primary/90 transform hover:scale-105 transition-all duration-300 ease-in-out text-lg md:hidden"
               >
                 Ir a la App
               </Link>

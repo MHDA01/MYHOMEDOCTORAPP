@@ -14,12 +14,6 @@ export default function Header() {
             priority
           />
         </Link>
-        <a
-          href="/login"
-          className="hidden md:inline-block bg-primary text-primary-foreground font-bold py-3 px-8 rounded-full shadow-lg hover:bg-primary/90 transform hover:scale-105 transition-all duration-300 ease-in-out"
-        >
-          Vamos a la App
-        </a>
       </nav>
     </header>
   );
