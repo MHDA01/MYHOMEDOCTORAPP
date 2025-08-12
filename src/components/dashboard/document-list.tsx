@@ -5,7 +5,7 @@ import { useState, useRef, useEffect, useCallback, useContext } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { MoreVertical, FileText, View, Trash2, Camera, FilePenLine, RefreshCcw, SwitchCamera, Loader2 } from "lucide-react";
+import { MoreVertical, FileText, View, Trash2, Camera, FilePenLine, RefreshCcw, SwitchCamera, Loader2, CalendarIcon } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose, DialogDescription } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -19,6 +19,9 @@ import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { UserContext } from '@/context/user-context';
 import { Skeleton } from '@/components/ui/skeleton';
 import Image from 'next/image';
+import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
+import { cn } from '@/lib/utils';
+import { Calendar } from '../ui/calendar';
 
 type DialogMode = 'add' | 'edit';
 
@@ -33,10 +36,13 @@ export function DocumentList() {
     const [videoDevices, setVideoDevices] = useState<MediaDeviceInfo[]>([]);
     const [currentDeviceIndex, setCurrentDeviceIndex] = useState(0);
     const [viewingDoc, setViewingDoc] = useState<Document | null>(null);
+    const [isPopoverOpen, setIsPopoverOpen] = useState(false);
+
 
     // Form state
     const [docName, setDocName] = useState('');
     const [docCategory, setDocCategory] = useState<Document['category']>('Other');
+    const [studyDate, setStudyDate] = useState<Date | undefined>(new Date());
 
     const videoRef = useRef<HTMLVideoElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -126,6 +132,7 @@ export function DocumentList() {
     const resetForm = () => {
         setDocName('');
         setDocCategory('Other');
+        setStudyDate(new Date());
         setCapturedImage(null);
         setCurrentDeviceIndex(0);
     };
@@ -136,6 +143,7 @@ export function DocumentList() {
             setSelectedDoc(doc);
             setDocName(doc.name);
             setDocCategory(doc.category);
+            setStudyDate(doc.studyDate ? new Date(doc.studyDate) : new Date(doc.uploadedAt));
         } else {
             setSelectedDoc(null);
             resetForm();
@@ -168,6 +176,13 @@ export function DocumentList() {
             setCurrentDeviceIndex((prevIndex) => (prevIndex + 1) % videoDevices.length);
         }
     };
+    
+    const handleDateSelect = (selectedDate: Date | undefined) => {
+        if (selectedDate) {
+            setStudyDate(selectedDate);
+            setIsPopoverOpen(false);
+        }
+    }
 
     const handleSubmit = async () => {
         if (!docName || !docCategory) {
@@ -184,14 +199,19 @@ export function DocumentList() {
             name: docName,
             category: docCategory,
             url: capturedImage || selectedDoc?.url || '#',
-            uploadedAt: new Date(),
+            uploadedAt: dialogMode === 'add' ? new Date() : selectedDoc!.uploadedAt,
+            studyDate: studyDate || new Date()
         };
 
         if (dialogMode === 'add') {
             await addDocument(docData);
             toast({ title: "Documento guardado con éxito" });
         } else if (selectedDoc) {
-            await updateDocument(selectedDoc.id, { name: docName, category: docCategory });
+            await updateDocument(selectedDoc.id, { 
+                name: docName, 
+                category: docCategory, 
+                studyDate: studyDate 
+            });
             toast({ title: "Documento actualizado" });
         }
         
@@ -251,7 +271,9 @@ export function DocumentList() {
                                     <p className="font-medium truncate">{doc.name}</p>
                                     <div className="text-sm text-muted-foreground flex flex-wrap gap-x-3 items-center">
                                         <Badge variant="secondary" className="mt-1">{getCategoryLabel(doc.category)}</Badge>
-                                        <span className="mt-1">{format(doc.uploadedAt, 'PP', { locale: es })}</span>
+                                        <span className="mt-1">
+                                            Estudio: {format(doc.studyDate || doc.uploadedAt, 'PP', { locale: es })}
+                                        </span>
                                     </div>
                                 </div>
                                 <div className="flex-shrink-0">
@@ -327,19 +349,50 @@ export function DocumentList() {
                                 <Label htmlFor="doc-name">Nombre del Documento</Label>
                                 <Input id="doc-name" placeholder="ej., Resultados de Análisis de Sangre" value={docName} onChange={e => setDocName(e.target.value)} />
                             </div>
-                             <div className="grid gap-2">
-                                <Label htmlFor="doc-category">Categoría</Label>
-                                <Select value={docCategory} onValueChange={(value) => setDocCategory(value as Document['category'])}>
-                                    <SelectTrigger id="doc-category">
-                                        <SelectValue placeholder="Selecciona una categoría" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="Lab Result">Resultado de Laboratorio</SelectItem>
-                                        <SelectItem value="Prescription">Receta</SelectItem>
-                                        <SelectItem value="Imaging Report">Informe de Imagen</SelectItem>
-                                        <SelectItem value="Other">Otro</SelectItem>
-                                    </SelectContent>
-                                </Select>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="grid gap-2">
+                                    <Label>Categoría</Label>
+                                    <Select value={docCategory} onValueChange={(value) => setDocCategory(value as Document['category'])}>
+                                        <SelectTrigger id="doc-category">
+                                            <SelectValue placeholder="Selecciona una categoría" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="Lab Result">Resultado de Laboratorio</SelectItem>
+                                            <SelectItem value="Prescription">Receta</SelectItem>
+                                            <SelectItem value="Imaging Report">Informe de Imagen</SelectItem>
+                                            <SelectItem value="Other">Otro</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="grid gap-2">
+                                    <Label>Fecha del Estudio</Label>
+                                    <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
+                                        <PopoverTrigger asChild>
+                                            <Button
+                                            variant={"outline"}
+                                            className={cn(
+                                                "w-full justify-start text-left font-normal",
+                                                !studyDate && "text-muted-foreground"
+                                            )}
+                                            >
+                                            <CalendarIcon className="mr-2 h-4 w-4" />
+                                            {studyDate ? format(studyDate, "PPP", { locale: es }) : <span>Elige una fecha</span>}
+                                            </Button>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="w-auto p-0" align="start" portal={false}>
+                                            <Calendar
+                                                mode="single"
+                                                selected={studyDate}
+                                                onSelect={handleDateSelect}
+                                                initialFocus
+                                                locale={es}
+                                                captionLayout="dropdown-buttons"
+                                                fromYear={new Date().getFullYear() - 80}
+                                                toYear={new Date().getFullYear()}
+                                            />
+                                        </PopoverContent>
+                                    </Popover>
+                                </div>
                             </div>
                         </div>
                         <DialogFooter>
@@ -360,7 +413,7 @@ export function DocumentList() {
                     <DialogHeader>
                         <DialogTitle>{viewingDoc?.name}</DialogTitle>
                          <DialogDescription>
-                            {getCategoryLabel(viewingDoc?.category ?? 'Other')} - Subido el {viewingDoc ? format(viewingDoc.uploadedAt, 'PPp', {locale: es}) : ''}
+                            {getCategoryLabel(viewingDoc?.category ?? 'Other')} - Estudiado el {viewingDoc ? format(viewingDoc.studyDate || viewingDoc.uploadedAt, 'PPp', {locale: es}) : ''}
                         </DialogDescription>
                     </DialogHeader>
                     <div className="relative mt-4" style={{'aspectRatio': '1/1.41'}}>
@@ -379,5 +432,3 @@ export function DocumentList() {
         </Card>
     );
 }
-
-    

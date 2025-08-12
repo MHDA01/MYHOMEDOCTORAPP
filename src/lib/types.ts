@@ -1,10 +1,12 @@
 
+
 export type Document = {
   id: string;
   name: string;
   category: 'Lab Result' | 'Prescription' | 'Imaging Report' | 'Other';
   uploadedAt: Date;
   url: string;
+  studyDate?: Date;
 };
 
 export type Appointment = {

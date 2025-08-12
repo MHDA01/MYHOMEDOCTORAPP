@@ -18,8 +18,9 @@ type SerializableAppointment = Omit<Appointment, 'date'> & {
     date: Timestamp;
 };
 
-type SerializableDocument = Omit<DocumentType, 'uploadedAt'> & {
+type SerializableDocument = Omit<DocumentType, 'uploadedAt' | 'studyDate'> & {
     uploadedAt: Timestamp;
+    studyDate?: Timestamp;
 };
 
 type UserDocumentData = {
@@ -171,7 +172,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         ]);
 
         setAppointments(appointmentsData.map(a => ({...a, date: a.date.toDate() })));
-        setDocuments(documentsData.map(d => ({...d, uploadedAt: d.uploadedAt.toDate() })));
+        setDocuments(documentsData.map(d => ({...d, uploadedAt: d.uploadedAt.toDate(), studyDate: d.studyDate?.toDate() })));
         setMedications(medicationsData);
 
     } catch (error) {
@@ -258,13 +259,21 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     const addDocument = async (docData: Omit<DocumentType, 'id'>) => {
         if (!user) return;
         const newDocRef = doc(collection(db, 'users', user.uid, 'documents'));
-        const data = { ...docData, uploadedAt: Timestamp.fromDate(docData.uploadedAt) };
+        const data = { 
+            ...docData, 
+            uploadedAt: Timestamp.fromDate(docData.uploadedAt),
+            studyDate: docData.studyDate ? Timestamp.fromDate(docData.studyDate) : Timestamp.fromDate(docData.uploadedAt)
+        };
         await setDoc(newDocRef, data);
-        setDocuments(prev => [{...docData, id: newDocRef.id},...prev].sort((a, b) => b.uploadedAt.getTime() - a.uploadedAt.getTime()));
+        setDocuments(prev => [{...docData, id: newDocRef.id},...prev].sort((a, b) => (b.studyDate || b.uploadedAt).getTime() - (a.studyDate || a.uploadedAt).getTime()));
     };
     const updateDocument = async (id: string, docData: Partial<DocumentType>) => {
         if (!user) return;
-        await updateDoc(doc(db, 'users', user.uid, 'documents', id), docData);
+        const dataToUpdate: Partial<SerializableDocument> = { ...docData };
+        if (docData.studyDate) {
+            dataToUpdate.studyDate = Timestamp.fromDate(docData.studyDate);
+        }
+        await updateDoc(doc(db, 'users', user.uid, 'documents', id), dataToUpdate);
         setDocuments(prev => prev.map(d => d.id === id ? { ...d, ...docData } : d));
     };
     const deleteDocument = async (id: string) => {
