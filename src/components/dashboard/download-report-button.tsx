@@ -39,8 +39,8 @@ export function DownloadReportButton() {
         let y = 0;
 
         const addHeader = () => {
-            const logoUrl = 'https://i.postimg.cc/J7N5r89y/LOGO-1.png';
-            doc.addImage(logoUrl, 'PNG', pageMargin, 30, 80, 60);
+            const logoUrl = 'https://i.postimg.cc/J7prjwWt/FAMILY-MED-1.png';
+            doc.addImage(logoUrl, 'PNG', pageMargin, 30, 100, 40);
 
             doc.setFontSize(22);
             doc.setFont('helvetica', 'bold');
