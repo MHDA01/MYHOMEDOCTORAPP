@@ -26,9 +26,9 @@ export default function HeroSection() {
             <div className="mt-10 mb-12">
               <Link
                 href="/login"
-                className="bg-primary text-primary-foreground font-bold py-4 px-10 rounded-full shadow-lg hover:bg-primary/90 transform hover:scale-105 transition-all duration-300 ease-in-out text-lg md:hidden"
+                className="bg-primary text-primary-foreground font-bold py-4 px-10 rounded-full shadow-lg hover:bg-primary/90 transform hover:scale-105 transition-all duration-300 ease-in-out text-lg"
               >
-                Ir a la App
+                Vamos a la App
               </Link>
             </div>
         </div>
