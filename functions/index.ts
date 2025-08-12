@@ -1,3 +1,4 @@
+
 /**
  * @fileoverview Archivo principal de Cloud Functions.
  * Contiene toda la lógica de las funciones programadas para notificaciones.
@@ -164,5 +165,3 @@ export const checkMedicationReminders = functions
     }
     return null;
   });
-
-    

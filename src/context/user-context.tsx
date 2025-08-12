@@ -89,7 +89,7 @@ interface UserContextType {
   medications: Medication[];
   updatePersonalInfo: (info: PersonalInfo) => Promise<void>;
   updateHealthInfo: (info: HealthInfo) => Promise<void>;
-  addAppointment: (appointment: Omit<Appointment, 'id'>) => Promise<void>;
+  addAppointment: (appointment: Omit<Appointment, 'id' | 'notified'>) => Promise<void>;
   updateAppointment: (id: string, appointment: Partial<Omit<Appointment, 'id'>>) => Promise<void>;
   deleteAppointment: (id: string) => Promise<void>;
   addDocument: (doc: Omit<DocumentType, 'id'>) => Promise<void>;
@@ -230,19 +230,22 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   };
 
   // Appointments CRUD
-    const addAppointment = async (appointment: Omit<Appointment, 'id'>) => {
+    const addAppointment = async (appointment: Omit<Appointment, 'id' | 'notified'>) => {
         if (!user) return;
         const newDocRef = doc(collection(db, 'users', user.uid, 'appointments'));
-        const newAppointment = { ...appointment, id: newDocRef.id };
-        await setDoc(newDocRef, { ...appointment, date: Timestamp.fromDate(appointment.date) });
+        const newAppointmentData = { ...appointment, notified: false };
+        const newAppointment = { ...newAppointmentData, id: newDocRef.id };
+        await setDoc(newDocRef, { ...newAppointmentData, date: Timestamp.fromDate(appointment.date) });
         setAppointments(prev => [...prev, newAppointment].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
     };
     const updateAppointment = async (id: string, appointment: Partial<Omit<Appointment, 'id'>>) => {
         if (!user) return;
         const appointmentDocRef = doc(db, 'users', user.uid, 'appointments', id);
-        const data = appointment.date ? { ...appointment, date: Timestamp.fromDate(new Date(appointment.date)) } : appointment;
+        // Si la fecha o el recordatorio cambian, reseteamos la notificación
+        const dataToUpdate = { ...appointment, notified: false };
+        const data = dataToUpdate.date ? { ...dataToUpdate, date: Timestamp.fromDate(new Date(dataToUpdate.date)) } : dataToUpdate;
         await updateDoc(appointmentDocRef, data);
-        const updatedAppointmentData = { ...appointments.find(a => a.id === id), ...appointment } as Appointment;
+        const updatedAppointmentData = { ...appointments.find(a => a.id === id), ...dataToUpdate } as Appointment;
         setAppointments(prev => prev.map(a => a.id === id ? updatedAppointmentData : a).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
     };
     const deleteAppointment = async (id: string) => {
@@ -320,5 +323,3 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     </UserContext.Provider>
   );
 };
-
-    

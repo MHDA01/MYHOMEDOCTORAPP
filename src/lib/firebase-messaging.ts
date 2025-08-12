@@ -1,8 +1,9 @@
+
 'use client';
 import { getMessaging, getToken, onMessage, isSupported } from "firebase/messaging";
 import { app, db } from "./firebase";
 import { doc, setDoc } from "firebase/firestore";
-import { toast } from "@/hooks/use-toast";
+import { toast as showToast } from "@/hooks/use-toast";
 
 export const setupNotifications = async (userId: string, toast: (options: any) => void) => {
   const supported = await isSupported();
@@ -42,7 +43,7 @@ export const setupNotifications = async (userId: string, toast: (options: any) =
 
     onMessage(messaging, (payload) => {
         console.log('Mensaje recibido en primer plano: ', payload);
-        toast({
+        showToast({
             title: payload.notification?.title,
             description: payload.notification?.body,
         });

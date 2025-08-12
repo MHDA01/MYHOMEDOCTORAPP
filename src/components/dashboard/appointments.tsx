@@ -114,7 +114,6 @@ export function Appointments() {
             specialty,
             date: finalDate,
             reminder,
-            notified: false,
             status: 'Upcoming' as 'Upcoming',
         };
         

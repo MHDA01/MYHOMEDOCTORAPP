@@ -1,3 +1,4 @@
+
 'use client';
 import { SidebarProvider, Sidebar, SidebarInset } from "@/components/ui/sidebar";
 import { SidebarNav } from "@/components/dashboard/sidebar-nav";
@@ -17,7 +18,9 @@ export default function DashboardLayout({
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(user => {
       if (user) {
-        setupNotifications(user.uid, toast).catch(console.error);
+        setTimeout(() => { // Agrega un pequeño retraso para asegurar que los permisos no sean bloqueados por el navegador
+          setupNotifications(user.uid, toast).catch(console.error);
+        }, 3000);
       }
     });
 
