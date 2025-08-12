@@ -31,7 +31,7 @@ export function DownloadReportButton() {
         const { personalInfo, healthInfo, appointments, documents, medications } = context;
         
         const doc = new jsPDF('p', 'pt', 'letter');
-        const primaryColor = '#478CFF'; 
+        const primaryColor = '#2563EB'; // Un azul más sobrio
         const textColor = '#333333';
         const pageMargin = 40;
         const pageWidth = doc.internal.pageSize.getWidth();
@@ -131,7 +131,7 @@ export function DownloadReportButton() {
         }
         y += 10;
         
-        const upcomingAppointments = appointments.filter(a => a.date >= new Date());
+        const upcomingAppointments = appointments.filter(a => new Date(a.date) >= new Date());
         
         const addTableSection = (title: string, head: any, body: any) => {
              if (body.length === 0) return;
@@ -161,7 +161,7 @@ export function DownloadReportButton() {
          if (documents.length > 0) {
             if (y > doc.internal.pageSize.getHeight() - 100) { doc.addPage(); addHeader(); }
             addSectionHeader('6. Documentos y Resúmenes IA');
-            const sortedDocuments = [...documents].sort((a,b) => (b.studyDate || b.uploadedAt).getTime() - (a.studyDate || a.uploadedAt).getTime());
+            const sortedDocuments = [...documents].sort((a,b) => (new Date(b.studyDate || b.uploadedAt)).getTime() - (new Date(a.studyDate || a.uploadedAt)).getTime());
 
             for (const d of sortedDocuments) {
                 if (y > doc.internal.pageSize.getHeight() - 100) { doc.addPage(); addHeader(); y = 130; }
@@ -175,7 +175,7 @@ export function DownloadReportButton() {
                 doc.setFontSize(9);
                 doc.setFont('helvetica', 'normal');
                 doc.setTextColor('#666666');
-                doc.text(`Categoría: ${d.category} | Fecha Estudio: ${formatDate(d.studyDate || d.uploadedAt)}`, pageMargin, y);
+                doc.text(`Categoría: ${d.category} | Fecha Estudio: ${formatDate(new Date(d.studyDate || d.uploadedAt))}`, pageMargin, y);
                 y += 18;
 
                 if (d.aiSummary) {
