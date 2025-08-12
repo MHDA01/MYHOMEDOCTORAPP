@@ -14,6 +14,14 @@ export default function Header() {
             priority
           />
         </Link>
+        <div className="hidden md:block">
+             <Link
+                href="/login"
+                className="bg-primary text-primary-foreground font-bold py-3 px-8 rounded-full shadow-lg hover:bg-primary/90 transform hover:scale-105 transition-all duration-300 ease-in-out"
+              >
+                Vamos a la App
+              </Link>
+        </div>
       </nav>
     </header>
   );
