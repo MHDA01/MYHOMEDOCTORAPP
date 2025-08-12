@@ -42,7 +42,7 @@ export function DownloadReportButton() {
             const logoUrl = 'https://i.postimg.cc/SsRdwdzD/LOGO-1-transparent.png';
             
             // Dibuja la imagen del logo
-            doc.addImage(logoUrl, 'PNG', pageMargin, 40, 90, 67.5);
+            doc.addImage(logoUrl, 'PNG', pageMargin, 40, 100, 75);
 
             // Título y subtítulo a la derecha
             doc.setFontSize(22);
