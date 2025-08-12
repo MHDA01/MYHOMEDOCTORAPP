@@ -3,32 +3,32 @@ import Link from 'next/link';
 
 export default function HeroSection() {
   return (
-    <section id="hero-section" className="bg-secondary pt-16 pb-12 md:pt-24 md:pb-16 text-center overflow-hidden">
+    <section id="hero-section" className="bg-background pt-16 pb-12 md:pt-24 md:pb-16 text-center overflow-hidden w-full">
       <div className="w-full max-w-5xl mx-auto px-6">
         <div className="flex justify-center mb-8">
           <Image
-            src="https://i.postimg.cc/J7N5r89y/LOGO-1.png"
-            alt="Logo de My Home Doctor App con una doctora sonriente"
+            src="https://i.postimg.cc/k47gJg3B/LOGO-WHITE.png"
+            alt="Logo de My Home Doctor App"
             width={800}
             height={600}
-            className="w-full h-auto"
+            className="w-auto h-24 md:h-32"
             data-ai-hint="app logo"
             priority
           />
         </div>
         <div className="relative z-10">
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold text-slate-800 leading-tight mb-6">
-            Tu Expediente Médico Digital, <br className="hidden md:block" /> <span className="text-primary">Control Total en tus Manos.</span>
+            Tu Salud, Organizada y a tu Alcance.
             </h1>
             <p className="text-lg md:text-xl text-slate-600 mb-10 max-w-3xl mx-auto">
-            Gestiona tu historial de salud y el de tu familia desde la palma de tu mano, de forma segura y sencilla.
+            Gestiona tu historial médico y el de tu familia de forma segura y sencilla, desde la palma de tu mano.
             </p>
             <div className="mt-10 mb-12">
               <Link
                 href="/login"
                 className="bg-primary text-primary-foreground font-bold py-4 px-10 rounded-full shadow-lg hover:bg-primary/90 transform hover:scale-105 transition-all duration-300 ease-in-out text-lg"
               >
-                Vamos a la App
+                Comenzar Ahora
               </Link>
             </div>
         </div>

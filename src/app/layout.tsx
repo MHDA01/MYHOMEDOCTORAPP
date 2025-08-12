@@ -12,22 +12,21 @@ export default function RootLayout({
   return (
     <html lang="es" suppressHydrationWarning>
       <head>
-        <title>MiDoctorDeCasaApp</title>
+        <title>MyHomeDoctorApp</title>
         <meta name="description" content="Tu asistente personal de gestión de salud." />
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
         <link rel="canonical" href="https://www.myhomedoctorapp.com" />
         <link rel="manifest" href="/manifest.webmanifest" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet" />
-        <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700&display=swap" rel="stylesheet" />
-        <meta name="application-name" content="MiDoctorDeCasaApp" />
+        <link href="https://fonts.googleapis.com/css2?family=PT+Sans:wght@400;700&display=swap" rel="stylesheet" />
+        <meta name="application-name" content="MyHomeDoctorApp" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-        <meta name="apple-mobile-web-app-title" content="MiDoctorDeCasaApp" />
+        <meta name="apple-mobile-web-app-title" content="MyHomeDoctorApp" />
         <meta name="format-detection" content="telephone=no" />
         <meta name="mobile-web-app-capable" content="yes" />
-        <meta name="theme-color" content="#35577C" />
+        <meta name="theme-color" content="#478CFF" />
         
         {/* --- Iconos para iOS --- */}
         <link rel="apple-touch-icon" href="/icons/icon-192x192.png" />
