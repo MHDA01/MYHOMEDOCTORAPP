@@ -1,4 +1,1 @@
-// Este archivo ya no es necesario, su contenido ha sido movido a /functions/index.ts para simplificar la estructura.
-// Puedes eliminarlo si lo deseas, o dejarlo vacío.
-
-    
+// Este archivo ha sido vaciado para su eliminación. Su contenido se movió a /functions/index.ts.
