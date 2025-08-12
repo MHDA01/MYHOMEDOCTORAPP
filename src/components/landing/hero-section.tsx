@@ -7,7 +7,7 @@ export default function HeroSection() {
       <div className="w-full max-w-5xl mx-auto px-6">
         <div className="flex justify-center mb-8">
           <Image
-            src="https://i.postimg.cc/k47gJg3B/LOGO-WHITE.png"
+            src="https://i.postimg.cc/1X7bYj9g/LOGO-TRANSPARENTE.png"
             alt="Logo de My Home Doctor App"
             width={800}
             height={600}
