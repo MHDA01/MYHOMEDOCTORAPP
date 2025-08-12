@@ -9,7 +9,6 @@ import { es } from 'date-fns/locale';
 import { UserContext } from '@/context/user-context';
 import { Button } from '@/components/ui/button';
 import { FileDown, Loader2 } from 'lucide-react';
-import type { Appointment, Document as DocumentType, Medication, EmergencyContact, HealthInfo, PersonalInfo } from '@/lib/types';
 
 const calculateAge = (dob: Date | undefined): string => {
     if (!dob || !isValid(dob)) return 'N/A';
@@ -32,33 +31,27 @@ export function DownloadReportButton() {
         const { personalInfo, healthInfo, appointments, documents, medications } = context;
         
         const doc = new jsPDF('p', 'pt', 'letter');
-        const primaryColor = '#478CFF'; // hsl(210 100% 64%)
+        const primaryColor = '#478CFF'; 
         const textColor = '#333333';
         const pageMargin = 40;
         const pageWidth = doc.internal.pageSize.getWidth();
         const pageContentWidth = pageWidth - pageMargin * 2;
         let y = 0;
 
-        // --- Header ---
         const addHeader = () => {
             const logoUrl = 'https://i.postimg.cc/J7N5r89y/LOGO-1.png';
-            try {
-                // The logo is added synchronously if it's a data URL,
-                // for external URLs it might need async handling not directly supported here.
-                // Best practice is to convert logo to base64 to embed it.
-                // For this implementation, we will use a placeholder or assume CORS allows fetching.
-                doc.addImage(logoUrl, 'PNG', pageMargin, 30, 80, 60);
-            } catch (e) {
-                console.error("Error adding logo:", e);
-                doc.setFontSize(10);
-                doc.text("MyHomeDoctorApp", pageMargin, 60);
-            }
+            doc.addImage(logoUrl, 'PNG', pageMargin, 30, 80, 60);
 
             doc.setFontSize(22);
             doc.setFont('helvetica', 'bold');
+            doc.setTextColor(primaryColor);
+            doc.text('Resumen de Salud', pageWidth - pageMargin, 55, { align: 'right' });
+
+            doc.setFontSize(10);
+            doc.setFont('helvetica', 'normal');
             doc.setTextColor(textColor);
-            doc.text('Resumen de Salud', pageWidth - pageMargin, 65, { align: 'right' });
-            
+            doc.text(`Generado el: ${format(new Date(), 'dd/MM/yyyy HH:mm')}`, pageWidth - pageMargin, 75, { align: 'right' });
+
             doc.setDrawColor('#E5E7EB');
             doc.line(pageMargin, 100, pageWidth - pageMargin, 100);
             y = 120;
@@ -80,7 +73,6 @@ export function DownloadReportButton() {
 
         addHeader();
 
-        // --- Personal Information ---
         addSectionHeader('1. Información Personal');
         autoTable(doc, {
             startY: y,
@@ -98,7 +90,6 @@ export function DownloadReportButton() {
         });
         y = (doc as any).lastAutoTable.finalY + 20;
 
-        // --- Emergency Contacts ---
         if(healthInfo.emergencyContacts.length > 0) {
             addSectionHeader('2. Contactos de Emergencia');
             autoTable(doc, {
@@ -113,23 +104,17 @@ export function DownloadReportButton() {
             y = (doc as any).lastAutoTable.finalY + 20;
         }
 
-        // --- Health Record ---
         addSectionHeader('3. Historial Médico');
         const addHealthInfoSection = (title: string, content: string | string[]) => {
             const text = Array.isArray(content) ? content.join(', ') : content;
             if (!text) return;
             
-            if (y > doc.internal.pageSize.getHeight() - 60) {
-                doc.addPage();
-                addHeader();
-            }
-
+            if (y > doc.internal.pageSize.getHeight() - 60) { doc.addPage(); addHeader(); }
             doc.setFont('helvetica', 'bold');
             doc.setFontSize(11);
             doc.setTextColor(textColor);
             doc.text(title, pageMargin, y);
             y += 15;
-
             doc.setFont('helvetica', 'normal');
             doc.setFontSize(10);
             const splitText = doc.splitTextToSize(text, pageContentWidth);
@@ -146,16 +131,11 @@ export function DownloadReportButton() {
         }
         y += 10;
         
-        // --- Appointments, Medications, Documents ---
         const upcomingAppointments = appointments.filter(a => a.date >= new Date());
-        const pastAppointments = appointments.filter(a => a.date < new Date());
-
+        
         const addTableSection = (title: string, head: any, body: any) => {
              if (body.length === 0) return;
-             if (y > doc.internal.pageSize.getHeight() - 120) {
-                 doc.addPage();
-                 addHeader();
-             }
+             if (y > doc.internal.pageSize.getHeight() - 120) { doc.addPage(); addHeader(); }
              addSectionHeader(title);
              autoTable(doc, {
                  startY: y,
@@ -170,7 +150,7 @@ export function DownloadReportButton() {
 
         addTableSection('4. Próximas Citas Médicas',
             [['Fecha', 'Hora', 'Doctor', 'Especialidad']],
-            upcomingAppointments.map(a => [format(a.date, 'dd/MM/yyyy'), format(a.date, 'HH:mm'), a.doctor, a.specialty])
+            upcomingAppointments.map(a => [format(new Date(a.date), 'dd/MM/yyyy'), format(new Date(a.date), 'HH:mm'), a.doctor, a.specialty])
         );
 
         addTableSection('5. Medicamentos Activos',
@@ -178,21 +158,13 @@ export function DownloadReportButton() {
             medications.filter(m => m.active).map(m => [m.name, m.dosage, `Cada ${m.frequency} hrs`, m.time.join(', ')])
         );
 
-        // --- Documents Section ---
          if (documents.length > 0) {
-            if (y > doc.internal.pageSize.getHeight() - 100) {
-                doc.addPage();
-                addHeader();
-            }
+            if (y > doc.internal.pageSize.getHeight() - 100) { doc.addPage(); addHeader(); }
             addSectionHeader('6. Documentos y Resúmenes IA');
             const sortedDocuments = [...documents].sort((a,b) => (b.studyDate || b.uploadedAt).getTime() - (a.studyDate || a.uploadedAt).getTime());
 
             for (const d of sortedDocuments) {
-                if (y > doc.internal.pageSize.getHeight() - 100) {
-                    doc.addPage();
-                    addHeader();
-                    y = 120; // reset y on new page
-                }
+                if (y > doc.internal.pageSize.getHeight() - 100) { doc.addPage(); addHeader(); y = 120; }
                 
                 doc.setFontSize(11);
                 doc.setFont('helvetica', 'bold');
@@ -212,20 +184,28 @@ export function DownloadReportButton() {
                     doc.text('Resumen IA:', pageMargin, y);
                     y += 14;
 
-                    doc.setFont('helvetica', 'normal');
-                    
                     // Simple markdown-to-text conversion for the report
                     const cleanSummary = d.aiSummary
-                        .replace(/####\s/g, '') // remove h4
-                        .replace(/\|/g, '  ')   // replace table pipes
-                        .replace(/---\|/g, '') // remove table header lines
-                        .replace(/\*\*/g, '')    // remove bold
-                        .replace(/#\s/g, '');   // remove other headers
+                        .replace(/####\s/g, '') 
+                        .replace(/\*\*/g, '')   
+                        .replace(/#\s/g, '');
                     
-                    const summaryLines = doc.splitTextToSize(cleanSummary, pageContentWidth - 10);
-                    
-                    doc.text(summaryLines, pageMargin + 5, y);
-                    y += (summaryLines.length * 12) + 10;
+                    try {
+                      autoTable(doc, {
+                        startY: y,
+                        body: cleanSummary,
+                        theme: 'grid',
+                        headStyles: { fillColor: [240, 244, 255], textColor: '#333333', fontStyle: 'bold' },
+                        styles: { fontSize: 9, cellPadding: 4 },
+                        margin: { left: pageMargin, right: pageMargin }
+                      });
+                       y = (doc as any).lastAutoTable.finalY + 10;
+                    } catch {
+                       const summaryLines = doc.splitTextToSize(cleanSummary, pageContentWidth - 10);
+                       doc.text(summaryLines, pageMargin + 5, y);
+                       y += (summaryLines.length * 12) + 10;
+                    }
+
                 }
                 
                 doc.setDrawColor('#E5E7EB');
@@ -251,5 +231,3 @@ export function DownloadReportButton() {
         </Button>
     )
 }
-
-    

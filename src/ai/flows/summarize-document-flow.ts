@@ -38,7 +38,7 @@ const prompt = ai.definePrompt({
 Identifica el tipo de documento y genera un resumen en formato Markdown según las siguientes directrices:
 
 **1. Si es un Resultado de Laboratorio:**
-Extrae los resultados clave en una tabla. Incluye solo los parámetros más relevantes o aquellos que estén fuera del rango normal.
+Extrae los resultados clave en una tabla. Incluye solo los parámetros más relevantes o aquellos que estén fuera del rango normal. No inventes datos que no estén en el documento.
 
 Ejemplo de formato:
 #### Resumen de Laboratorio
@@ -49,7 +49,7 @@ Ejemplo de formato:
 | Hemoglobina | **11.5 g/dL** | 12-15.5 g/dL | Ligeramente bajo |
 
 **2. Si es un Informe de Imagen (Rayos X, Resonancia Magnética, Ecografía, etc.):**
-Extrae los hallazgos principales y la conclusión o impresión diagnóstica del radiólogo.
+Extrae los hallazgos principales y la conclusión o impresión diagnóstica del radiólogo. No inventes datos que no estén en el documento.
 
 Ejemplo de formato:
 #### Resumen de Informe de Imagen
@@ -62,7 +62,7 @@ Ejemplo de formato:
 - Estudio dentro de los límites de la normalidad.
 
 **3. Si es una Receta Médica:**
-Extrae los medicamentos prescritos en una tabla.
+Extrae los medicamentos prescritos en una tabla. No inventes datos que no estén en el documento.
 
 Ejemplo de formato:
 #### Resumen de Receta Médica
@@ -70,7 +70,6 @@ Ejemplo de formato:
 |-------------|-------|------------|----------|
 | Amoxicilina | 500 mg | Cada 8 horas | 7 días |
 | Ibuprofeno | 400 mg | Cada 6 horas | Si hay dolor |
-| Paracetamol | 1 g | PRN (según necesidad) | 3 días |
 
 **4. Si es Otro tipo de documento (informe de alta, etc.):**
 Genera un resumen conciso con los puntos más importantes en formato de lista.
