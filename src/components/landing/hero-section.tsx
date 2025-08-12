@@ -1,21 +1,9 @@
-import Image from 'next/image';
 import Link from 'next/link';
 
 export default function HeroSection() {
   return (
-    <section id="hero-section" className="bg-background pt-16 pb-12 md:pt-24 md:pb-16 text-center overflow-hidden w-full">
+    <section id="hero-section" className="bg-background pt-24 pb-16 md:pt-32 md:pb-20 text-center overflow-hidden w-full">
       <div className="w-full max-w-5xl mx-auto px-6">
-        <div className="flex justify-center mb-8">
-          <Image
-            src="https://i.postimg.cc/1X7bYj9g/LOGO-TRANSPARENTE.png"
-            alt="Logo de My Home Doctor App"
-            width={800}
-            height={600}
-            className="w-auto h-24 md:h-32"
-            data-ai-hint="app logo"
-            priority
-          />
-        </div>
         <div className="relative z-10">
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold text-slate-800 leading-tight mb-6">
             Tu Salud, Organizada y a tu Alcance.
