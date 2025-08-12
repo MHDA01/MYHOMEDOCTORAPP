@@ -71,7 +71,12 @@ export function LoginForm() {
             <Input id="email" type="email" placeholder="nombre@ejemplo.com" required value={email} onChange={(e) => setEmail(e.target.value)} />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="password">Contraseña</Label>
+            <div className="flex items-center justify-between">
+                <Label htmlFor="password">Contraseña</Label>
+                <Link href="/forgot-password" className="text-sm text-primary underline-offset-4 hover:underline">
+                    ¿Olvidaste tu contraseña?
+                </Link>
+            </div>
             <Input id="password" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} />
           </div>
           <Button type="submit" className="w-full" disabled={isLoading}>
