@@ -45,16 +45,16 @@ export function DownloadReportButton() {
             doc.setFontSize(22);
             doc.setFont('helvetica', 'bold');
             doc.setTextColor(primaryColor);
-            doc.text('Resumen de Salud', pageWidth - pageMargin, 55, { align: 'right' });
+            doc.text('Resumen de Salud', pageWidth - pageMargin, 65, { align: 'right' });
 
             doc.setFontSize(10);
             doc.setFont('helvetica', 'normal');
             doc.setTextColor(textColor);
-            doc.text(`Generado el: ${format(new Date(), 'dd/MM/yyyy HH:mm')}`, pageWidth - pageMargin, 75, { align: 'right' });
+            doc.text(`Generado el: ${format(new Date(), 'dd/MM/yyyy HH:mm')}`, pageWidth - pageMargin, 80, { align: 'right' });
 
             doc.setDrawColor('#E5E7EB');
-            doc.line(pageMargin, 100, pageWidth - pageMargin, 100);
-            y = 120;
+            doc.line(pageMargin, 110, pageWidth - pageMargin, 110);
+            y = 130;
         };
         
         const addSectionHeader = (title: string) => {
@@ -164,7 +164,7 @@ export function DownloadReportButton() {
             const sortedDocuments = [...documents].sort((a,b) => (b.studyDate || b.uploadedAt).getTime() - (a.studyDate || a.uploadedAt).getTime());
 
             for (const d of sortedDocuments) {
-                if (y > doc.internal.pageSize.getHeight() - 100) { doc.addPage(); addHeader(); y = 120; }
+                if (y > doc.internal.pageSize.getHeight() - 100) { doc.addPage(); addHeader(); y = 130; }
                 
                 doc.setFontSize(11);
                 doc.setFont('helvetica', 'bold');
@@ -183,29 +183,69 @@ export function DownloadReportButton() {
                     doc.setFont('helvetica', 'bold');
                     doc.text('Resumen IA:', pageMargin, y);
                     y += 14;
-
-                    // Simple markdown-to-text conversion for the report
-                    const cleanSummary = d.aiSummary
-                        .replace(/####\s/g, '') 
-                        .replace(/\*\*/g, '')   
-                        .replace(/#\s/g, '');
                     
-                    try {
-                      autoTable(doc, {
-                        startY: y,
-                        body: cleanSummary,
-                        theme: 'grid',
-                        headStyles: { fillColor: [240, 244, 255], textColor: '#333333', fontStyle: 'bold' },
-                        styles: { fontSize: 9, cellPadding: 4 },
-                        margin: { left: pageMargin, right: pageMargin }
-                      });
-                       y = (doc as any).lastAutoTable.finalY + 10;
-                    } catch {
-                       const summaryLines = doc.splitTextToSize(cleanSummary, pageContentWidth - 10);
-                       doc.text(summaryLines, pageMargin + 5, y);
-                       y += (summaryLines.length * 12) + 10;
-                    }
+                    const cleanSummary = d.aiSummary
+                        .replace(/####\s*/g, '')      // Elimina '#### '
+                        .replace(/\*\*/g, '')          // Elimina '**' para negrita
+                        .replace(/\|\s*$/gm, '')      // Elimina barras verticales al final de las líneas
+                        .replace(/^\s*\|/gm, '')      // Elimina barras verticales al principio de las líneas
+                        .replace(/---\|/g, '---|');   // Corrige separadores de tabla
 
+                    // Para que autoTable interprete correctamente el Markdown, dividimos en líneas
+                    const lines = cleanSummary.split('\n');
+                    const head: any[] = [];
+                    const body: any[] = [];
+                    let isTable = false;
+
+                    lines.forEach(line => {
+                        const trimmedLine = line.trim();
+                        if (trimmedLine.startsWith('|') && trimmedLine.endsWith('|')) {
+                            const cells = trimmedLine.split('|').slice(1, -1).map(cell => cell.trim());
+                            if (!isTable) { // La primera línea de la tabla es el encabezado
+                                head.push(cells);
+                                isTable = true;
+                            } else if (!cells.every(cell => /^-+$/.test(cell))) { // Ignorar la línea separadora
+                                body.push(cells);
+                            }
+                        } else {
+                            if (isTable) { // La tabla terminó
+                                autoTable(doc, {
+                                    startY: y,
+                                    head: head,
+                                    body: body,
+                                    theme: 'grid',
+                                    headStyles: { fillColor: [240, 244, 255], textColor: '#333333', fontStyle: 'bold' },
+                                    styles: { fontSize: 9, cellPadding: 4 },
+                                    margin: { left: pageMargin, right: pageMargin }
+                                });
+                                y = (doc as any).lastAutoTable.finalY + 10;
+                                head.length = 0;
+                                body.length = 0;
+                                isTable = false;
+                            }
+                            
+                             if (trimmedLine) {
+                                const summaryLines = doc.splitTextToSize(trimmedLine, pageContentWidth);
+                                doc.setFontSize(10);
+                                doc.setFont('helvetica', 'normal');
+                                doc.text(summaryLines, pageMargin, y);
+                                y += (summaryLines.length * 12) + 5;
+                            }
+                        }
+                    });
+
+                    if (isTable) { // Procesar la última tabla si el informe termina con ella
+                         autoTable(doc, {
+                            startY: y,
+                            head: head,
+                            body: body,
+                            theme: 'grid',
+                            headStyles: { fillColor: [240, 244, 255], textColor: '#333333', fontStyle: 'bold' },
+                            styles: { fontSize: 9, cellPadding: 4 },
+                            margin: { left: pageMargin, right: pageMargin }
+                        });
+                        y = (doc as any).lastAutoTable.finalY + 10;
+                    }
                 }
                 
                 doc.setDrawColor('#E5E7EB');
