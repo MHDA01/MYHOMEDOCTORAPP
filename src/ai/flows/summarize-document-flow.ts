@@ -74,6 +74,8 @@ Ejemplo de formato:
 **4. Si es Otro tipo de documento (informe de alta, etc.):**
 Genera un resumen conciso con los puntos más importantes en formato de lista.
 
+IMPORTANTE: El resumen final DEBE ser exclusivamente en español.
+
 Imágenes del documento a analizar:
 {{#each documentImages}}
 {{media url=this}}
@@ -97,4 +99,3 @@ const summarizeDocumentFlow = ai.defineFlow(
     return output!;
   }
 );
-
