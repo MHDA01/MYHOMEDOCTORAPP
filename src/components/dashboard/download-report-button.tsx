@@ -175,7 +175,7 @@ export function DownloadReportButton() {
 
          if (documents.length > 0) {
             if (y > doc.internal.pageSize.getHeight() - 100) { doc.addPage(); addHeader(); }
-            addSectionHeader('6. Documentos y Resúmenes IA');
+            addSectionHeader('6. Documentos y Resúmenes');
             const sortedDocuments = [...documents].sort((a,b) => (new Date(b.studyDate || b.uploadedAt)).getTime() - (new Date(a.studyDate || a.uploadedAt)).getTime());
 
             for (const d of sortedDocuments) {
@@ -196,7 +196,7 @@ export function DownloadReportButton() {
                 if (d.aiSummary) {
                     doc.setFontSize(11);
                     doc.setFont('helvetica', 'bold');
-                    doc.text('Resumen IA:', pageMargin, y);
+                    doc.text('Resumen de Estudios:', pageMargin, y);
                     y += 18;
                     
                     const cleanSummary = d.aiSummary

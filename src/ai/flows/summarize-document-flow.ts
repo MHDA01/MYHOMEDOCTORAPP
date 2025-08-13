@@ -33,7 +33,7 @@ const prompt = ai.definePrompt({
   name: 'summarizeDocumentPrompt',
   input: {schema: SummarizeDocumentInputSchema},
   output: {schema: SummarizeDocumentOutputSchema},
-  prompt: `Eres un asistente médico experto. Tu tarea es analizar las imágenes de un documento médico y generar un resumen claro, estructurado y ÚNICAMENTE EN ESPAÑOL.
+  prompt: `Eres un asistente médico experto. Tu tarea es analizar las imágenes de un documento médico y generar un resumen claro, estructurado y ÚNICAMENTE EN ESPAÑOL. La respuesta DEBE estar en español, sin importar el idioma del documento original.
 
 Identifica el tipo de documento y genera un resumen en formato Markdown según las siguientes directrices:
 
@@ -97,3 +97,4 @@ const summarizeDocumentFlow = ai.defineFlow(
     return output!;
   }
 );
+
