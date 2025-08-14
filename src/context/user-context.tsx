@@ -259,32 +259,39 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     // Documents CRUD
     const addDocument = async (docData: Omit<DocumentType, 'id'>) => {
         if (!user) return;
-        const newDocRef = doc(collection(db, 'users', user.uid, 'documents'));
         
-        const dataToSave = { 
-            ...docData, 
-            uploadedAt: Timestamp.fromDate(docData.uploadedAt),
-            studyDate: docData.studyDate ? Timestamp.fromDate(docData.studyDate) : Timestamp.fromDate(docData.uploadedAt)
-        };
-        await setDoc(newDocRef, dataToSave);
-
-        let newDocumentWithId = { ...docData, id: newDocRef.id };
-        
-        // Trigger AI summary generation in the background
-        summarizeMedicalDocument({ documentDataUris: docData.urls })
-            .then(summary => {
-                const docToUpdateRef = doc(db, 'users', user.uid, 'documents', newDocRef.id);
-                updateDoc(docToUpdateRef, { aiSummary: summary });
-                
-                // Update local state with the summary
-                setDocuments(prev => prev.map(d => d.id === newDocRef.id ? { ...d, aiSummary: summary } : d));
-            })
-            .catch(error => {
-                console.error("AI summary failed:", error);
-                // Optionally show a toast to the user
+        let summary: Summary | undefined;
+        try {
+            toast({ title: "Generando resumen con IA...", description: "Esto puede tardar unos segundos." });
+            summary = await summarizeMedicalDocument({ documentDataUris: docData.urls });
+        } catch (error) {
+            console.error("AI summary failed:", error);
+            toast({
+                variant: 'destructive',
+                title: "Error en el resumen de IA",
+                description: "No se pudo generar el resumen, pero el documento se guardó igualmente.",
             });
+        }
+
+        const newDocRef = doc(collection(db, 'users', user.uid, 'documents'));
+        const newDocument = {
+            ...docData,
+            id: newDocRef.id,
+            aiSummary: summary,
+        };
+
+        const dataToSave = { 
+            name: newDocument.name,
+            category: newDocument.category,
+            urls: newDocument.urls,
+            aiSummary: newDocument.aiSummary,
+            uploadedAt: Timestamp.fromDate(newDocument.uploadedAt),
+            studyDate: newDocument.studyDate ? Timestamp.fromDate(newDocument.studyDate) : Timestamp.fromDate(newDocument.uploadedAt)
+        };
         
-        setDocuments(prev => [newDocumentWithId, ...prev].sort((a, b) => (b.studyDate || b.uploadedAt).getTime() - (a.studyDate || a.uploadedAt).getTime()));
+        await setDoc(newDocRef, dataToSave);
+        
+        setDocuments(prev => [newDocument, ...prev].sort((a, b) => (b.studyDate || b.uploadedAt).getTime() - (a.studyDate || a.uploadedAt).getTime()));
     };
     const updateDocument = async (id: string, docData: Partial<DocumentType>) => {
         if (!user) return;
