@@ -9,6 +9,7 @@ import { es } from 'date-fns/locale';
 import { UserContext } from '@/context/user-context';
 import { Button } from '@/components/ui/button';
 import { FileDown, Loader2 } from 'lucide-react';
+import type { Summary } from '@/lib/types';
 
 const calculateAge = (dob: Date | undefined): string => {
     if (!dob || !isValid(dob)) return 'N/A';
@@ -24,6 +25,58 @@ const countryHealthData: { [key: string]: { label: string } } = {
     argentina: { label: 'Obra Social' },
     colombia: { label: 'Seguridad Social' },
     chile: { label: 'Previsión' },
+};
+
+const addSummaryToPdf = (doc: jsPDF, summary: Summary, startY: number): number => {
+    const pageContentWidth = doc.internal.pageSize.getWidth() - 100;
+    let currentY = startY;
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10);
+    doc.setTextColor('#6b7280');
+    doc.text('Resumen de Estudios (IA)', 50, currentY);
+    currentY += 8;
+
+    doc.setDrawColor('#e5e7eb');
+    doc.setLineWidth(0.5);
+    doc.line(50, currentY, doc.internal.pageSize.getWidth() - 50, currentY);
+    currentY += 15;
+
+    const addSummarySection = (title: string, content: string | string[]) => {
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(10);
+        doc.setTextColor('#374151');
+        doc.text(title, 55, currentY);
+        currentY += 14;
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(10);
+        doc.setTextColor('#444444');
+        if (Array.isArray(content)) {
+            content.forEach(item => {
+                const splitItem = doc.splitTextToSize(`• ${item}`, pageContentWidth - 10);
+                doc.text(splitItem, 60, currentY);
+                currentY += (splitItem.length * 12);
+            });
+        } else {
+            const splitContent = doc.splitTextToSize(content, pageContentWidth - 5);
+            doc.text(splitContent, 55, currentY);
+            currentY += (splitContent.length * 12);
+        }
+        currentY += 8;
+    };
+
+    if (summary.diagnosticoPrincipal) {
+        addSummarySection('Diagnóstico Principal:', summary.diagnosticoPrincipal);
+    }
+    if (summary.hallazgosClave && summary.hallazgosClave.length > 0) {
+        addSummarySection('Hallazgos Clave:', summary.hallazgosClave);
+    }
+    if (summary.recomendaciones && summary.recomendaciones.length > 0) {
+        addSummarySection('Recomendaciones:', summary.recomendaciones);
+    }
+
+    return currentY + 10;
 };
 
 
@@ -46,7 +99,7 @@ export function DownloadReportButton() {
         let y = 0;
 
         const addHeader = () => {
-            const logoUrl = 'https://i.postimg.cc/SsRdwdzD/LOGO-1-transparent.png';
+            const logoUrl = 'https://i.postimg.cc/J7N5r89y/LOGO-1.png';
             const logoWidth = 157; 
             const logoHeight = 117.75; 
             
@@ -185,7 +238,39 @@ export function DownloadReportButton() {
                 theme: 'striped',
                 headStyles: { fillColor: primaryColor, textColor: '#FFFFFF', fontStyle: 'bold', font: 'helvetica', fontSize: 12 },
                 styles: { fontSize: 11, font: 'helvetica', textColor: textColor },
-                margin: { left: pageMargin, right: pageMargin }
+                margin: { left: pageMargin, right: pageMargin },
+                didDrawCell: (data) => {
+                    // Check if we are in the body of the table
+                    if (data.section === 'body') {
+                        const docId = sortedDocuments[data.row.index].id;
+                        const documentData = documents.find(d => d.id === docId);
+
+                        if (documentData && documentData.aiSummary) {
+                            // We need to draw the summary *after* the table has been fully drawn.
+                            // We store the information and draw it in didDrawPage.
+                            (doc as any).summaryToDraw = (doc as any).summaryToDraw || [];
+                            (doc as any).summaryToDraw.push({
+                                summary: documentData.aiSummary,
+                                y: data.cell.y + data.cell.height + 10
+                            });
+                        }
+                    }
+                },
+                 didDrawPage: (data) => {
+                     if ((doc as any).summaryToDraw) {
+                         let currentY = (doc as any).lastAutoTable.finalY + 20;
+                         
+                         const docWithSummaryId = sortedDocuments[data.row.index].id;
+                         const documentData = documents.find(d => d.id === docWithSummaryId);
+
+                         if (documentData && documentData.aiSummary) {
+                            currentY = addSummaryToPdf(doc, documentData.aiSummary, currentY);
+                         }
+
+                         (doc as any).lastAutoTable.finalY = currentY;
+                         delete (doc as any).summaryToDraw;
+                     }
+                 }
             });
             y = (doc as any).lastAutoTable.finalY + 30;
         }

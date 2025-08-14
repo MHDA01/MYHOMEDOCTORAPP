@@ -1,5 +1,11 @@
 
 
+export type Summary = {
+  diagnosticoPrincipal: string;
+  hallazgosClave: string[];
+  recomendaciones: string[];
+};
+
 export type Document = {
   id: string;
   name: string;
@@ -7,6 +13,7 @@ export type Document = {
   uploadedAt: Date;
   urls: string[];
   studyDate?: Date;
+  aiSummary?: Summary;
 };
 
 export type Appointment = {

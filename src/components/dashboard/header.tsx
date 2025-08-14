@@ -14,8 +14,6 @@ export function DashboardHeader() {
         return 'Teleconsulta';
       case '/dashboard/urgencias':
         return 'Urgencias y Domicilio';
-      case '/dashboard/ia-assistant':
-        return 'Asistente de IA';
       default:
         return 'Mi Historial';
     }

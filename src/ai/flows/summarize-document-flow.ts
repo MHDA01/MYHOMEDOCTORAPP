@@ -12,10 +12,9 @@ import { ai } from '@/ai/genkit';
 import { z } from 'zod';
 
 const DocumentInputSchema = z.object({
-  documentDataUri: z
-    .string()
+  documentDataUris: z.array(z.string())
     .describe(
-      "Un documento (imagen o PDF) como data URI que debe incluir un MIME type y usar codificación Base64. Formato esperado: 'data:<mimetype>;base64,<encoded_data>'."
+      "Un array de imágenes de un documento como data URIs, que deben incluir un MIME type y usar codificación Base64. Formato esperado: 'data:<mimetype>;base64,<encoded_data>'."
     ),
 });
 export type DocumentInput = z.infer<typeof DocumentInputSchema>;
@@ -35,11 +34,14 @@ const prompt = ai.definePrompt({
   name: 'summarizeDocumentPrompt',
   input: { schema: DocumentInputSchema },
   output: { schema: SummaryResponseSchema },
-  prompt: `Actúa como un asistente médico profesional. Lee el siguiente estudio clínico y genera un resumen estructurado en español que sea fácil de entender para el paciente. Extrae la información clave y organízala en las siguientes secciones: "Diagnóstico Principal", "Hallazgos Clave" y "Recomendaciones".
+  prompt: `Actúa como un asistente médico profesional. Lee el siguiente estudio clínico compuesto por una o varias imágenes y genera un resumen estructurado en español que sea fácil de entender para el paciente. Extrae la información clave y organízala en las siguientes secciones: "Diagnóstico Principal", "Hallazgos Clave" y "Recomendaciones".
 IMPORTANTE: El resumen final DEBE ser exclusivamente en español.
 
-Aquí está el documento:
-{{media url=documentDataUri}}`,
+Aquí están las imágenes del documento:
+{{#each documentDataUris}}
+{{media url=this}}
+{{/each}}
+`,
 });
 
 const summarizeDocumentFlow = ai.defineFlow(

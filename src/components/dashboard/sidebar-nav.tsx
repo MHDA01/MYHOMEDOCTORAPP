@@ -41,7 +41,6 @@ const mainNavItems = [
   { href: '/dashboard', icon: LayoutDashboard, label: 'Mi Historial' },
   { href: '/dashboard/teleconsulta', icon: Video, label: 'Teleconsulta' },
   { href: '/dashboard/urgencias', icon: Siren, label: 'Urgencias y Domicilio' },
-  { href: '/dashboard/ia-assistant', icon: BrainCircuit, label: 'Asistente IA' },
 ];
 
 const secondaryNavItems = [
@@ -143,7 +142,7 @@ export function SidebarNav() {
             <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="flex h-auto w-full justify-start items-center gap-3 p-2">
                     <Avatar className="h-9 w-9">
-                        <AvatarImage src="https://placehold.co/100x100.png" alt="@user" data-ai-hint="user avatar" />
+                        <AvatarImage src="https://i.postimg.cc/J7N5r89y/LOGO-1.png" alt="@user" data-ai-hint="user avatar" />
                         <AvatarFallback>{userInitials}</AvatarFallback>
                     </Avatar>
                     <div className="text-left flex-1 overflow-hidden">

@@ -45,7 +45,7 @@ export default function SolutionSection() {
     {
       icon: <Share2 className="h-8 w-8" />,
       title: 'Comparte Tu Historial, Tú Decides Cómo',
-      description: 'Genera un PDF o enlace temporal con los documentos específicos que quieras compartir con un nuevo médico, con total control y privacidad.',
+      description: 'Genera un PDF con los documentos específicos que quieras compartir con un nuevo médico, con total control y privacidad.',
       benefit: 'Evita la repetición de exámenes y optimiza el tiempo en cada consulta.',
     },
     {

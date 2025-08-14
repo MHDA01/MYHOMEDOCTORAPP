@@ -2,11 +2,12 @@
 'use client';
 
 import { createContext, useState, useEffect, ReactNode, useCallback } from 'react';
-import type { PersonalInfo, HealthInfo, Appointment, Document as DocumentType, Medication } from '@/lib/types';
+import type { PersonalInfo, HealthInfo, Appointment, Document as DocumentType, Medication, Summary } from '@/lib/types';
 import { auth, db } from '@/lib/firebase';
 import { onAuthStateChanged, User, signOut, updateProfile } from 'firebase/auth';
 import { doc, getDoc, setDoc, Timestamp, collection, getDocs, addDoc, updateDoc, deleteDoc, query, orderBy } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
+import { summarizeMedicalDocument } from '@/ai/flows/summarize-document-flow';
 
 // We need a way to serialize Date objects to be stored in Firestore
 // and deserialize them back to Date objects.
@@ -267,7 +268,22 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         };
         await setDoc(newDocRef, dataToSave);
 
-        const newDocumentWithId = { ...docData, id: newDocRef.id };
+        let newDocumentWithId = { ...docData, id: newDocRef.id };
+        
+        // Trigger AI summary generation in the background
+        summarizeMedicalDocument({ documentDataUris: docData.urls })
+            .then(summary => {
+                const docToUpdateRef = doc(db, 'users', user.uid, 'documents', newDocRef.id);
+                updateDoc(docToUpdateRef, { aiSummary: summary });
+                
+                // Update local state with the summary
+                setDocuments(prev => prev.map(d => d.id === newDocRef.id ? { ...d, aiSummary: summary } : d));
+            })
+            .catch(error => {
+                console.error("AI summary failed:", error);
+                // Optionally show a toast to the user
+            });
+        
         setDocuments(prev => [newDocumentWithId, ...prev].sort((a, b) => (b.studyDate || b.uploadedAt).getTime() - (a.studyDate || a.uploadedAt).getTime()));
     };
     const updateDocument = async (id: string, docData: Partial<DocumentType>) => {
