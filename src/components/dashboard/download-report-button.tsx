@@ -27,70 +27,66 @@ const countryHealthData: { [key: string]: { label: string } } = {
     chile: { label: 'Previsión' },
 };
 
-const addSummaryToPdf = (doc: jsPDF, summary: Summary, documentName: string, startY: number): number => {
-    let currentY = startY;
-    const pageContentWidth = doc.internal.pageSize.getWidth() - 100;
-    const pageHeight = doc.internal.pageSize.getHeight();
-    const marginBottom = 60;
-
-    const checkPageBreak = (heightNeeded: number) => {
-        if (currentY + heightNeeded > pageHeight - marginBottom) {
-            doc.addPage();
-            currentY = 60; // Reset Y position on new page
+const addSummaryToPdf = (doc: jsPDF, summary: Summary, documentName: string): void => {
+    const addSection = (title: string, content: string | string[]) => {
+        if (!content || (Array.isArray(content) && content.length === 0)) {
+            return;
         }
+
+        // Section Title
+        autoTable(doc, {
+            body: [[title]],
+            theme: 'plain',
+            styles: {
+                font: 'helvetica',
+                fontStyle: 'bold',
+                fontSize: 10,
+                textColor: '#374151',
+                cellPadding: { top: 2, bottom: 2, left: 5 }
+            },
+            margin: { left: 55 }
+        });
+
+        const bodyContent = Array.isArray(content) 
+            ? content.map(item => [`• ${item}`])
+            : [[content]];
+
+        // Section Content
+        autoTable(doc, {
+            body: bodyContent,
+            theme: 'plain',
+            styles: {
+                font: 'helvetica',
+                fontSize: 10,
+                textColor: '#444444',
+                cellPadding: { top: 0, bottom: 2, left: 10 }
+            },
+            margin: { left: 60 }
+        });
     };
     
-    checkPageBreak(50);
+    autoTable(doc, {
+      body: [[`Resumen de Estudios para: "${documentName}"`]],
+      theme: 'plain',
+      styles: {
+        font: 'helvetica',
+        fontStyle: 'bold',
+        fontSize: 11,
+        textColor: '#6b7280',
+        cellPadding: { bottom: 2, top: 4 }
+      },
+      didDrawPage: (data) => {
+        const pageContentWidth = doc.internal.pageSize.getWidth();
+        doc.setDrawColor('#e5e7eb');
+        doc.setLineWidth(0.5);
+        doc.line(50, data.cursor.y, pageContentWidth - 50, data.cursor.y);
+      },
+      margin: { top: (doc as any).lastAutoTable.finalY + 15, left: 50 },
+    });
 
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(11);
-    doc.setTextColor('#6b7280');
-    doc.text(`Resumen de Estudios para: "${documentName}"`, 50, currentY);
-    currentY += 8;
-
-    doc.setDrawColor('#e5e7eb');
-    doc.setLineWidth(0.5);
-    doc.line(50, currentY, doc.internal.pageSize.getWidth() - 50, currentY);
-    currentY += 15;
-
-    const addSummarySection = (title: string, content: string | string[]) => {
-        checkPageBreak(30);
-        doc.setFont('helvetica', 'bold');
-        doc.setFontSize(10);
-        doc.setTextColor('#374151');
-        doc.text(title, 55, currentY);
-        currentY += 14;
-
-        doc.setFont('helvetica', 'normal');
-        doc.setFontSize(10);
-        doc.setTextColor('#444444');
-        if (Array.isArray(content)) {
-            content.forEach(item => {
-                const splitItem = doc.splitTextToSize(`• ${item}`, pageContentWidth - 10);
-                checkPageBreak(splitItem.length * 12);
-                doc.text(splitItem, 60, currentY);
-                currentY += (splitItem.length * 12);
-            });
-        } else {
-            const splitContent = doc.splitTextToSize(content, pageContentWidth - 5);
-            checkPageBreak(splitContent.length * 12);
-            doc.text(splitContent, 55, currentY);
-            currentY += (splitContent.length * 12);
-        }
-        currentY += 8;
-    };
-
-    if (summary.diagnosticoPrincipal) {
-        addSummarySection('Diagnóstico Principal:', summary.diagnosticoPrincipal);
-    }
-    if (summary.hallazgosClave && summary.hallazgosClave.length > 0) {
-        addSummarySection('Hallazgos Clave:', summary.hallazgosClave);
-    }
-    if (summary.recomendaciones && summary.recomendaciones.length > 0) {
-        addSummarySection('Recomendaciones:', summary.recomendaciones);
-    }
-
-    return currentY + 20;
+    addSection('Diagnóstico Principal:', summary.diagnosticoPrincipal);
+    addSection('Hallazgos Clave:', summary.hallazgosClave);
+    addSection('Recomendaciones:', summary.recomendaciones);
 };
 
 
@@ -112,44 +108,46 @@ export function DownloadReportButton() {
         const pageContentWidth = pageWidth - pageMargin * 2;
         let y = 0;
 
-        const addHeader = () => {
+        const addHeader = (docInstance: jsPDF) => {
             const logoUrl = 'https://i.postimg.cc/SsRdwdzD/LOGO-1-transparent.png';
             const logoWidth = 157; 
             const logoHeight = 117.75; 
             
-            doc.addImage(logoUrl, 'PNG', pageMargin, 40, logoWidth, logoHeight);
+            docInstance.addImage(logoUrl, 'PNG', pageMargin, 40, logoWidth, logoHeight);
 
-            doc.setFont('helvetica', 'bold');
-            doc.setFontSize(24);
-            doc.setTextColor(primaryColor);
-            doc.text('Resumen de Salud', pageWidth - pageMargin, 85, { align: 'right' });
+            docInstance.setFont('helvetica', 'bold');
+            docInstance.setFontSize(24);
+            docInstance.setTextColor(primaryColor);
+            docInstance.text('Resumen de Salud', pageWidth - pageMargin, 85, { align: 'right' });
 
-            doc.setFont('helvetica', 'normal');
-            doc.setFontSize(10);
-            doc.setTextColor(textColor);
-            doc.text(`Generado el: ${format(new Date(), 'dd/MM/yyyy HH:mm')}`, pageWidth - pageMargin, 100, { align: 'right' });
+            docInstance.setFont('helvetica', 'normal');
+            docInstance.setFontSize(10);
+            docInstance.setTextColor(textColor);
+            docInstance.text(`Generado el: ${format(new Date(), 'dd/MM/yyyy HH:mm')}`, pageWidth - pageMargin, 100, { align: 'right' });
 
-            doc.setDrawColor('#E5E7EB');
-            doc.line(pageMargin, 160, pageWidth - pageMargin, 160);
-            y = 180;
+            docInstance.setDrawColor('#E5E7EB');
+            docInstance.line(pageMargin, 160, pageWidth - pageMargin, 160);
         };
         
         const addSectionHeader = (title: string) => {
-            if (y > doc.internal.pageSize.getHeight() - 120) {
-                doc.addPage();
-                addHeader();
-            }
-            const barHeight = 28;
-            doc.setFillColor(primaryColor);
-            doc.rect(pageMargin, y, pageContentWidth, barHeight, 'F');
-            doc.setFontSize(14);
-            doc.setFont('helvetica', 'bold');
-            doc.setTextColor('#FFFFFF');
-            doc.text(title, pageMargin + 15, y + 18);
-            y += barHeight + 20;
+            autoTable(doc, {
+                body: [[title]],
+                theme: 'plain',
+                styles: {
+                    fillColor: primaryColor,
+                    textColor: '#FFFFFF',
+                    font: 'helvetica',
+                    fontStyle: 'bold',
+                    fontSize: 14,
+                    halign: 'left',
+                    cellPadding: { top: 8, bottom: 8, left: 15 },
+                },
+                margin: { top: (doc as any).lastAutoTable.finalY + 15, left: pageMargin, right: pageMargin },
+            });
         }
 
-        addHeader();
+        addHeader(doc);
+        y = 180;
 
         addSectionHeader('1. Información Personal');
         doc.setFont('helvetica', 'normal');
@@ -157,7 +155,7 @@ export function DownloadReportButton() {
         const healthProviderLabel = countryHealthData[personalInfo.country]?.label || 'Previsión';
 
         autoTable(doc, {
-            startY: y,
+            startY: (doc as any).lastAutoTable.finalY + 10,
             body: [
                 ['Nombre Completo:', `${personalInfo.firstName} ${personalInfo.lastName}`],
                 ['Fecha de Nacimiento:', `${formatDate(personalInfo.dateOfBirth)} (${calculateAge(personalInfo.dateOfBirth)})`],
@@ -170,12 +168,11 @@ export function DownloadReportButton() {
             columnStyles: { 0: { fontStyle: 'bold', cellWidth: 150 } },
             margin: { left: pageMargin }
         });
-        y = (doc as any).lastAutoTable.finalY + 30;
-
+        
         if(healthInfo.emergencyContacts.length > 0) {
             addSectionHeader('2. Contactos de Emergencia');
             autoTable(doc, {
-                startY: y,
+                startY: (doc as any).lastAutoTable.finalY + 10,
                 head: [['Nombre', 'Relación', 'Teléfono']],
                 body: healthInfo.emergencyContacts.map(c => [c.name, c.relationship, c.phone]),
                 theme: 'striped',
@@ -183,25 +180,23 @@ export function DownloadReportButton() {
                 styles: { fontSize: 11, font: 'helvetica', textColor: textColor },
                 margin: { left: pageMargin, right: pageMargin }
             });
-            y = (doc as any).lastAutoTable.finalY + 30;
         }
 
         addSectionHeader('3. Historial Médico');
         const addHealthInfoSection = (title: string, content: string | string[]) => {
             const text = Array.isArray(content) ? content.join(', ') : content;
-            if (!text) return;
+            if (!text || text === 'No registrados') return;
             
-            if (y > doc.internal.pageSize.getHeight() - 80) { doc.addPage(); addHeader(); }
-            doc.setFont('helvetica', 'bold');
-            doc.setFontSize(12);
-            doc.setTextColor(textColor);
-            doc.text(title, pageMargin, y);
-            y += 20;
-            doc.setFont('helvetica', 'normal');
-            doc.setFontSize(11);
-            const splitText = doc.splitTextToSize(text, pageContentWidth);
-            doc.text(splitText, pageMargin, y);
-            y += (splitText.length * 14) + 15;
+            autoTable(doc, {
+                body: [
+                  [{ content: title, styles: { fontStyle: 'bold', fontSize: 12 } }],
+                  [{ content: text, styles: { fontSize: 11 } }]
+                ],
+                theme: 'plain',
+                styles: { textColor: textColor, cellPadding: { top: 2, bottom: 2, left: 5 }},
+                startY: (doc as any).lastAutoTable.finalY + 10,
+                margin: { left: pageMargin }
+            });
         }
 
         addHealthInfoSection('Alergias:', healthInfo.allergies.length > 0 ? healthInfo.allergies.join(', ') : 'No registradas');
@@ -211,23 +206,20 @@ export function DownloadReportButton() {
         if (personalInfo.sex === 'female' && healthInfo.gynecologicalHistory) {
             addHealthInfoSection('Antecedentes Gineco-Obstétricos:', healthInfo.gynecologicalHistory);
         }
-        y += 10;
         
         const upcomingAppointments = appointments.filter(a => new Date(a.date) >= new Date());
         
         const addTableSection = (title: string, head: any, body: any) => {
              if (body.length === 0) return;
-             if (y > doc.internal.pageSize.getHeight() - 150) { doc.addPage(); addHeader(); }
              addSectionHeader(title);
              autoTable(doc, {
-                 startY: y,
+                 startY: (doc as any).lastAutoTable.finalY + 10,
                  head, body,
                  theme: 'striped',
                  headStyles: { fillColor: primaryColor, textColor: '#FFFFFF', fontStyle: 'bold', font: 'helvetica', fontSize: 12 },
                  styles: { fontSize: 11, font: 'helvetica', textColor: textColor },
                  margin: { left: pageMargin, right: pageMargin }
              });
-             y = (doc as any).lastAutoTable.finalY + 30;
         };
 
         addTableSection('4. Próximas Citas Médicas',
@@ -241,12 +233,11 @@ export function DownloadReportButton() {
         );
 
          if (documents.length > 0) {
-            if (y > doc.internal.pageSize.getHeight() - 100) { doc.addPage(); addHeader(); }
             addSectionHeader('6. Documentos');
             const sortedDocuments = [...documents].sort((a,b) => (new Date(b.studyDate || b.uploadedAt)).getTime() - (new Date(a.studyDate || a.uploadedAt)).getTime());
             
             autoTable(doc, {
-                startY: y,
+                startY: (doc as any).lastAutoTable.finalY + 10,
                 head: [['Documento', 'Categoría', 'Fecha del Estudio']],
                 body: sortedDocuments.map(d => [d.name, d.category, formatDate(new Date(d.studyDate || d.uploadedAt))]),
                 theme: 'striped',
@@ -258,13 +249,11 @@ export function DownloadReportButton() {
 
             const documentsWithSummary = sortedDocuments.filter(d => d.aiSummary);
             if (documentsWithSummary.length > 0) {
-                if (y > doc.internal.pageSize.getHeight() - 150) {
-                    doc.addPage();
-                    addHeader();
-                }
                 addSectionHeader('7. Resumen de Estudios (IA)');
                 documentsWithSummary.forEach(docWithSummary => {
-                    y = addSummaryToPdf(doc, docWithSummary.aiSummary!, docWithSummary.name, y);
+                    if (docWithSummary.aiSummary) {
+                        addSummaryToPdf(doc, docWithSummary.aiSummary, docWithSummary.name);
+                    }
                 });
             }
         }
@@ -286,9 +275,5 @@ export function DownloadReportButton() {
         </Button>
     )
 }
-
-    
-
-    
 
     
