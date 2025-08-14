@@ -178,18 +178,21 @@ export function DownloadReportButton() {
                 ]);
 
                 if (docItem.aiSummary) {
+                    const hallazgos = Array.isArray(docItem.aiSummary.hallazgosClave) ? docItem.aiSummary.hallazgosClave : [];
+                    const recomendaciones = Array.isArray(docItem.aiSummary.recomendaciones) ? docItem.aiSummary.recomendaciones : [];
+
                     documentsBody.push([{
-                        content: `Diagnóstico: ${docItem.aiSummary.diagnosticoPrincipal}`,
+                        content: `Diagnóstico: ${docItem.aiSummary.diagnosticoPrincipal || 'No registrado'}`,
                         colSpan: 3,
                         styles: { fillColor: [240, 240, 240], textColor: 50, fontSize: 9, cellPadding: { top: 3, left: 10 } }
                     }]);
                     documentsBody.push([{
-                        content: `Hallazgos: ${docItem.aiSummary.hallazgosClave.join('; ')}`,
+                        content: `Hallazgos: ${hallazgos.join('; ')}`,
                         colSpan: 3,
                         styles: { fillColor: [240, 240, 240], textColor: 50, fontSize: 9, cellPadding: { left: 10 } }
                     }]);
                     documentsBody.push([{
-                        content: `Recomendaciones: ${docItem.aiSummary.recomendaciones.join('; ')}`,
+                        content: `Recomendaciones: ${recomendaciones.join('; ')}`,
                         colSpan: 3,
                         styles: { fillColor: [240, 240, 240], textColor: 50, fontSize: 9, cellPadding: { bottom: 3, left: 10 } }
                     }]);
@@ -219,3 +222,5 @@ export function DownloadReportButton() {
         </Button>
     )
 }
+
+    
