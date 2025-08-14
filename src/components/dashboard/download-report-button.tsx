@@ -27,66 +27,6 @@ const countryHealthData: { [key: string]: { label: string } } = {
     chile: { label: 'Previsión' },
 };
 
-const addSummaryToPdf = (doc: jsPDF, summary: Summary, documentName: string): void => {
-    const addSection = (title: string, content: string | string[]) => {
-        if (!content || (Array.isArray(content) && content.length === 0)) {
-            return;
-        }
-
-        autoTable(doc, {
-            body: [[title]],
-            theme: 'plain',
-            styles: {
-                font: 'helvetica',
-                fontStyle: 'bold',
-                fontSize: 10,
-                textColor: '#374151',
-                cellPadding: { top: 2, bottom: 2, left: 5 }
-            },
-            margin: { left: 55 }
-        });
-
-        const bodyContent = Array.isArray(content)
-            ? content.map(item => [`• ${item}`])
-            : [[content]];
-
-        autoTable(doc, {
-            body: bodyContent,
-            theme: 'plain',
-            styles: {
-                font: 'helvetica',
-                fontSize: 10,
-                textColor: '#444444',
-                cellPadding: { top: 0, bottom: 2, left: 10 }
-            },
-            margin: { left: 60 }
-        });
-    };
-    
-    autoTable(doc, {
-      body: [[`Resumen de Estudios para: "${documentName}"`]],
-      theme: 'plain',
-      styles: {
-        font: 'helvetica',
-        fontStyle: 'bold',
-        fontSize: 11,
-        textColor: '#6b7280',
-        cellPadding: { bottom: 2, top: 4 }
-      },
-      didDrawPage: (data) => {
-        const pageContentWidth = doc.internal.pageSize.getWidth();
-        doc.setDrawColor('#e5e7eb');
-        doc.setLineWidth(0.5);
-        doc.line(50, data.cursor.y, pageContentWidth - 50, data.cursor.y);
-      },
-      margin: { top: (doc as any).lastAutoTable.finalY + 15, left: 50 },
-    });
-
-    addSection('Diagnóstico Principal:', summary.diagnosticoPrincipal);
-    addSection('Hallazgos Clave:', summary.hallazgosClave);
-    addSection('Recomendaciones:', summary.recomendaciones);
-};
-
 
 export function DownloadReportButton() {
     const context = useContext(UserContext);
@@ -228,28 +168,65 @@ export function DownloadReportButton() {
         );
 
          if (documents.length > 0) {
-            addSectionHeader('6. Documentos');
+            addSectionHeader('6. Documentos y Resúmenes');
             const sortedDocuments = [...documents].sort((a,b) => (new Date(b.studyDate || b.uploadedAt)).getTime() - (new Date(a.studyDate || a.uploadedAt)).getTime());
             
+            const documentsBody: any[] = [];
+            sortedDocuments.forEach(d => {
+                const hasSummary = !!d.aiSummary;
+                const summary = d.aiSummary;
+                let rowCount = 1;
+                if (hasSummary && summary) {
+                    rowCount += 2 + summary.hallazgosClave.length + summary.recomendaciones.length;
+                }
+
+                const docInfoRow = [
+                    { content: d.name, rowSpan: rowCount },
+                    { content: d.category, rowSpan: rowCount },
+                    { content: formatDate(new Date(d.studyDate || d.uploadedAt)), rowSpan: rowCount }
+                ];
+                documentsBody.push(docInfoRow);
+
+                if (hasSummary && summary) {
+                    documentsBody.push([
+                        { content: 'Diagnóstico Principal:', styles: { fontStyle: 'bold', fillColor: '#f8f9fa' } },
+                        { content: summary.diagnosticoPrincipal, colSpan: 2, styles: { fillColor: '#f8f9fa' } }
+                    ]);
+
+                    documentsBody.push([
+                        { content: 'Hallazgos Clave:', styles: { fontStyle: 'bold', fillColor: '#f8f9fa' } }
+                    ]);
+                    summary.hallazgosClave.forEach(hallazgo => {
+                        documentsBody.push([
+                             { content: `• ${hallazgo}`, colSpan: 2, styles: { fillColor: '#f8f9fa' } }
+                        ]);
+                    });
+
+                    documentsBody.push([
+                        { content: 'Recomendaciones:', styles: { fontStyle: 'bold', fillColor: '#f8f9fa' } }
+                    ]);
+                    summary.recomendaciones.forEach(rec => {
+                        documentsBody.push([
+                            { content: `• ${rec}`, colSpan: 2, styles: { fillColor: '#f8f9fa' } }
+                        ]);
+                    });
+                }
+            });
+
             autoTable(doc, {
                 startY: (doc as any).lastAutoTable.finalY + 10,
                 head: [['Documento', 'Categoría', 'Fecha del Estudio']],
-                body: sortedDocuments.map(d => [d.name, d.category, formatDate(new Date(d.studyDate || d.uploadedAt))]),
+                body: documentsBody,
                 theme: 'striped',
                 headStyles: { fillColor: primaryColor, textColor: '#FFFFFF', fontStyle: 'bold', font: 'helvetica', fontSize: 12 },
-                styles: { fontSize: 11, font: 'helvetica', textColor: textColor },
+                styles: { fontSize: 10, font: 'helvetica', textColor: textColor },
+                didParseCell: (data) => {
+                    if (data.row.raw.some((cell: any) => cell.colSpan)) {
+                        data.cell.styles.fillColor = '#f8f9fa';
+                    }
+                },
                 margin: { left: pageMargin, right: pageMargin },
             });
-
-            const documentsWithSummary = sortedDocuments.filter(d => d.aiSummary);
-            if (documentsWithSummary.length > 0) {
-                addSectionHeader('7. Resumen de Estudios');
-                documentsWithSummary.forEach(docWithSummary => {
-                    if (docWithSummary.aiSummary) {
-                        addSummaryToPdf(doc, docWithSummary.aiSummary, docWithSummary.name);
-                    }
-                });
-            }
         }
         
         doc.save(`resumen_salud_${personalInfo.firstName.toLowerCase()}_${personalInfo.lastName.toLowerCase()}.pdf`);
@@ -269,7 +246,3 @@ export function DownloadReportButton() {
         </Button>
     )
 }
-
-    
-
-    
