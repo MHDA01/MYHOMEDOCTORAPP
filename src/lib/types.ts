@@ -1,5 +1,4 @@
 
-
 export type Summary = {
   diagnosticoPrincipal: string;
   hallazgosClave: string[];
@@ -13,7 +12,6 @@ export type Document = {
   uploadedAt: Date;
   urls: string[];
   studyDate?: Date;
-  aiSummary?: Summary;
 };
 
 export type Appointment = {

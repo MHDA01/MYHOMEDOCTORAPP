@@ -9,7 +9,7 @@ import { es } from 'date-fns/locale';
 import { UserContext } from '@/context/user-context';
 import { Button } from '@/components/ui/button';
 import { FileDown, Loader2 } from 'lucide-react';
-import type { Summary } from '@/lib/types';
+import type { Document } from '@/lib/types';
 
 const calculateAge = (dob: Date | undefined): string => {
     if (!dob || !isValid(dob)) return 'N/A';
@@ -20,6 +20,16 @@ const formatDate = (date: Date | undefined): string => {
     if (!date || !isValid(date)) return 'N/A';
     return format(date, "d 'de' MMMM 'de' yyyy", { locale: es });
 }
+
+const getCategoryLabel = (category: Document['category']) => {
+    switch (category) {
+        case 'Lab Result': return 'Resultado de Laboratorio';
+        case 'Imaging Report': return 'Informe de Imagen';
+        case 'Prescription': return 'Receta';
+        case 'Other': return 'Otro';
+        default: return category;
+    }
+};
 
 const countryHealthData: { [key: string]: { label: string } } = {
     argentina: { label: 'Obra Social' },
@@ -45,7 +55,7 @@ export function DownloadReportButton() {
         const pageWidth = doc.internal.pageSize.getWidth();
 
         const addHeader = (docInstance: jsPDF) => {
-            const logoUrl = 'https://i.postimg.cc/SsRdwdzD/LOGO-1-transparent.png';
+            const logoUrl = 'https://i.postimg.cc/8PqYgKbq/LOGO-1-transparent.png';
             const logoWidth = 157; 
             const logoHeight = 117.75; 
             
@@ -167,67 +177,10 @@ export function DownloadReportButton() {
             medications.filter(m => m.active).map(m => [m.name, m.dosage, `Cada ${m.frequency} hrs`, m.time.join(', ')])
         );
 
-         if (documents.length > 0) {
-            addSectionHeader('6. Documentos y Resúmenes');
-            const sortedDocuments = [...documents].sort((a,b) => (new Date(b.studyDate || b.uploadedAt)).getTime() - (new Date(a.studyDate || a.uploadedAt)).getTime());
-            
-            const documentsBody: any[] = [];
-            sortedDocuments.forEach(d => {
-                const hasSummary = !!d.aiSummary;
-                const summary = d.aiSummary;
-                let rowCount = 1;
-                if (hasSummary && summary) {
-                    rowCount += 2 + summary.hallazgosClave.length + summary.recomendaciones.length;
-                }
-
-                const docInfoRow = [
-                    { content: d.name, rowSpan: rowCount },
-                    { content: d.category, rowSpan: rowCount },
-                    { content: formatDate(new Date(d.studyDate || d.uploadedAt)), rowSpan: rowCount }
-                ];
-                documentsBody.push(docInfoRow);
-
-                if (hasSummary && summary) {
-                    documentsBody.push([
-                        { content: 'Diagnóstico Principal:', styles: { fontStyle: 'bold', fillColor: '#f8f9fa' } },
-                        { content: summary.diagnosticoPrincipal, colSpan: 2, styles: { fillColor: '#f8f9fa' } }
-                    ]);
-
-                    documentsBody.push([
-                        { content: 'Hallazgos Clave:', styles: { fontStyle: 'bold', fillColor: '#f8f9fa' } }
-                    ]);
-                    summary.hallazgosClave.forEach(hallazgo => {
-                        documentsBody.push([
-                             { content: `• ${hallazgo}`, colSpan: 2, styles: { fillColor: '#f8f9fa' } }
-                        ]);
-                    });
-
-                    documentsBody.push([
-                        { content: 'Recomendaciones:', styles: { fontStyle: 'bold', fillColor: '#f8f9fa' } }
-                    ]);
-                    summary.recomendaciones.forEach(rec => {
-                        documentsBody.push([
-                            { content: `• ${rec}`, colSpan: 2, styles: { fillColor: '#f8f9fa' } }
-                        ]);
-                    });
-                }
-            });
-
-            autoTable(doc, {
-                startY: (doc as any).lastAutoTable.finalY + 10,
-                head: [['Documento', 'Categoría', 'Fecha del Estudio']],
-                body: documentsBody,
-                theme: 'striped',
-                headStyles: { fillColor: primaryColor, textColor: '#FFFFFF', fontStyle: 'bold', font: 'helvetica', fontSize: 12 },
-                styles: { fontSize: 10, font: 'helvetica', textColor: textColor },
-                didParseCell: (data) => {
-                    if (data.row.raw.some((cell: any) => cell.colSpan)) {
-                        data.cell.styles.fillColor = '#f8f9fa';
-                    }
-                },
-                margin: { left: pageMargin, right: pageMargin },
-            });
-        }
+        addTableSection('6. Documentos Médicos',
+            [['Documento', 'Categoría', 'Fecha de Estudio']],
+            documents.map(d => [d.name, getCategoryLabel(d.category), formatDate(d.studyDate || d.uploadedAt)])
+        );
         
         doc.save(`resumen_salud_${personalInfo.firstName.toLowerCase()}_${personalInfo.lastName.toLowerCase()}.pdf`);
         setIsGenerating(false);

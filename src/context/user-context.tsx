@@ -2,12 +2,11 @@
 'use client';
 
 import { createContext, useState, useEffect, ReactNode, useCallback } from 'react';
-import type { PersonalInfo, HealthInfo, Appointment, Document as DocumentType, Medication, Summary } from '@/lib/types';
+import type { PersonalInfo, HealthInfo, Appointment, Document as DocumentType, Medication } from '@/lib/types';
 import { auth, db } from '@/lib/firebase';
 import { onAuthStateChanged, User, signOut, updateProfile } from 'firebase/auth';
 import { doc, getDoc, setDoc, Timestamp, collection, getDocs, addDoc, updateDoc, deleteDoc, query, orderBy } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
-import { summarizeMedicalDocument } from '@/ai/flows/summarize-document-flow';
 
 // We need a way to serialize Date objects to be stored in Firestore
 // and deserialize them back to Date objects.
@@ -259,40 +258,27 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     // Documents CRUD
     const addDocument = async (docData: Omit<DocumentType, 'id'>) => {
         if (!user) return;
-        
-        let summary: Summary | undefined;
-        try {
-            toast({ title: "Generando resumen con IA...", description: "Esto puede tardar unos segundos." });
-            summary = await summarizeMedicalDocument({ documentDataUris: docData.urls });
-        } catch (error) {
-            console.error("AI summary failed:", error);
-            toast({
-                variant: 'destructive',
-                title: "Error en el resumen de IA",
-                description: "No se pudo generar el resumen, pero el documento se guardó igualmente.",
-            });
-        }
 
         const newDocRef = doc(collection(db, 'users', user.uid, 'documents'));
         const newDocument = {
             ...docData,
             id: newDocRef.id,
-            aiSummary: summary,
         };
 
         const dataToSave = { 
             name: newDocument.name,
             category: newDocument.category,
             urls: newDocument.urls,
-            aiSummary: newDocument.aiSummary,
             uploadedAt: Timestamp.fromDate(newDocument.uploadedAt),
             studyDate: newDocument.studyDate ? Timestamp.fromDate(newDocument.studyDate) : Timestamp.fromDate(newDocument.uploadedAt)
         };
         
         await setDoc(newDocRef, dataToSave);
+        toast({ title: "Documento guardado con éxito" });
         
         setDocuments(prev => [newDocument, ...prev].sort((a, b) => (b.studyDate || b.uploadedAt).getTime() - (a.studyDate || a.uploadedAt).getTime()));
     };
+
     const updateDocument = async (id: string, docData: Partial<DocumentType>) => {
         if (!user) return;
         const dataToUpdate: Partial<SerializableDocument> & { [key: string]: any } = { ...docData };
