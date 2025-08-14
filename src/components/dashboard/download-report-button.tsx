@@ -2,13 +2,21 @@
 'use client';
 
 import React, { useContext } from 'react';
-import jsPDF from 'jspdf';
+import jsPDF, { CellHookData } from 'jspdf';
+import 'jspdf-autotable';
 import { format, differenceInYears, isValid } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { UserContext } from '@/context/user-context';
 import { Button } from '@/components/ui/button';
 import { FileDown, Loader2 } from 'lucide-react';
 import type { Document as DocumentType } from '@/lib/types';
+
+declare module 'jspdf' {
+    interface jsPDF {
+        autoTable: (options: any) => jsPDF;
+    }
+}
+
 
 const calculateAge = (dob: Date | undefined): string => {
     if (!dob || !isValid(dob)) return 'N/A';
@@ -36,12 +44,6 @@ const countryHealthData: { [key: string]: { label: string } } = {
     chile: { label: 'Previsión' },
 };
 
-declare module 'jspdf' {
-  interface jsPDF {
-    lastAutoTable: { finalY: number };
-  }
-}
-
 export function DownloadReportButton() {
     const context = useContext(UserContext);
     const [isGenerating, setIsGenerating] = React.useState(false);
@@ -58,14 +60,8 @@ export function DownloadReportButton() {
         const pageMargin = 50; 
         const pageWidth = doc.internal.pageSize.getWidth();
         let currentY = 0;
-
-        const checkPageBreak = (y: number) => {
-            if (y > doc.internal.pageSize.getHeight() - pageMargin) {
-                doc.addPage();
-                return pageMargin;
-            }
-            return y;
-        };
+        
+        doc.setFont('helvetica', 'normal');
 
         const addHeader = (docInstance: jsPDF) => {
             const logoUrl = 'https://i.postimg.cc/SsRdwdzD/LOGO-1-transparent.png';
@@ -85,164 +81,121 @@ export function DownloadReportButton() {
             return 160;
         };
 
-        const addSectionHeader = (title: string, yPos: number) => {
-            currentY = checkPageBreak(yPos);
-            doc.setFont('helvetica', 'bold');
-            doc.setFontSize(14);
-            doc.setTextColor('#FFFFFF');
-            doc.setFillColor(primaryColor);
-            doc.rect(pageMargin, currentY, pageWidth - (pageMargin * 2), 24, 'F');
-            doc.text(title, pageMargin + 10, currentY + 16);
-            return currentY + 34;
-        };
-
-        const addInfoGrid = (data: [string, string][], yPos: number) => {
-            currentY = checkPageBreak(yPos);
-            doc.setFont('helvetica', 'normal');
-            doc.setFontSize(10);
-            doc.setTextColor(textColor);
-            
-            data.forEach(([label, value]) => {
-                currentY = checkPageBreak(currentY);
-                doc.setFont('helvetica', 'bold');
-                doc.text(label, pageMargin, currentY);
-                doc.setFont('helvetica', 'normal');
-                const textLines = doc.splitTextToSize(value, pageWidth - (pageMargin * 2) - 150);
-                doc.text(textLines, pageMargin + 140, currentY);
-                currentY += (textLines.length * 12) + 6;
-            });
-            return currentY;
-        };
-        
-        const drawTable = (headers: string[], body: string[][], yPos: number, colWidths: number[]) => {
-            currentY = checkPageBreak(yPos);
-            doc.setFont('helvetica', 'bold');
-            doc.setFontSize(10);
-            doc.setFillColor(primaryColor);
-            doc.setTextColor('#FFFFFF');
-            
-            // Draw header
-            let xPos = pageMargin;
-            headers.forEach((header, i) => {
-                doc.rect(xPos, currentY, colWidths[i], 20, 'F');
-                doc.text(header, xPos + 5, currentY + 14);
-                xPos += colWidths[i];
-            });
-            currentY += 20;
-
-            // Draw body
-            doc.setFont('helvetica', 'normal');
-            doc.setTextColor(textColor);
-            body.forEach(row => {
-                currentY = checkPageBreak(currentY + 20) - 20; // Check before drawing row
-                let maxRowHeight = 0;
-                let cellData = row.map((cellText, i) => {
-                    const lines = doc.splitTextToSize(cellText, colWidths[i] - 10);
-                    maxRowHeight = Math.max(maxRowHeight, lines.length * 12 + 8);
-                    return lines;
-                });
-
-                currentY = checkPageBreak(currentY + maxRowHeight) - maxRowHeight;
-                
-                let x = pageMargin;
-                cellData.forEach((lines, i) => {
-                    doc.rect(x, currentY, colWidths[i], maxRowHeight);
-                    doc.text(lines, x + 5, currentY + 14);
-                    x += colWidths[i];
-                });
-                currentY += maxRowHeight;
-            });
-
-            return currentY;
-        };
-
         currentY = addHeader(doc);
         
         // --- 1. Información Personal ---
-        currentY = addSectionHeader('1. Información Personal', currentY);
-        currentY = addInfoGrid([
-            ['Nombre Completo:', `${personalInfo.firstName} ${personalInfo.lastName}`],
-            ['Fecha de Nacimiento:', `${formatDate(personalInfo.dateOfBirth)} (${calculateAge(personalInfo.dateOfBirth)})`],
-            ['Sexo:', personalInfo.sex === 'male' ? 'Masculino' : personalInfo.sex === 'female' ? 'Femenino' : 'Indeterminado'],
-            ['País:', personalInfo.country.charAt(0).toUpperCase() + personalInfo.country.slice(1)],
-            [`${countryHealthData[personalInfo.country]?.label || 'Previsión'}:`, `${personalInfo.insuranceProvider}${personalInfo.insuranceProviderName ? ` - ${personalInfo.insuranceProviderName}` : ''}`],
-        ], currentY);
-        currentY += 10;
+        doc.autoTable({
+            startY: currentY + 10,
+            head: [['1. Información Personal']],
+            body: [
+                ['Nombre Completo:', `${personalInfo.firstName} ${personalInfo.lastName}`],
+                ['Fecha de Nacimiento:', `${formatDate(personalInfo.dateOfBirth)} (${calculateAge(personalInfo.dateOfBirth)})`],
+                ['Sexo:', personalInfo.sex === 'male' ? 'Masculino' : personalInfo.sex === 'female' ? 'Femenino' : 'Indeterminado'],
+                ['País:', personalInfo.country.charAt(0).toUpperCase() + personalInfo.country.slice(1)],
+                [`${countryHealthData[personalInfo.country]?.label || 'Previsión'}:`, `${personalInfo.insuranceProvider}${personalInfo.insuranceProviderName ? ` - ${personalInfo.insuranceProviderName}` : ''}`],
+            ],
+            theme: 'grid',
+            headStyles: { fillColor: primaryColor },
+            styles: { font: 'helvetica', fontSize: 10 },
+            columnStyles: { 0: { fontStyle: 'bold', cellWidth: 140 } },
+            didDrawPage: (data) => { currentY = data.cursor?.y || currentY; }
+        });
         
         // --- 2. Contactos de Emergencia ---
         if (healthInfo.emergencyContacts.length > 0) {
-            currentY = addSectionHeader('2. Contactos de Emergencia', currentY);
-            currentY = drawTable(
-                ['Nombre', 'Relación', 'Teléfono'], 
-                healthInfo.emergencyContacts.map(c => [c.name, c.relationship, c.phone]),
-                currentY,
-                [200, 150, 156]
-            );
-            currentY += 10;
+            doc.autoTable({
+                startY: currentY + 10,
+                head: [['2. Contactos de Emergencia', '', '']],
+                body: healthInfo.emergencyContacts.map(c => [c.name, c.relationship, c.phone]),
+                columns: [{ header: 'Nombre' }, { header: 'Relación' }, { header: 'Teléfono' }],
+                theme: 'striped',
+                headStyles: { fillColor: primaryColor },
+                didDrawPage: (data) => { currentY = data.cursor?.y || currentY; }
+            });
         }
 
         // --- 3. Historial Médico ---
-        currentY = addSectionHeader('3. Historial Médico', currentY);
-        const healthHistoryBody = [
+         const healthHistoryBody = [
             ['Alergias:', healthInfo.allergies.length > 0 ? healthInfo.allergies.join(', ') : 'No registradas'],
             ['Medicamentos Frecuentes:', healthInfo.medications.length > 0 ? healthInfo.medications.join(', ') : 'No registrados'],
             ['Antecedentes Patológicos:', healthInfo.pathologicalHistory || 'No registrados'],
             ['Antecedentes Quirúrgicos:', healthInfo.surgicalHistory || 'No registrados'],
         ];
         if (personalInfo.sex === 'female' && healthInfo.gynecologicalHistory) {
-            healthHistoryBody.push(['Antecedentes Gineco-Obstétricos:', healthInfo.gynecologicalHistory]);
+            healthHistoryBody.push(['Antecedentes Gineco-Obstétricos:', healthInfo.gynecologicalHistory || 'No registrados']);
         }
-        currentY = addInfoGrid(healthHistoryBody as [string, string][], currentY);
-        currentY += 10;
+
+        doc.autoTable({
+            startY: currentY + 10,
+            head: [['3. Historial Médico']],
+            body: healthHistoryBody,
+            theme: 'grid',
+            headStyles: { fillColor: primaryColor },
+            styles: { font: 'helvetica', fontSize: 10 },
+            columnStyles: { 0: { fontStyle: 'bold', cellWidth: 140 } },
+            didDrawPage: (data) => { currentY = data.cursor?.y || currentY; }
+        });
+        
 
         // --- 4. Próximas Citas Médicas ---
         const upcomingAppointments = appointments.filter(a => new Date(a.date) >= new Date());
         if (upcomingAppointments.length > 0) {
-            currentY = addSectionHeader('4. Próximas Citas Médicas', currentY);
-            currentY = drawTable(
-                ['Fecha', 'Hora', 'Doctor', 'Especialidad'], 
-                upcomingAppointments.map(a => [format(new Date(a.date), 'dd/MM/yyyy'), format(new Date(a.date), 'HH:mm'), a.doctor, a.specialty]),
-                currentY,
-                [80, 80, 173, 173]
-            );
-            currentY += 10;
+            doc.autoTable({
+                startY: currentY + 10,
+                head: [['4. Próximas Citas Médicas', '', '', '']],
+                columns: [{ header: 'Fecha' }, { header: 'Hora' }, { header: 'Doctor' }, { header: 'Especialidad' }],
+                body: upcomingAppointments.map(a => [format(new Date(a.date), 'dd/MM/yyyy'), format(new Date(a.date), 'HH:mm'), a.doctor, a.specialty]),
+                theme: 'striped',
+                headStyles: { fillColor: primaryColor },
+                didDrawPage: (data) => { currentY = data.cursor?.y || currentY; }
+            });
         }
 
         // --- 5. Medicamentos Activos ---
         const activeMedications = medications.filter(m => m.active);
         if (activeMedications.length > 0) {
-            currentY = addSectionHeader('5. Medicamentos Activos', currentY);
-             currentY = drawTable(
-                ['Medicamento', 'Dosis', 'Frecuencia', 'Horarios'], 
-                activeMedications.map(m => [m.name, m.dosage, `Cada ${m.frequency} hrs`, m.time.join(', ')]),
-                currentY,
-                [150, 100, 126, 130]
-            );
-            currentY += 10;
+            doc.autoTable({
+                startY: currentY + 10,
+                head: [['5. Medicamentos Activos', '', '', '']],
+                columns: [{ header: 'Medicamento' }, { header: 'Dosis' }, { header: 'Frecuencia' }, { header: 'Horarios' }],
+                body: activeMedications.map(m => [m.name, m.dosage, `Cada ${m.frequency} hrs`, m.time.join(', ')]),
+                theme: 'striped',
+                headStyles: { fillColor: primaryColor },
+                didDrawPage: (data) => { currentY = data.cursor?.y || currentY; }
+            });
         }
 
         // --- 6. Documentos Médicos y Resúmenes ---
         if (documents.length > 0) {
-            currentY = addSectionHeader('6. Documentos Médicos', currentY);
-            
-            const docHeaders = ['Documento', 'Categoría', 'Fecha de Estudio'];
-            const docColWidths = [200, 150, 156];
-            let docBody: string[][] = [];
+            const documentsBody = documents.flatMap(docItem => {
+                const mainRow: (string | { content: string, colSpan: number, styles: any })[] = [docItem.name, getCategoryLabel(docItem.category), formatDate(docItem.studyDate || docItem.uploadedAt)];
+                const summaryRows = [];
 
-            for (const docItem of documents) {
-                 docBody.push([docItem.name, getCategoryLabel(docItem.category), formatDate(docItem.studyDate || docItem.uploadedAt)]);
+                if (docItem.aiSummary) {
+                    const diagnostico = docItem.aiSummary.diagnosticoPrincipal || 'No registrado';
+                    const hallazgos = (Array.isArray(docItem.aiSummary.hallazgosClave) && docItem.aiSummary.hallazgosClave.length > 0) 
+                        ? docItem.aiSummary.hallazgosClave.join('; ') 
+                        : 'No registrados';
+                    const recomendaciones = (Array.isArray(docItem.aiSummary.recomendaciones) && docItem.aiSummary.recomendaciones.length > 0) 
+                        ? docItem.aiSummary.recomendaciones.join('; ') 
+                        : 'No registradas';
 
-                 if (docItem.aiSummary) {
-                    const diagnostico = `Diagnóstico: ${docItem.aiSummary.diagnosticoPrincipal || 'No registrado'}`;
-                    const hallazgos = `Hallazgos: ${(Array.isArray(docItem.aiSummary.hallazgosClave) && docItem.aiSummary.hallazgosClave.length > 0) ? docItem.aiSummary.hallazgosClave.join('; ') : 'No registrados'}`;
-                    const recomendaciones = `Recomendaciones: ${(Array.isArray(docItem.aiSummary.recomendaciones) && docItem.aiSummary.recomendaciones.length > 0) ? docItem.aiSummary.recomendaciones.join('; ') : 'No registradas'}`;
+                    summaryRows.push([{ content: `Diagnóstico: ${diagnostico}`, colSpan: 3, styles: { fillColor: [240, 240, 240], textColor: 50, fontSize: 9, cellPadding: { left: 10 } } }]);
+                    summaryRows.push([{ content: `Hallazgos: ${hallazgos}`, colSpan: 3, styles: { fillColor: [240, 240, 240], textColor: 50, fontSize: 9, cellPadding: { left: 10 } } }]);
+                    summaryRows.push([{ content: `Recomendaciones: ${recomendaciones}`, colSpan: 3, styles: { fillColor: [240, 240, 240], textColor: 50, fontSize: 9, cellPadding: { left: 10 } } }]);
+                }
+                return [mainRow, ...summaryRows];
+            });
 
-                    docBody.push([diagnostico, '', '']);
-                    docBody.push([hallazgos, '', '']);
-                    docBody.push([recomendaciones, '', '']);
-                 }
-            }
-             currentY = drawTable(docHeaders, docBody, currentY, docColWidths);
+            doc.autoTable({
+                startY: currentY + 10,
+                head: [['6. Documentos Médicos', '', '']],
+                columns: [{ header: 'Documento' }, { header: 'Categoría' }, { header: 'Fecha de Estudio' }],
+                body: documentsBody,
+                theme: 'striped',
+                headStyles: { fillColor: primaryColor },
+                didDrawPage: (data) => { currentY = data.cursor?.y || currentY; }
+            });
         }
         
         doc.save(`resumen_salud_${personalInfo.firstName.toLowerCase()}_${personalInfo.lastName.toLowerCase()}.pdf`);
