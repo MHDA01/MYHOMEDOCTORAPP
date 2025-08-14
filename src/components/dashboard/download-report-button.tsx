@@ -27,14 +27,25 @@ const countryHealthData: { [key: string]: { label: string } } = {
     chile: { label: 'Previsión' },
 };
 
-const addSummaryToPdf = (doc: jsPDF, summary: Summary, startY: number): number => {
-    const pageContentWidth = doc.internal.pageSize.getWidth() - 100;
+const addSummaryToPdf = (doc: jsPDF, summary: Summary, documentName: string, startY: number): number => {
     let currentY = startY;
+    const pageContentWidth = doc.internal.pageSize.getWidth() - 100;
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const marginBottom = 60;
+
+    const checkPageBreak = (heightNeeded: number) => {
+        if (currentY + heightNeeded > pageHeight - marginBottom) {
+            doc.addPage();
+            currentY = 60; // Reset Y position on new page
+        }
+    };
+    
+    checkPageBreak(50);
 
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(10);
+    doc.setFontSize(11);
     doc.setTextColor('#6b7280');
-    doc.text('Resumen de Estudios (IA)', 50, currentY);
+    doc.text(`Resumen de Estudios para: "${documentName}"`, 50, currentY);
     currentY += 8;
 
     doc.setDrawColor('#e5e7eb');
@@ -43,6 +54,7 @@ const addSummaryToPdf = (doc: jsPDF, summary: Summary, startY: number): number =
     currentY += 15;
 
     const addSummarySection = (title: string, content: string | string[]) => {
+        checkPageBreak(30);
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(10);
         doc.setTextColor('#374151');
@@ -55,11 +67,13 @@ const addSummaryToPdf = (doc: jsPDF, summary: Summary, startY: number): number =
         if (Array.isArray(content)) {
             content.forEach(item => {
                 const splitItem = doc.splitTextToSize(`• ${item}`, pageContentWidth - 10);
+                checkPageBreak(splitItem.length * 12);
                 doc.text(splitItem, 60, currentY);
                 currentY += (splitItem.length * 12);
             });
         } else {
             const splitContent = doc.splitTextToSize(content, pageContentWidth - 5);
+            checkPageBreak(splitContent.length * 12);
             doc.text(splitContent, 55, currentY);
             currentY += (splitContent.length * 12);
         }
@@ -76,7 +90,7 @@ const addSummaryToPdf = (doc: jsPDF, summary: Summary, startY: number): number =
         addSummarySection('Recomendaciones:', summary.recomendaciones);
     }
 
-    return currentY + 10;
+    return currentY + 20;
 };
 
 
@@ -239,40 +253,20 @@ export function DownloadReportButton() {
                 headStyles: { fillColor: primaryColor, textColor: '#FFFFFF', fontStyle: 'bold', font: 'helvetica', fontSize: 12 },
                 styles: { fontSize: 11, font: 'helvetica', textColor: textColor },
                 margin: { left: pageMargin, right: pageMargin },
-                didDrawCell: (data) => {
-                    // Check if we are in the body of the table
-                    if (data.section === 'body') {
-                        const docId = sortedDocuments[data.row.index].id;
-                        const documentData = documents.find(d => d.id === docId);
-
-                        if (documentData && documentData.aiSummary) {
-                            // We need to draw the summary *after* the table has been fully drawn.
-                            // We store the information and draw it in didDrawPage.
-                            (doc as any).summaryToDraw = (doc as any).summaryToDraw || [];
-                            (doc as any).summaryToDraw.push({
-                                summary: documentData.aiSummary,
-                                y: data.cell.y + data.cell.height + 10
-                            });
-                        }
-                    }
-                },
-                 didDrawPage: (data) => {
-                     if ((doc as any).summaryToDraw) {
-                         let currentY = (doc as any).lastAutoTable.finalY + 20;
-                         
-                         const docWithSummaryId = sortedDocuments[data.row.index].id;
-                         const documentData = documents.find(d => d.id === docWithSummaryId);
-
-                         if (documentData && documentData.aiSummary) {
-                            currentY = addSummaryToPdf(doc, documentData.aiSummary, currentY);
-                         }
-
-                         (doc as any).lastAutoTable.finalY = currentY;
-                         delete (doc as any).summaryToDraw;
-                     }
-                 }
             });
             y = (doc as any).lastAutoTable.finalY + 30;
+
+            const documentsWithSummary = sortedDocuments.filter(d => d.aiSummary);
+            if (documentsWithSummary.length > 0) {
+                if (y > doc.internal.pageSize.getHeight() - 150) {
+                    doc.addPage();
+                    addHeader();
+                }
+                addSectionHeader('7. Resumen de Estudios (IA)');
+                documentsWithSummary.forEach(docWithSummary => {
+                    y = addSummaryToPdf(doc, docWithSummary.aiSummary!, docWithSummary.name, y);
+                });
+            }
         }
         
         doc.save(`resumen_salud_${personalInfo.firstName.toLowerCase()}_${personalInfo.lastName.toLowerCase()}.pdf`);
@@ -292,3 +286,5 @@ export function DownloadReportButton() {
         </Button>
     )
 }
+
+    
