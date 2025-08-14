@@ -33,7 +33,6 @@ const addSummaryToPdf = (doc: jsPDF, summary: Summary, documentName: string): vo
             return;
         }
 
-        // Section Title
         autoTable(doc, {
             body: [[title]],
             theme: 'plain',
@@ -47,11 +46,10 @@ const addSummaryToPdf = (doc: jsPDF, summary: Summary, documentName: string): vo
             margin: { left: 55 }
         });
 
-        const bodyContent = Array.isArray(content) 
+        const bodyContent = Array.isArray(content)
             ? content.map(item => [`• ${item}`])
             : [[content]];
 
-        // Section Content
         autoTable(doc, {
             body: bodyContent,
             theme: 'plain',
@@ -105,8 +103,6 @@ export function DownloadReportButton() {
         const textColor = '#444444';
         const pageMargin = 50; 
         const pageWidth = doc.internal.pageSize.getWidth();
-        const pageContentWidth = pageWidth - pageMargin * 2;
-        let y = 0;
 
         const addHeader = (docInstance: jsPDF) => {
             const logoUrl = 'https://i.postimg.cc/SsRdwdzD/LOGO-1-transparent.png';
@@ -147,7 +143,6 @@ export function DownloadReportButton() {
         }
 
         addHeader(doc);
-        y = 180;
 
         addSectionHeader('1. Información Personal');
         doc.setFont('helvetica', 'normal');
@@ -245,11 +240,10 @@ export function DownloadReportButton() {
                 styles: { fontSize: 11, font: 'helvetica', textColor: textColor },
                 margin: { left: pageMargin, right: pageMargin },
             });
-            y = (doc as any).lastAutoTable.finalY + 30;
 
             const documentsWithSummary = sortedDocuments.filter(d => d.aiSummary);
             if (documentsWithSummary.length > 0) {
-                addSectionHeader('7. Resumen de Estudios (IA)');
+                addSectionHeader('7. Resumen de Estudios');
                 documentsWithSummary.forEach(docWithSummary => {
                     if (docWithSummary.aiSummary) {
                         addSummaryToPdf(doc, docWithSummary.aiSummary, docWithSummary.name);
@@ -275,5 +269,7 @@ export function DownloadReportButton() {
         </Button>
     )
 }
+
+    
 
     
