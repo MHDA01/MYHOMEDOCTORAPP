@@ -7,7 +7,6 @@ import { auth, db } from '@/lib/firebase';
 import { onAuthStateChanged, User, signOut, updateProfile } from 'firebase/auth';
 import { doc, getDoc, setDoc, Timestamp, collection, getDocs, addDoc, updateDoc, deleteDoc, query, orderBy } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
-import { summarizeDocument } from '@/ai/flows/summarize-document-flow';
 
 // We need a way to serialize Date objects to be stored in Firestore
 // and deserialize them back to Date objects.
@@ -261,32 +260,14 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         if (!user) return;
         const newDocRef = doc(collection(db, 'users', user.uid, 'documents'));
         
-        let aiSummary = '';
-        try {
-            const result = await summarizeDocument({ documentImages: docData.urls });
-            aiSummary = result.summary;
-            toast({
-                title: 'Resumen IA Generado',
-                description: 'La inteligencia artificial ha analizado y resumido tu documento.',
-            });
-        } catch (e) {
-            console.error('AI summarization failed', e);
-            toast({
-                variant: 'destructive',
-                title: 'Error de IA',
-                description: 'No se pudo generar el resumen del documento.',
-            });
-        }
-        
         const dataToSave = { 
             ...docData, 
-            aiSummary,
             uploadedAt: Timestamp.fromDate(docData.uploadedAt),
             studyDate: docData.studyDate ? Timestamp.fromDate(docData.studyDate) : Timestamp.fromDate(docData.uploadedAt)
         };
         await setDoc(newDocRef, dataToSave);
 
-        const newDocumentWithId = { ...docData, id: newDocRef.id, aiSummary };
+        const newDocumentWithId = { ...docData, id: newDocRef.id };
         setDocuments(prev => [newDocumentWithId, ...prev].sort((a, b) => (b.studyDate || b.uploadedAt).getTime() - (a.studyDate || a.uploadedAt).getTime()));
     };
     const updateDocument = async (id: string, docData: Partial<DocumentType>) => {

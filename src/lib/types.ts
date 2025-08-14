@@ -7,7 +7,6 @@ export type Document = {
   uploadedAt: Date;
   urls: string[];
   studyDate?: Date;
-  aiSummary?: string;
 };
 
 export type Appointment = {

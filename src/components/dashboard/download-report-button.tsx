@@ -20,7 +20,7 @@ const formatDate = (date: Date | undefined): string => {
     return format(date, "d 'de' MMMM 'de' yyyy", { locale: es });
 }
 
-const countryHealthData = {
+const countryHealthData: { [key: string]: { label: string } } = {
     argentina: { label: 'Obra Social' },
     colombia: { label: 'Seguridad Social' },
     chile: { label: 'Previsión' },
@@ -175,98 +175,19 @@ export function DownloadReportButton() {
 
          if (documents.length > 0) {
             if (y > doc.internal.pageSize.getHeight() - 100) { doc.addPage(); addHeader(); }
-            addSectionHeader('6. Documentos y Resúmenes');
+            addSectionHeader('6. Documentos');
             const sortedDocuments = [...documents].sort((a,b) => (new Date(b.studyDate || b.uploadedAt)).getTime() - (new Date(a.studyDate || a.uploadedAt)).getTime());
-
-            for (const d of sortedDocuments) {
-                if (y > doc.internal.pageSize.getHeight() - 100) { doc.addPage(); addHeader(); y = 180; }
-                
-                doc.setFontSize(12);
-                doc.setFont('helvetica', 'bold');
-                doc.setTextColor(textColor);
-                doc.text(d.name, pageMargin, y);
-                y += 18;
-
-                doc.setFontSize(10);
-                doc.setFont('helvetica', 'normal');
-                doc.setTextColor('#666666');
-                doc.text(`Categoría: ${d.category} | Fecha Estudio: ${formatDate(new Date(d.studyDate || d.uploadedAt))}`, pageMargin, y);
-                y += 22;
-
-                if (d.aiSummary) {
-                    doc.setFontSize(11);
-                    doc.setFont('helvetica', 'bold');
-                    doc.text('Resumen de Estudios:', pageMargin, y);
-                    y += 18;
-                    
-                    const cleanSummary = d.aiSummary
-                        .replace(/####\s*/g, '')      
-                        .replace(/\*\*/g, '')          
-                        .replace(/\|\s*$/gm, '')      
-                        .replace(/^\s*\|/gm, '')      
-                        .replace(/---\|/g, '---|');   
-
-                    
-                    const lines = cleanSummary.split('\n');
-                    const head: any[] = [];
-                    const body: any[] = [];
-                    let isTable = false;
-
-                    lines.forEach(line => {
-                        const trimmedLine = line.trim();
-                        if (trimmedLine.startsWith('|') && trimmedLine.endsWith('|')) {
-                            const cells = trimmedLine.split('|').slice(1, -1).map(cell => cell.trim());
-                            if (!isTable) { 
-                                head.push(cells);
-                                isTable = true;
-                            } else if (!cells.every(cell => /^-+$/.test(cell))) { 
-                                body.push(cells);
-                            }
-                        } else {
-                            if (isTable) { 
-                                autoTable(doc, {
-                                    startY: y,
-                                    head: head,
-                                    body: body,
-                                    theme: 'grid',
-                                    headStyles: { fillColor: '#DEEBF7', textColor: textColor, fontStyle: 'bold', font: 'helvetica', fontSize: 11 },
-                                    styles: { fontSize: 10, cellPadding: 5, font: 'helvetica' },
-                                    margin: { left: pageMargin, right: pageMargin }
-                                });
-                                y = (doc as any).lastAutoTable.finalY + 15;
-                                head.length = 0;
-                                body.length = 0;
-                                isTable = false;
-                            }
-                            
-                             if (trimmedLine) {
-                                const summaryLines = doc.splitTextToSize(trimmedLine, pageContentWidth);
-                                doc.setFontSize(11);
-                                doc.setFont('helvetica', 'normal');
-                                doc.text(summaryLines, pageMargin, y);
-                                y += (summaryLines.length * 14) + 8;
-                            }
-                        }
-                    });
-
-                    if (isTable) { 
-                         autoTable(doc, {
-                            startY: y,
-                            head: head,
-                            body: body,
-                            theme: 'grid',
-                            headStyles: { fillColor: '#DEEBF7', textColor: textColor, fontStyle: 'bold', font: 'helvetica', fontSize: 11 },
-                            styles: { fontSize: 10, cellPadding: 5, font: 'helvetica' },
-                            margin: { left: pageMargin, right: pageMargin }
-                        });
-                        y = (doc as any).lastAutoTable.finalY + 15;
-                    }
-                }
-                
-                doc.setDrawColor('#DDDDDD');
-                doc.line(pageMargin, y, pageWidth - pageMargin, y);
-                y+= 20;
-            }
+            
+            autoTable(doc, {
+                startY: y,
+                head: [['Documento', 'Categoría', 'Fecha del Estudio']],
+                body: sortedDocuments.map(d => [d.name, d.category, formatDate(new Date(d.studyDate || d.uploadedAt))]),
+                theme: 'striped',
+                headStyles: { fillColor: primaryColor, textColor: '#FFFFFF', fontStyle: 'bold', font: 'helvetica', fontSize: 12 },
+                styles: { fontSize: 11, font: 'helvetica', textColor: textColor },
+                margin: { left: pageMargin, right: pageMargin }
+            });
+            y = (doc as any).lastAutoTable.finalY + 30;
         }
         
         doc.save(`resumen_salud_${personalInfo.firstName.toLowerCase()}_${personalInfo.lastName.toLowerCase()}.pdf`);
@@ -286,5 +207,3 @@ export function DownloadReportButton() {
         </Button>
     )
 }
-
-    

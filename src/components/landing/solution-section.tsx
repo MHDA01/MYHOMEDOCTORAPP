@@ -32,10 +32,6 @@ export default function SolutionSection() {
           <p>
             Centraliza y organiza todos tus documentos médicos (exámenes, recetas, diagnósticos) subiendo fotos o PDFs. ¡Olvídate del papeleo y ten todo a un clic!
           </p>
-          <p className="mt-2 flex items-center gap-2 text-sm text-accent-foreground/90">
-            <Sparkles className="h-4 w-4 text-accent" />
-            Nuestra IA puede resumir tus documentos para obtener información clave al instante.
-          </p>
         </>
       ),
       benefit: 'Acceso inmediato y seguro a tu información donde la necesites.',
