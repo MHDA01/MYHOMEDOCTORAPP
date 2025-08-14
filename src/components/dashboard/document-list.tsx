@@ -468,13 +468,13 @@ export function DocumentList() {
                                     <div>
                                         <h4 className="font-semibold mb-1">Hallazgos Clave</h4>
                                         <ul className="list-disc list-inside pl-2 space-y-1">
-                                            {viewingDoc.aiSummary.hallazgosClave.map((item, i) => <li key={i}>{item}</li>)}
+                                            {Array.isArray(viewingDoc.aiSummary.hallazgosClave) && viewingDoc.aiSummary.hallazgosClave.map((item, i) => <li key={i}>{item}</li>)}
                                         </ul>
                                     </div>
                                     <div>
                                         <h4 className="font-semibold mb-1">Recomendaciones</h4>
                                         <ul className="list-disc list-inside pl-2 space-y-1">
-                                            {viewingDoc.aiSummary.recomendaciones.map((item, i) => <li key={i}>{item}</li>)}
+                                            {Array.isArray(viewingDoc.aiSummary.recomendaciones) && viewingDoc.aiSummary.recomendaciones.map((item, i) => <li key={i}>{item}</li>)}
                                         </ul>
                                     </div>
                                 </CardContent>
@@ -519,3 +519,5 @@ export function DocumentList() {
         </Card>
     );
 }
+
+    
