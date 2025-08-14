@@ -31,6 +31,7 @@ import {
   Loader2,
   MoreVertical,
   Phone,
+  BrainCircuit,
 } from 'lucide-react';
 import { UserContext } from '@/context/user-context';
 import { Skeleton } from '../ui/skeleton';
@@ -40,6 +41,7 @@ const mainNavItems = [
   { href: '/dashboard', icon: LayoutDashboard, label: 'Mi Historial' },
   { href: '/dashboard/teleconsulta', icon: Video, label: 'Teleconsulta' },
   { href: '/dashboard/urgencias', icon: Siren, label: 'Urgencias y Domicilio' },
+  { href: '/dashboard/ia-assistant', icon: BrainCircuit, label: 'Asistente IA' },
 ];
 
 const secondaryNavItems = [
