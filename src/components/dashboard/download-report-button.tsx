@@ -55,7 +55,7 @@ export function DownloadReportButton() {
         const pageWidth = doc.internal.pageSize.getWidth();
 
         const addHeader = (docInstance: jsPDF) => {
-            const logoUrl = 'https://i.postimg.cc/8PqYgKbq/LOGO-1-transparent.png';
+            const logoUrl = 'https://i.postimg.cc/SsRdwdzD/LOGO-1-transparent.png';
             const logoWidth = 157; 
             const logoHeight = 117.75; 
             
@@ -140,7 +140,7 @@ export function DownloadReportButton() {
                 theme: 'plain',
                 styles: { textColor: textColor, cellPadding: { top: 2, bottom: 2, left: 5 }},
                 startY: (doc as any).lastAutoTable.finalY + 10,
-                margin: { left: pageMargin }
+                margin: { left: pageMargin, right: pageMargin }
             });
         }
 
