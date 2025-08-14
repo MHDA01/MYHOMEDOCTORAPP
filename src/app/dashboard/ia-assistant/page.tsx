@@ -4,6 +4,7 @@
 import { useState, useRef, useEffect, useContext } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
 import { UserContext } from '@/context/user-context';
 import { FileUp, Loader2, BrainCircuit, Wand2 } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
