@@ -113,7 +113,7 @@ export function DownloadReportButton() {
         let y = 0;
 
         const addHeader = () => {
-            const logoUrl = 'https://i.postimg.cc/J7N5r89y/LOGO-1.png';
+            const logoUrl = 'https://i.postimg.cc/SsRdwdzD/LOGO-1-transparent.png';
             const logoWidth = 157; 
             const logoHeight = 117.75; 
             
@@ -286,5 +286,7 @@ export function DownloadReportButton() {
         </Button>
     )
 }
+
+    
 
     
