@@ -12,6 +12,9 @@ export type Document = {
   uploadedAt: Date;
   urls: string[];
   studyDate?: Date;
+  aiSummary?: Summary;
+  transcription?: string;
+  consent: boolean;
 };
 
 export type Appointment = {
