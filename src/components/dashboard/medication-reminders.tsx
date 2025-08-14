@@ -43,14 +43,14 @@ export function MedicationReminders() {
 
     useEffect(() => {
         if (!isDialogOpen) return;
-    
-        const numTimes = frequency > 0 && frequency <= 24 ? Math.floor(24 / frequency) : 1;
-        
+
         if (dialogMode === 'edit' && selectedMed && selectedMed.frequency === frequency) {
             setTimeInputs(selectedMed.time);
             return;
         }
 
+        const numTimes = frequency > 0 && frequency <= 24 ? Math.floor(24 / frequency) : 1;
+        
         const newTimes = Array.from({ length: numTimes }, (_, i) => {
             const hour = 9 + (i * frequency);
             return `${String(hour % 24).padStart(2, '0')}:00`;
@@ -58,7 +58,7 @@ export function MedicationReminders() {
 
         setTimeInputs(newTimes);
 
-    }, [frequency, isDialogOpen, selectedMed, dialogMode]);
+    }, [frequency, isDialogOpen, dialogMode, selectedMed?.frequency, selectedMed?.time]);
 
 
     const resetForm = () => {
