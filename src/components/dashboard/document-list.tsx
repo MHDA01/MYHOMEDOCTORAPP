@@ -1,266 +1,183 @@
 
 'use client';
 
-import { useState, useRef, useEffect, useCallback, useContext } from 'react';
+import { useState, useEffect, useContext, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { MoreVertical, FileText, View, Trash2, Camera, FilePenLine, RefreshCcw, SwitchCamera, Loader2, CalendarIcon, X, Upload, BrainCircuit, AlertCircle, FileUp } from "lucide-react";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { FileText, PlusCircle, MoreVertical, FilePenLine, Trash2, Loader2, UploadCloud, X, BrainCircuit, AlertTriangle, Eye, Download } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose, DialogDescription } from "@/components/ui/dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import type { Document } from '@/lib/types';
 import { format } from "date-fns";
 import { es } from 'date-fns/locale';
+import { cn } from "@/lib/utils";
+import type { Document as DocumentType } from '@/lib/types';
 import { useToast } from "@/hooks/use-toast";
-import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { UserContext } from '@/context/user-context';
 import { Skeleton } from '@/components/ui/skeleton';
-import Image from 'next/image';
-import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
-import { cn } from '@/lib/utils';
-import { Calendar } from '../ui/calendar';
-import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
+import { Calendar as CalendarIcon } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Checkbox } from '../ui/checkbox';
 
 
 type DialogMode = 'add' | 'edit';
 const MAX_FILES = 10;
-
-// Helper to convert a file to a data URI
-const fileToDataUri = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-    });
-};
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
 export function DocumentList() {
     const context = useContext(UserContext);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     const [dialogMode, setDialogMode] = useState<DialogMode>('add');
-    const [selectedDoc, setSelectedDoc] = useState<Document | null>(null);
-    const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
-    const [capturedImages, setCapturedImages] = useState<string[]>([]); // Stores data URIs
-    const [videoDevices, setVideoDevices] = useState<MediaDeviceInfo[]>([]);
-    const [currentDeviceIndex, setCurrentDeviceIndex] = useState(0);
-    const [viewingDoc, setViewingDoc] = useState<Document | null>(null);
-    const [isPopoverOpen, setIsPopoverOpen] = useState(false);
-    
-    // Form state
-    const [docName, setDocName] = useState('');
-    const [docCategory, setDocCategory] = useState<Document['category']>('Other');
-    const [studyDate, setStudyDate] = useState<Date | undefined>(new Date());
-    const [consentGiven, setConsentGiven] = useState(false);
+    const [selectedDoc, setSelectedDoc] = useState<DocumentType | null>(null);
+    const [viewingDoc, setViewingDoc] = useState<DocumentType | null>(null);
+    const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
 
-    const videoRef = useRef<HTMLVideoElement>(null);
-    const canvasRef = useRef<HTMLCanvasElement>(null);
-    const fileInputRef = useRef<HTMLInputElement>(null);
-    const streamRef = useRef<MediaStream | null>(null);
+    // Form state
+    const [name, setName] = useState('');
+    const [category, setCategory] = useState<DocumentType['category']>('Lab Result');
+    const [studyDate, setStudyDate] = useState<Date | undefined>();
+    const [files, setFiles] = useState<File[]>([]);
+    const [consent, setConsent] = useState(false);
+
     const { toast } = useToast();
+    const [isDatePopoverOpen, setIsDatePopoverOpen] = useState(false);
 
     if (!context) throw new Error("DocumentList must be used within a UserProvider");
     const { documents, addDocument, updateDocument, deleteDocument, loading } = context;
 
-    const stopStream = useCallback(() => {
-        if (streamRef.current) {
-            streamRef.current.getTracks().forEach(track => track.stop());
-            streamRef.current = null;
-        }
-    }, []);
-
-    const startStream = useCallback(async (deviceId?: string) => {
-        stopStream();
-        if (hasCameraPermission !== true) return;
-
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({
-                video: { deviceId: deviceId ? { exact: deviceId } : undefined }
-            });
-            streamRef.current = stream;
-            if (videoRef.current) videoRef.current.srcObject = stream;
-        } catch (error) {
-            console.error('Error starting stream:', error);
-            setHasCameraPermission(false);
-            toast({ variant: 'destructive', title: 'Error de Cámara', description: 'No se pudo iniciar la cámara seleccionada.' });
-        }
-    }, [hasCameraPermission, stopStream, toast]);
-
-    const initializeCamera = useCallback(async () => {
-        if (dialogMode !== 'add' || !isDialogOpen) return;
-        stopStream();
-
-        try {
-            const initialStream = await navigator.mediaDevices.getUserMedia({ video: true });
-            setHasCameraPermission(true);
-            const devices = await navigator.mediaDevices.enumerateDevices();
-            const videoInputs = devices.filter(device => device.kind === 'videoinput');
-            setVideoDevices(videoInputs);
-            initialStream.getTracks().forEach(track => track.stop());
-            const selectedDeviceId = videoInputs.length > 0 ? videoInputs[currentDeviceIndex].deviceId : undefined;
-            await startStream(selectedDeviceId);
-        } catch (error) {
-            console.error('Error accessing camera:', error);
-            setHasCameraPermission(false);
-        }
-    }, [dialogMode, isDialogOpen, stopStream, currentDeviceIndex, startStream]);
-
-    useEffect(() => {
-        if (isDialogOpen && dialogMode === 'add') initializeCamera();
-        else stopStream();
-        return () => stopStream();
-    }, [isDialogOpen, dialogMode, initializeCamera, stopStream]);
-    
-    useEffect(() => {
-        if (videoDevices.length > 0 && isDialogOpen && dialogMode === 'add') {
-            const deviceId = videoDevices[currentDeviceIndex]?.deviceId;
-            startStream(deviceId);
-        }
-    }, [currentDeviceIndex, videoDevices, isDialogOpen, dialogMode, startStream]);
-
     const resetForm = () => {
-        setDocName('');
-        setDocCategory('Other');
+        setName('');
+        setCategory('Lab Result');
         setStudyDate(new Date());
-        setCapturedImages([]);
-        setCurrentDeviceIndex(0);
-        setConsentGiven(false);
+        setFiles([]);
+        setConsent(false);
+    }
+
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files) {
+            const newFiles = Array.from(e.target.files);
+            if (files.length + newFiles.length > MAX_FILES) {
+                toast({ variant: "destructive", title: `No puedes subir más de ${MAX_FILES} archivos.` });
+                return;
+            }
+            const oversizedFiles = newFiles.filter(f => f.size > MAX_FILE_SIZE);
+            if (oversizedFiles.length > 0) {
+                toast({ variant: "destructive", title: `Algunos archivos superan el límite de ${MAX_FILE_SIZE / 1024 / 1024}MB.` });
+                return;
+            }
+            setFiles(prev => [...prev, ...newFiles]);
+        }
     };
 
-    const handleOpenDialog = (mode: DialogMode, doc?: Document) => {
+    const removeFile = (index: number) => {
+        setFiles(prev => prev.filter((_, i) => i !== index));
+    };
+
+    const handleOpenDialog = (mode: DialogMode, doc?: DocumentType) => {
         setDialogMode(mode);
-        if(mode === 'edit' && doc) {
+        if (mode === 'edit' && doc) {
             setSelectedDoc(doc);
-            setDocName(doc.name);
-            setDocCategory(doc.category);
-            setStudyDate(doc.studyDate ? new Date(doc.studyDate) : new Date(doc.uploadedAt));
-            setConsentGiven(doc.consent);
+            setName(doc.name);
+            setCategory(doc.category);
+            setStudyDate(doc.studyDate || doc.uploadedAt);
+            setConsent(doc.consent);
+            setFiles([]); // No se pueden editar los archivos, solo los metadatos
         } else {
             setSelectedDoc(null);
             resetForm();
         }
         setIsDialogOpen(true);
     };
-
-    const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files) {
-            const files = Array.from(e.target.files);
-            const remainingSlots = MAX_FILES - capturedImages.length;
-            if (files.length > remainingSlots) {
-                toast({ variant: "destructive", title: `Límite de ${MAX_FILES} archivos excedido.`});
-                return;
-            }
-            const dataUris = await Promise.all(files.map(fileToDataUri));
-            setCapturedImages(prev => [...prev, ...dataUris]);
-        }
-    };
-
-    const handleCapture = () => {
-        if (videoRef.current && canvasRef.current && capturedImages.length < MAX_FILES) {
-            const video = videoRef.current;
-            const canvas = canvasRef.current;
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-            const context = canvas.getContext('2d');
-            if (context) {
-                context.drawImage(video, 0, 0, video.videoWidth, video.videoHeight);
-                const dataUrl = canvas.toDataURL('image/png');
-                setCapturedImages(prev => [...prev, dataUrl]);
-            }
-        }
-    };
-
-    const handleRemoveImage = (index: number) => {
-        setCapturedImages(prev => prev.filter((_, i) => i !== index));
-    };
-
-    const handleCameraSwitch = () => {
-        if (videoDevices.length > 1) {
-            setCurrentDeviceIndex((prevIndex) => (prevIndex + 1) % videoDevices.length);
-        }
-    };
     
-    const handleDateSelect = (selectedDate: Date | undefined) => {
-        if (selectedDate) {
-            setStudyDate(selectedDate);
-            setIsPopoverOpen(false);
-        }
+    const handleViewDialog = (doc: DocumentType) => {
+        setViewingDoc(doc);
+        setIsViewDialogOpen(true);
+    }
+
+    const handleDelete = async (id: string) => {
+        await deleteDocument(id);
+        toast({ title: "Documento eliminado." });
+    }
+
+    const fileToDataUri = (file: File): Promise<string> => {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result as string);
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+        });
     }
 
     const handleSubmit = async () => {
-        if (!docName || !docCategory) {
-            toast({ variant: "destructive", title: "Por favor complete todos los campos" });
+        if (!name || !category || !studyDate) {
+            toast({ variant: 'destructive', title: "Por favor, completa todos los campos." });
             return;
         }
-        if (dialogMode === 'add' && capturedImages.length === 0) {
-            toast({ variant: "destructive", title: "Por favor, capture o suba al menos una imagen del documento." });
+        if (dialogMode === 'add' && files.length === 0) {
+            toast({ variant: 'destructive', title: "Debes subir al menos un archivo." });
             return;
         }
-        if (dialogMode === 'add' && !consentGiven) {
-            toast({ variant: "destructive", title: "Se requiere su consentimiento para procesar el documento." });
-            return;
-        }
-        
         setIsSaving(true);
-
-        if (dialogMode === 'add') {
-            const docData = {
-                name: docName,
-                category: docCategory,
-                urls: capturedImages,
-                uploadedAt: new Date(),
-                studyDate: studyDate || new Date(),
-                consent: consentGiven
-            };
-            await addDocument(docData);
-        } else if (selectedDoc) {
-            await updateDocument(selectedDoc.id, { 
-                name: docName, 
-                category: docCategory, 
-                studyDate: studyDate,
-                consent: consentGiven,
-            });
-            toast({ title: "Documento actualizado" });
-        }
         
-        setIsSaving(false);
-        setIsDialogOpen(false);
-    };
-
-    const handleDelete = async (docId: string) => {
-        await deleteDocument(docId);
-        toast({ title: "Documento eliminado" });
-    }
-
-    const getCategoryLabel = (category: Document['category']) => {
-        switch (category) {
-            case 'Lab Result': return 'Resultado de Laboratorio';
-            case 'Imaging Report': return 'Informe de Imagen';
-            case 'Prescription': return 'Receta';
-            case 'Other': return 'Otro';
-            default: return category;
+        try {
+            if (dialogMode === 'add') {
+                const dataUris = await Promise.all(files.map(fileToDataUri));
+                const docData = { name, category, studyDate, uploadedAt: new Date(), urls: dataUris, consent };
+                await addDocument(docData);
+                toast({ title: "Documento guardado con éxito." });
+            } else if (selectedDoc) {
+                const updatedData: Partial<DocumentType> = { name, category, studyDate, consent };
+                await updateDocument(selectedDoc.id, updatedData);
+                toast({ title: "Documento actualizado con éxito." });
+            }
+        } catch (error) {
+             toast({ variant: 'destructive', title: "Error al guardar el documento." });
+             console.error("Error saving document: ", error);
+        } finally {
+            setIsSaving(false);
+            setIsDialogOpen(false);
         }
+    }
+    
+    const getCategoryLabel = (category: DocumentType['category']) => {
+        const labels: Record<DocumentType['category'], string> = {
+            'Lab Result': 'Resultado de Laboratorio',
+            'Imaging Report': 'Informe de Imagen',
+            'Prescription': 'Receta',
+            'Other': 'Otro'
+        };
+        return labels[category];
     };
 
-    if (loading) {
-         return (
+    const groupedDocuments = documents.reduce((acc, doc) => {
+        const year = format(doc.studyDate || doc.uploadedAt, 'yyyy');
+        if (!acc[year]) acc[year] = [];
+        acc[year].push(doc);
+        return acc;
+    }, {} as Record<string, DocumentType[]>);
+
+    const sortedYears = Object.keys(groupedDocuments).sort((a, b) => b.localeCompare(a));
+
+
+    if(loading) {
+        return (
             <Card>
                 <CardHeader>
                     <Skeleton className="h-8 w-3/4" />
                     <Skeleton className="h-4 w-1/2" />
                 </CardHeader>
-                <CardContent className="space-y-2">
-                    <Skeleton className="h-12 w-full" />
-                    <Skeleton className="h-12 w-full" />
-                    <Skeleton className="h-12 w-full" />
+                <CardContent className="space-y-4">
+                    <Skeleton className="h-16 w-full" />
+                    <Skeleton className="h-16 w-full" />
                 </CardContent>
                  <CardFooter>
-                     <Skeleton className="h-10 w-52" />
+                     <Skeleton className="h-10 w-40" />
                 </CardFooter>
             </Card>
         )
@@ -273,251 +190,269 @@ export function DocumentList() {
                     <FileText className="h-6 w-6 text-primary" />
                     <CardTitle className="font-headline text-xl">Documentos Médicos</CardTitle>
                 </div>
-                <CardDescription>Sube, visualiza y gestiona tus expedientes. La IA puede generar un resumen si lo autorizas.</CardDescription>
+                <CardDescription>Sube y gestiona tus exámenes, recetas e informes.</CardDescription>
             </CardHeader>
             <CardContent>
-                {documents.length > 0 ? (
-                    <div className="space-y-3">
-                        {documents.map((doc) => (
-                           <div key={doc.id} className="flex items-center justify-between gap-3 rounded-lg border p-3">
-                                <div className="flex-1 min-w-0">
-                                    <p className="font-medium truncate">{doc.name}</p>
-                                    <div className="text-sm text-muted-foreground flex flex-wrap gap-x-3 items-center">
-                                        <Badge variant="secondary" className="mt-1">{getCategoryLabel(doc.category)}</Badge>
-                                        <span className="mt-1">
-                                            Estudio: {format(doc.studyDate || doc.uploadedAt, 'PP', { locale: es })}
-                                        </span>
-                                        {doc.aiSummary && <Badge variant="outline" className="mt-1 bg-blue-100 text-blue-800"><BrainCircuit className="h-3 w-3 mr-1" /> Resumido</Badge>}
-                                    </div>
-                                </div>
-                                <div className="flex-shrink-0">
-                                    <DropdownMenu>
-                                        <DropdownMenuTrigger asChild>
-                                            <Button variant="ghost" size="icon">
-                                                <MoreVertical className="h-4 w-4" />
-                                            </Button>
-                                        </DropdownMenuTrigger>
-                                        <DropdownMenuContent align="end">
-                                            <DropdownMenuItem onClick={() => setViewingDoc(doc)}><View className="mr-2 h-4 w-4" /> Ver Detalles</DropdownMenuItem>
-                                            <DropdownMenuItem onClick={() => handleOpenDialog('edit', doc)}><FilePenLine className="mr-2 h-4 w-4" /> Editar</DropdownMenuItem>
-                                            <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(doc.id)}>
-                                                <Trash2 className="mr-2 h-4 w-4" /> Eliminar
-                                            </DropdownMenuItem>
-                                        </DropdownMenuContent>
-                                    </DropdownMenu>
-                                </div>
-                           </div>
-                        ))}
+                {documents.length === 0 ? (
+                     <div className="text-center py-10 border-2 border-dashed rounded-lg">
+                        <UploadCloud className="mx-auto h-12 w-12 text-muted-foreground" />
+                        <h3 className="mt-2 text-sm font-semibold text-gray-900">No hay documentos</h3>
+                        <p className="mt-1 text-sm text-gray-500">Empieza subiendo tu primer documento.</p>
+                        <div className="mt-6">
+                            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                                <DialogTrigger asChild>
+                                    <Button onClick={() => handleOpenDialog('add')}><PlusCircle className="mr-2"/>Subir Documento</Button>
+                                </DialogTrigger>
+                                {/* Dialog Content is in the footer */}
+                            </Dialog>
+                        </div>
                     </div>
                 ) : (
-                    <p className="text-center text-muted-foreground py-8">No has subido ningún documento.</p>
+                    <div className="space-y-6">
+                        {sortedYears.map(year => (
+                             <div key={year}>
+                                <h3 className="text-lg font-semibold mb-3">{year}</h3>
+                                <div className="space-y-3">
+                                {groupedDocuments[year].map(doc => (
+                                    <div key={doc.id} className="flex items-start justify-between rounded-lg border p-3 pl-4 hover:bg-muted/50 transition-colors">
+                                        <button className="flex-1 text-left" onClick={() => handleViewDialog(doc)}>
+                                            <p className="font-semibold">{doc.name}</p>
+                                            <p className="text-sm text-muted-foreground">{getCategoryLabel(doc.category)} - {format(doc.studyDate || doc.uploadedAt, "d 'de' MMMM", { locale: es })}</p>
+                                            {doc.aiSummary && (
+                                                 <div className="flex items-center text-xs text-blue-600 mt-2 gap-1.5">
+                                                    <BrainCircuit className="h-3 w-3" />
+                                                    <span>Resumen de IA disponible</span>
+                                                </div>
+                                            )}
+                                        </button>
+                                        <div className="flex items-center">
+                                            <DropdownMenu>
+                                                <DropdownMenuTrigger asChild>
+                                                    <Button variant="ghost" size="icon">
+                                                        <MoreVertical className="h-4 w-4" />
+                                                    </Button>
+                                                </DropdownMenuTrigger>
+                                                <DropdownMenuContent align="end">
+                                                    <DropdownMenuItem onClick={() => handleViewDialog(doc)}>
+                                                        <Eye className="mr-2 h-4 w-4" /> Ver Detalles
+                                                    </DropdownMenuItem>
+                                                    {doc.urls.length > 0 && 
+                                                        <a href={doc.urls[0]} target="_blank" rel="noopener noreferrer" download={`documento-${doc.name}.png`}>
+                                                            <DropdownMenuItem>
+                                                                <Download className="mr-2 h-4 w-4" /> Descargar
+                                                            </DropdownMenuItem>
+                                                        </a>
+                                                    }
+                                                    <DropdownMenuItem onClick={() => handleOpenDialog('edit', doc)}>
+                                                        <FilePenLine className="mr-2 h-4 w-4" /> Editar
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(doc.id)}>
+                                                        <Trash2 className="mr-2 h-4 w-4" /> Eliminar
+                                                    </DropdownMenuItem>
+                                                </DropdownMenuContent>
+                                            </DropdownMenu>
+                                        </div>
+                                    </div>
+                                ))}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
                 )}
             </CardContent>
-            <CardFooter className="flex flex-wrap gap-2">
-                <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <CardFooter>
+                 <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                     <DialogTrigger asChild>
-                        <Button onClick={() => handleOpenDialog('add')}><Camera className="mr-2"/>Añadir Documento</Button>
+                         <Button onClick={() => handleOpenDialog('add')}><PlusCircle className="mr-2"/>Subir Documento</Button>
                     </DialogTrigger>
-                    <DialogContent>
+                    <DialogContent modal={true} className="sm:max-w-2xl">
                         <DialogHeader>
-                            <DialogTitle>{dialogMode === 'add' ? 'Añadir Nuevo Documento' : 'Editar Documento'}</DialogTitle>
+                            <DialogTitle>{dialogMode === 'add' ? 'Subir Nuevo Documento' : 'Editar Documento'}</DialogTitle>
+                            <DialogDescription>
+                                {dialogMode === 'add' ? 'Sube imágenes o PDFs de tus informes, recetas o resultados.' : 'Edita los detalles de tu documento.'}
+                            </DialogDescription>
                         </DialogHeader>
-                        <div className="grid gap-4 py-4 max-h-[70vh] overflow-y-auto pr-4">
-                            {dialogMode === 'add' && (
-                                <div className="space-y-4">
-                                     <div className="space-y-2">
-                                        <Label>Subir Archivos (PDF, JPG, PNG)</Label>
-                                        <Button variant="outline" className="w-full" onClick={() => fileInputRef.current?.click()}>
-                                            <FileUp className="mr-2"/> Seleccionar Archivos ({capturedImages.length}/{MAX_FILES})
-                                        </Button>
-                                        <input
-                                            ref={fileInputRef}
-                                            type="file"
-                                            className="hidden"
-                                            multiple
-                                            accept="image/*,application/pdf"
-                                            onChange={handleFileChange}
-                                        />
-                                     </div>
-                                     <div className="space-y-2 text-center">
-                                         <Label>O tomar fotos con la cámara</Label>
-                                         <video ref={videoRef} className="w-full aspect-video rounded-md bg-muted" autoPlay muted playsInline />
-                                         {hasCameraPermission === false && (
-                                             <Alert variant="destructive">
-                                                <AlertTitle>Se requiere acceso a la cámara</AlertTitle>
-                                                <AlertDescription>
-                                                 Por favor, permite el acceso a la cámara para usar esta función.
-                                                </AlertDescription>
-                                               </Alert>
-                                         )}
-                                          <div className="flex justify-center gap-4">
-                                                {videoDevices.length > 1 && (
-                                                    <Button variant="outline" onClick={handleCameraSwitch} disabled={hasCameraPermission !== true}>
-                                                        <SwitchCamera className="mr-2" /> Cambiar
-                                                    </Button>
-                                                )}
-                                                <Button onClick={handleCapture} disabled={hasCameraPermission !== true || capturedImages.length >= MAX_FILES}>
-                                                        <Camera className="mr-2" /> Tomar Foto
-                                                </Button>
-                                          </div>
-                                     </div>
-                                 <canvas ref={canvasRef} className="hidden" />
-                                 {capturedImages.length > 0 && (
-                                     <div className="space-y-2">
-                                         <Label>Imágenes para subir ({capturedImages.length}/{MAX_FILES})</Label>
-                                         <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
-                                             {capturedImages.map((imgSrc, index) => (
-                                                 <div key={index} className="relative">
-                                                     <Image src={imgSrc} alt={`Captura ${index + 1}`} width={100} height={100} className="rounded-md object-cover w-full aspect-square" />
-                                                     <Button size="icon" variant="destructive" className="absolute -top-2 -right-2 h-6 w-6 rounded-full" onClick={() => handleRemoveImage(index)}>
-                                                         <X className="h-4 w-4" />
-                                                     </Button>
-                                                 </div>
-                                             ))}
-                                         </div>
-                                     </div>
-                                 )}
-                                </div>
-                            )}
+                         <div className="grid gap-6 py-4 max-h-[75vh] overflow-y-auto pr-4">
                             <div className="grid gap-2">
                                 <Label htmlFor="doc-name">Nombre del Documento</Label>
-                                <Input id="doc-name" placeholder="ej., Resultados de Análisis de Sangre" value={docName} onChange={e => setDocName(e.target.value)} />
+                                <Input id="doc-name" placeholder="Ej: Examen de Sangre, Receta Oftalmológica" value={name} onChange={e => setName(e.target.value)} />
                             </div>
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div className="grid gap-2">
-                                    <Label>Categoría</Label>
-                                    <Select value={docCategory} onValueChange={(value) => setDocCategory(value as Document['category'])}>
-                                        <SelectTrigger id="doc-category">
+                                    <Label htmlFor="category">Categoría</Label>
+                                    <Select value={category} onValueChange={(value: DocumentType['category']) => setCategory(value)}>
+                                        <SelectTrigger id="category">
                                             <SelectValue placeholder="Selecciona una categoría" />
                                         </SelectTrigger>
                                         <SelectContent>
                                             <SelectItem value="Lab Result">Resultado de Laboratorio</SelectItem>
-                                            <SelectItem value="Prescription">Receta</SelectItem>
                                             <SelectItem value="Imaging Report">Informe de Imagen</SelectItem>
+                                            <SelectItem value="Prescription">Receta</SelectItem>
                                             <SelectItem value="Other">Otro</SelectItem>
                                         </SelectContent>
                                     </Select>
                                 </div>
                                 <div className="grid gap-2">
                                     <Label>Fecha del Estudio</Label>
-                                    <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
+                                    <Popover open={isDatePopoverOpen} onOpenChange={setIsDatePopoverOpen}>
                                         <PopoverTrigger asChild>
                                             <Button
                                             variant={"outline"}
-                                            className={cn("w-full justify-start text-left font-normal",!studyDate && "text-muted-foreground")}>
+                                            className={cn("w-full justify-start text-left font-normal", !studyDate && "text-muted-foreground")}
+                                            >
                                             <CalendarIcon className="mr-2 h-4 w-4" />
                                             {studyDate ? format(studyDate, "PPP", { locale: es }) : <span>Elige una fecha</span>}
                                             </Button>
                                         </PopoverTrigger>
                                         <PopoverContent className="w-auto p-0" align="start" portal={false}>
                                             <Calendar
-                                                mode="single" selected={studyDate} onSelect={handleDateSelect}
-                                                initialFocus locale={es} captionLayout="dropdown-buttons"
-                                                fromYear={new Date().getFullYear() - 80} toYear={new Date().getFullYear()}
+                                                mode="single"
+                                                selected={studyDate}
+                                                onSelect={(d) => { setStudyDate(d); setIsDatePopoverOpen(false); }}
+                                                initialFocus
+                                                locale={es}
+                                                toDate={new Date()}
+                                                captionLayout="dropdown-buttons"
+                                                fromYear={1950}
+                                                toYear={new Date().getFullYear()}
                                             />
                                         </PopoverContent>
                                     </Popover>
                                 </div>
                             </div>
-                             {dialogMode === 'add' && (
-                                <div className="items-top flex space-x-2 mt-4 rounded-md border p-4">
-                                    <Checkbox id="terms1" checked={consentGiven} onCheckedChange={(checked) => setConsentGiven(checked as boolean)} />
-                                    <div className="grid gap-1.5 leading-none">
-                                        <label htmlFor="terms1" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                                            Consentimiento de Procesamiento de Datos
-                                        </label>
-                                        <p className="text-xs text-muted-foreground">
-                                          Al marcar esta casilla, autorizo a la aplicación a procesar los documentos subidos con una IA para extraer texto y generar un resumen. Entiendo que debo revisar el resumen generado.
-                                        </p>
-                                    </div>
+
+                           {dialogMode === 'add' && (
+                            <div className="grid gap-2">
+                                <Label>Archivos</Label>
+                                <div className="border-2 border-dashed rounded-lg p-6 text-center hover:border-primary transition-colors">
+                                    <UploadCloud className="mx-auto h-12 w-12 text-muted-foreground" />
+                                    <label htmlFor="file-upload" className="relative cursor-pointer rounded-md font-semibold text-primary focus-within:outline-none focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 hover:text-primary/80">
+                                        <span>Selecciona archivos para subir</span>
+                                        <input id="file-upload" name="file-upload" type="file" className="sr-only" multiple accept="image/*,application/pdf" onChange={handleFileChange} />
+                                    </label>
+                                    <p className="text-xs text-muted-foreground mt-1">Imágenes o PDF hasta {MAX_FILE_SIZE / 1024 / 1024}MB. Máximo {MAX_FILES} archivos.</p>
                                 </div>
-                             )}
+                                {files.length > 0 && (
+                                    <div className="mt-4 space-y-2">
+                                        <h4 className="font-medium text-sm">Archivos seleccionados:</h4>
+                                        <ul className="divide-y rounded-md border">
+                                            {files.map((file, index) => (
+                                                <li key={index} className="flex items-center justify-between p-2 text-sm">
+                                                    <span className="truncate">{file.name}</span>
+                                                    <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => removeFile(index)}>
+                                                        <X className="h-4 w-4"/>
+                                                    </Button>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                )}
+                            </div>
+                           )}
+
+                             <div className="items-top flex space-x-2 mt-4">
+                                <Checkbox id="terms1" checked={consent} onCheckedChange={(checked) => setConsent(Boolean(checked))} />
+                                <div className="grid gap-1.5 leading-none">
+                                    <label
+                                    htmlFor="terms1"
+                                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                                    >
+                                    Autorizo el análisis con IA
+                                    </label>
+                                    <p className="text-sm text-muted-foreground">
+                                    Al marcar esta casilla, autorizas el uso de IA para procesar tu documento y generar un resumen. No se compartirán datos personales identificables. Revisa nuestros términos de privacidad.
+                                    </p>
+                                </div>
+                            </div>
                         </div>
                         <DialogFooter>
-                           <DialogClose asChild>
-                               <Button variant="outline" disabled={isSaving}>Cancelar</Button>
-                           </DialogClose>
-                             <Button type="submit" onClick={handleSubmit} disabled={isSaving || (dialogMode === 'add' && (capturedImages.length === 0 || !consentGiven))}>
+                             <DialogClose asChild>
+                                <Button variant="outline" disabled={isSaving}>Cancelar</Button>
+                            </DialogClose>
+                            <Button type="submit" onClick={handleSubmit} disabled={isSaving}>
                                 {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                {isSaving ? 'Procesando...' : 'Guardar Documento'}
+                                {dialogMode === 'add' ? 'Subir y Guardar' : 'Guardar Cambios'}
                             </Button>
                         </DialogFooter>
                     </DialogContent>
                 </Dialog>
-            </CardFooter>
-            
-            <Dialog open={!!viewingDoc} onOpenChange={(open) => !open && setViewingDoc(null)}>
-                <DialogContent className="max-w-3xl">
-                    <DialogHeader>
-                        <DialogTitle>{viewingDoc?.name}</DialogTitle>
-                         <DialogDescription>
-                            {getCategoryLabel(viewingDoc?.category ?? 'Other')} - Estudiado el {viewingDoc ? format(viewingDoc.studyDate || viewingDoc.uploadedAt, 'PPp', {locale: es}) : ''}
-                        </DialogDescription>
-                    </DialogHeader>
-                    <div className="max-h-[70vh] overflow-y-auto pr-4 space-y-6">
-                        {viewingDoc?.aiSummary && (
-                            <Card className="bg-blue-50 border-blue-200">
-                                <CardHeader>
-                                    <CardTitle className="text-lg flex items-center gap-2 text-blue-900"><BrainCircuit/> Resumen de IA</CardTitle>
-                                </CardHeader>
-                                <CardContent className="space-y-4 text-sm text-blue-800">
-                                    <div>
-                                        <h4 className="font-semibold mb-1">Diagnóstico Principal</h4>
-                                        <p>{viewingDoc.aiSummary.diagnosticoPrincipal}</p>
-                                    </div>
-                                    <div>
-                                        <h4 className="font-semibold mb-1">Hallazgos Clave</h4>
-                                        <ul className="list-disc list-inside pl-2 space-y-1">
-                                            {Array.isArray(viewingDoc.aiSummary.hallazgosClave) && viewingDoc.aiSummary.hallazgosClave.map((item, i) => <li key={i}>{item}</li>)}
-                                        </ul>
-                                    </div>
-                                    <div>
-                                        <h4 className="font-semibold mb-1">Recomendaciones</h4>
-                                        <ul className="list-disc list-inside pl-2 space-y-1">
-                                            {Array.isArray(viewingDoc.aiSummary.recomendaciones) && viewingDoc.aiSummary.recomendaciones.map((item, i) => <li key={i}>{item}</li>)}
-                                        </ul>
-                                    </div>
-                                </CardContent>
-                                <CardFooter>
-                                    <Alert variant="default" className="bg-blue-100 border-blue-300">
-                                        <AlertCircle className="h-4 w-4 !text-blue-700" />
-                                        <AlertTitle className="text-blue-800">Descargo de Responsabilidad</AlertTitle>
-                                        <AlertDescription className="text-blue-700">
-                                            Este resumen fue generado por IA y es solo para fines informativos. Debe ser revisado por un profesional médico.
-                                        </AlertDescription>
-                                    </Alert>
-                                </CardFooter>
-                            </Card>
-                        )}
-                        {viewingDoc?.urls && viewingDoc.urls.length > 0 && (
-                            <Carousel className="w-full">
-                                <CarouselContent>
-                                    {viewingDoc.urls.map((url, index) => (
-                                        <CarouselItem key={index}>
-                                            <div className="p-1">
-                                                <div className="relative aspect-[3/4] w-full bg-muted rounded-md overflow-hidden">
-                                                    <Image src={url} alt={`Vista previa de ${viewingDoc.name} - Página ${index + 1}`} layout="fill" objectFit="contain" />
-                                                </div>
-                                                 <p className="text-center text-sm text-muted-foreground mt-2">Página {index + 1} de {viewingDoc.urls.length}</p>
-                                            </div>
-                                        </CarouselItem>
-                                    ))}
-                                </CarouselContent>
-                                <CarouselPrevious />
-                                <CarouselNext />
-                            </Carousel>
-                        )}
-                    </div>
-                     <DialogFooter>
-                        <DialogClose asChild>
-                            <Button variant="outline">Cerrar</Button>
-                        </DialogClose>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
 
+                {viewingDoc && (
+                    <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
+                        <DialogContent className="sm:max-w-3xl">
+                            <DialogHeader>
+                                <DialogTitle>{viewingDoc.name}</DialogTitle>
+                                <DialogDescription>
+                                    {getCategoryLabel(viewingDoc.category)} &bull; Fecha: {format(viewingDoc.studyDate || viewingDoc.uploadedAt, "d 'de' MMMM, yyyy", { locale: es })}
+                                </DialogDescription>
+                            </DialogHeader>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-4 max-h-[70vh] overflow-y-auto pr-4">
+                                <div className="space-y-4">
+                                    <h3 className="font-semibold text-lg">Imágenes del Documento</h3>
+                                     <div className="space-y-2">
+                                        {viewingDoc.urls.map((url, i) => (
+                                            <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="block border rounded-lg overflow-hidden hover:opacity-80 transition-opacity">
+                                                <img src={url} alt={`Página ${i+1}`} className="w-full h-auto object-contain" data-ai-hint="medical document"/>
+                                            </a>
+                                        ))}
+                                    </div>
+                                </div>
+                                <div className="space-y-4">
+                                     <h3 className="font-semibold text-lg flex items-center gap-2"><BrainCircuit className="h-5 w-5 text-primary"/> Resumen de IA</h3>
+                                     {viewingDoc.aiSummary ? (
+                                        <div className="space-y-4 text-sm p-4 bg-muted/50 rounded-lg">
+                                            <div>
+                                                <h4 className="font-semibold mb-1">Diagnóstico Principal</h4>
+                                                <p className="text-muted-foreground">{viewingDoc.aiSummary.diagnosticoPrincipal}</p>
+                                            </div>
+                                             <div>
+                                                <h4 className="font-semibold mb-1">Hallazgos Clave</h4>
+                                                <ul className="list-disc list-inside pl-2 space-y-1 text-muted-foreground">
+                                                    {viewingDoc.aiSummary.hallazgosClave && Array.isArray(viewingDoc.aiSummary.hallazgosClave) ? 
+                                                        viewingDoc.aiSummary.hallazgosClave.map((item, i) => <li key={i}>{item}</li>)
+                                                        : <li>No se encontraron hallazgos clave.</li>
+                                                    }
+                                                </ul>
+                                            </div>
+                                            <div>
+                                                <h4 className="font-semibold mb-1">Recomendaciones</h4>
+                                                 <ul className="list-disc list-inside pl-2 space-y-1 text-muted-foreground">
+                                                    {viewingDoc.aiSummary.recomendaciones && Array.isArray(viewingDoc.aiSummary.recomendaciones) ?
+                                                        viewingDoc.aiSummary.recomendaciones.map((item, i) => <li key={i}>{item}</li>)
+                                                        : <li>No se encontraron recomendaciones.</li>
+                                                    }
+                                                </ul>
+                                            </div>
+                                             <Alert variant="default" className="mt-4">
+                                                <AlertTriangle className="h-4 w-4" />
+                                                <AlertTitle>Descargo de Responsabilidad</AlertTitle>
+                                                <AlertDescription>
+                                                   Este resumen fue generado por IA y es solo para fines informativos. Consulta siempre a un profesional médico para obtener un diagnóstico y tratamiento.
+                                                </AlertDescription>
+                                            </Alert>
+                                        </div>
+                                     ) : viewingDoc.consent ? (
+                                        <div className="text-center p-6 border-2 border-dashed rounded-lg">
+                                            <Loader2 className="mx-auto h-8 w-8 text-muted-foreground animate-spin" />
+                                            <p className="mt-2 text-sm text-muted-foreground">El resumen aún se está procesando...</p>
+                                        </div>
+                                     ) : (
+                                        <div className="text-center p-6 border-2 border-dashed rounded-lg">
+                                            <AlertTriangle className="mx-auto h-8 w-8 text-muted-foreground" />
+                                            <p className="mt-2 text-sm text-muted-foreground">No se generó un resumen de IA para este documento porque no se otorgó el consentimiento.</p>
+                                        </div>
+                                     )}
+                                </div>
+                            </div>
+                             <DialogFooter>
+                                <DialogClose asChild>
+                                    <Button variant="outline">Cerrar</Button>
+                                </DialogClose>
+                            </DialogFooter>
+                        </DialogContent>
+                    </Dialog>
+                )}
+            </CardFooter>
         </Card>
     );
 }
-
-    
