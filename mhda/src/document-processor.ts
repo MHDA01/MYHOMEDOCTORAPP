@@ -6,7 +6,7 @@
  * performs OCR, extracts structured lab values, and updates the document.
  */
 import * as logger from "firebase-functions/logger";
-import {onDocumentCreated} from "firebase-functions/v2/firestore";
+import {onDocumentUpdated} from "firebase-functions/v2/firestore";
 
 import {genkit, z} from "genkit";
 import {googleAI} from "@genkit-ai/googleai";
@@ -92,7 +92,7 @@ ${transcription}
 );
 
 // Define the Cloud Function that triggers on new document creation
-export const oncreatedocument = onDocumentCreated(
+export const onupdatedocument = onDocumentUpdated(
   {
     document: "users/{userId}/documents/{docId}",
     timeoutSeconds: 300, // Increase timeout to 5 minutes
@@ -100,7 +100,7 @@ export const oncreatedocument = onDocumentCreated(
   },
   async (event) => {
     const {userId, docId} = event.params;
-    const snap = event.data;
+    const snap = event.data?.after;
     const docRef = getFirestore().collection("users").doc(userId).collection("documents").doc(docId);
 
     if (!snap) {
@@ -109,9 +109,9 @@ export const oncreatedocument = onDocumentCreated(
     }
     const data = snap.data();
 
-    // Skip if results already exist or status is not 'pending'
-    if (data.labResults || (data.processingStatus && data.processingStatus !== 'pending')) {
-      logger.log(`Skipping document ${docId}: already processed or not pending.`);
+    // Skip if status is not 'pending'
+    if (data.processingStatus !== 'pending') {
+      logger.log(`Skipping document ${docId}: status is '${data.processingStatus}', not 'pending'.`);
       return;
     }
 

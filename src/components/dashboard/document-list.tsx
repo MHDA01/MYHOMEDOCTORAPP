@@ -4,7 +4,7 @@
 import { useState, useEffect, useContext, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { FileText, PlusCircle, MoreVertical, FilePenLine, Trash2, Loader2, UploadCloud, X, BrainCircuit, AlertTriangle, Eye, Download, TestTube2, History } from "lucide-react";
+import { FileText, PlusCircle, MoreVertical, FilePenLine, Trash2, Loader2, UploadCloud, X, BrainCircuit, AlertTriangle, Eye, Download, TestTube2, History, RefreshCw } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose, DialogDescription } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
@@ -130,6 +130,15 @@ export function DocumentList() {
             setIsDialogOpen(false);
         }
     }
+    
+    const handleRetryAnalysis = async (docId: string) => {
+        try {
+            await updateDocument(docId, { processingStatus: 'pending', processingError: null });
+            toast({ title: "Reintentando análisis", description: "Se ha enviado el documento para ser procesado nuevamente." });
+        } catch (error) {
+            toast({ variant: 'destructive', title: "Error", description: "No se pudo reintentar el análisis." });
+        }
+    };
     
     const getCategoryLabel = (category: DocumentType['category']) => {
         const labels: Record<DocumentType['category'], string> = {
@@ -436,11 +445,25 @@ export function DocumentList() {
                                         </div>
                                      ) : (
                                         <div className="text-center p-6 border-2 border-dashed rounded-lg">
-                                             {viewingDoc.processingStatus === 'error' ? (
+                                             {(viewingDoc.processingStatus === 'error' || viewingDoc.processingStatus === 'pending') ? (
                                                 <>
-                                                    <AlertTriangle className="mx-auto h-8 w-8 text-destructive" />
-                                                    <p className="mt-2 text-sm text-destructive">Error en el procesamiento</p>
-                                                    <p className="mt-1 text-xs text-muted-foreground">{viewingDoc.processingError || "La IA no pudo analizar este documento."}</p>
+                                                    {viewingDoc.processingStatus === 'error' ? (
+                                                        <>
+                                                            <AlertTriangle className="mx-auto h-8 w-8 text-destructive" />
+                                                            <p className="mt-2 text-sm text-destructive">Error en el procesamiento</p>
+                                                            <p className="mt-1 text-xs text-muted-foreground">{viewingDoc.processingError || "La IA no pudo analizar este documento."}</p>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <Loader2 className="mx-auto h-8 w-8 text-muted-foreground animate-spin" />
+                                                            <p className="mt-2 text-sm text-muted-foreground">Los datos se están procesando...</p>
+                                                            <p className="mt-1 text-xs text-muted-foreground">Esto puede tardar unos minutos.</p>
+                                                        </>
+                                                    )}
+                                                     <Button size="sm" variant="outline" className="mt-4" onClick={() => handleRetryAnalysis(viewingDoc.id)}>
+                                                        <RefreshCw className="mr-2 h-4 w-4"/>
+                                                        Reintentar Análisis
+                                                    </Button>
                                                 </>
                                              ) : (
                                                 <>
