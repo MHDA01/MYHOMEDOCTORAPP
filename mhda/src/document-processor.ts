@@ -91,31 +91,30 @@ ${transcription}
   }
 );
 
-// Define the Cloud Function that triggers on new document creation
 export const onupdatedocument = onDocumentUpdated(
   {
     document: "users/{userId}/documents/{docId}",
-    timeoutSeconds: 300, // Increase timeout to 5 minutes
-    memory: "512MiB", // Allocate more memory
+    timeoutSeconds: 300,
+    memory: "512MiB",
   },
   async (event) => {
     const {userId, docId} = event.params;
-    const snap = event.data?.after;
-    const docRef = getFirestore().collection("users").doc(userId).collection("documents").doc(docId);
+    const snapAfter = event.data?.after;
+    const data = snapAfter?.data();
 
-    if (!snap) {
-      logger.log("No data associated with the event");
+    if (!data) {
+      logger.log(`No data for document ${docId}, skipping.`);
       return;
     }
-    const data = snap.data();
-
-    // Skip if status is not 'pending'
+    
+    // This is the main guard: only proceed if the status is 'pending'.
     if (data.processingStatus !== 'pending') {
-      logger.log(`Skipping document ${docId}: status is '${data.processingStatus}', not 'pending'.`);
+      logger.log(`Document ${docId} status is '${data.processingStatus}', not 'pending'. Skipping.`);
       return;
     }
 
     logger.info(`Processing document ${docId} for user ${userId}`);
+    const docRef = snapAfter.ref;
 
     try {
       await docRef.update({ processingStatus: 'processing' });

@@ -114,7 +114,7 @@ export function DocumentList() {
         
         try {
             if (dialogMode === 'add') {
-                const docData = { name, category, studyDate, uploadedAt: new Date(), files };
+                const docData = { name, category, studyDate, uploadedAt: new Date(), files, consent: true };
                 await addDocument(docData);
                 toast({ title: "Documento guardado con éxito." });
             } else if (selectedDoc) {
@@ -133,7 +133,10 @@ export function DocumentList() {
     
     const handleRetryAnalysis = async (docId: string) => {
         try {
-            await updateDocument(docId, { processingStatus: 'pending', processingError: null });
+            await updateDocument(docId, { processingStatus: 'pending' });
+            if (viewingDoc && viewingDoc.id === docId) {
+                setViewingDoc({ ...viewingDoc, processingStatus: 'processing' });
+            }
             toast({ title: "Reintentando análisis", description: "Se ha enviado el documento para ser procesado nuevamente." });
         } catch (error) {
             toast({ variant: 'destructive', title: "Error", description: "No se pudo reintentar el análisis." });

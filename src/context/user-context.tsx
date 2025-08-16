@@ -85,7 +85,7 @@ interface UserContextType {
   updateAppointment: (id: string, appointment: Partial<Omit<Appointment, 'id'>>) => Promise<void>;
   deleteAppointment: (id: string) => Promise<void>;
   addDocument: (doc: Omit<DocumentType, 'id'>) => Promise<void>;
-  updateDocument: (id: string, doc: Partial<DocumentType>) => Promise<void>;
+  updateDocument: (id: string, doc: Partial<Omit<DocumentType, 'id' | 'files'>>) => Promise<void>;
   deleteDocument: (id: string) => Promise<void>;
   addMedication: (med: Omit<Medication, 'id'>) => Promise<void>;
   updateMedication: (id: string, med: Partial<Medication>) => Promise<void>;
@@ -282,12 +282,15 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     toast({ title: "Documento subido", description: "Se está procesando para extraer los datos. Esto puede tardar unos minutos." });
   };
 
-  const updateDocument = async (id: string, docData: Partial<DocumentType>) => {
-      if (!user) return;
-      const dataToUpdate: Partial<SerializableDocument> & { [key: string]: any } = { ...docData };
-      if (docData.studyDate) dataToUpdate.studyDate = Timestamp.fromDate(docData.studyDate);
-      delete dataToUpdate.files; // Don't try to save files on update
-      await updateDoc(doc(db, 'users', user.uid, 'documents', id), dataToUpdate);
+  const updateDocument = async (id: string, docData: Partial<Omit<DocumentType, 'id' | 'files'>>) => {
+    if (!user) return;
+    const dataToUpdate: { [key: string]: any } = { ...docData };
+    
+    if (docData.studyDate) {
+      dataToUpdate.studyDate = Timestamp.fromDate(new Date(docData.studyDate));
+    }
+
+    await updateDoc(doc(db, 'users', user.uid, 'documents', id), dataToUpdate);
   };
 
   const deleteDocument = async (id: string) => {
