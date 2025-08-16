@@ -106,7 +106,7 @@ export const processdocument = onDocumentCreated(
       await docRef.update({ processingStatus: 'processing' });
       logger.info(`Document ${docId} status updated to 'processing'.`);
 
-      // 2. Run the Genkit flow
+      // 2. Run the Genkit flow with the correct input structure
       const results = await processDocumentFlow({ documentDataUris: data.urls });
       
       // 3. Update the document with the extracted results
