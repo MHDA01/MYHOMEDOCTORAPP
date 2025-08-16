@@ -5,7 +5,7 @@ import { createContext, useState, useEffect, ReactNode, useCallback } from 'reac
 import type { PersonalInfo, HealthInfo, Appointment, Document as DocumentType, Medication } from '@/lib/types';
 import { auth, db } from '@/lib/firebase';
 import { onAuthStateChanged, User, signOut, updateProfile } from 'firebase/auth';
-import { doc, getDoc, setDoc, Timestamp, collection, addDoc, updateDoc, deleteDoc, query, orderBy, onSnapshot, getDocs, deleteField } from 'firebase/firestore';
+import { doc, getDoc, setDoc, Timestamp, collection, addDoc, updateDoc, deleteDoc, query, orderBy, onSnapshot, getDocs } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 
 type SerializablePersonalInfo = Omit<PersonalInfo, 'dateOfBirth'> & {
@@ -130,6 +130,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   const { toast } = useToast();
   
   const loadUserData = useCallback(async (currentUser: User) => {
+    setLoading(true);
     try {
         const userDoc = await getUserDocument(currentUser.uid);
         
@@ -158,14 +159,16 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         }
         
         const appointmentsData = await getCollection<SerializableAppointment>(currentUser.uid, 'appointments', 'date');
-        const medicationsData = await getCollection<Medication>(currentUser.uid, 'medications', 'name', 'asc');
-
         setAppointments(appointmentsData.map(a => ({...a, date: a.date.toDate() })));
+
+        const medicationsData = await getCollection<Medication>(currentUser.uid, 'medications', 'name', 'asc');
         setMedications(medicationsData);
 
     } catch (error) {
        console.error("Failed to manage user profile:", error);
        toast({ variant: 'destructive', title: 'Error de Carga', description: 'No se pudieron cargar los datos del perfil.'});
+    } finally {
+        setLoading(false);
     }
   }, [toast]);
   
@@ -178,15 +181,14 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     const unsubscribeAuth = onAuthStateChanged(auth, async (currentUser) => {
-      setLoading(true);
       if (currentUser) {
         setUser(currentUser);
         await loadUserData(currentUser);
       } else {
         setUser(null); setPersonalInfo(null); setHealthInfo(null);
         setAppointments([]); setDocuments([]); setMedications([]);
+        setLoading(false);
       }
-      setLoading(false);
     });
 
     let unsubscribeDocuments: () => void = () => {};
@@ -195,8 +197,9 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         unsubscribeDocuments = onSnapshot(q, (snapshot) => {
             const docs = snapshot.docs.map(doc => {
                 const data = doc.data() as SerializableDocument;
-                if (!data.uploadedAt) {
-                    console.warn(`Document ${doc.id} is missing 'uploadedAt', skipping.`);
+                // Basic validation to prevent crashes from malformed data.
+                if (!data.uploadedAt || !(data.uploadedAt instanceof Timestamp)) {
+                    console.warn(`Document ${doc.id} has malformed or missing 'uploadedAt', skipping.`);
                     return null;
                 }
                 return {
@@ -209,14 +212,17 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
             setDocuments(docs);
         }, (error) => {
             console.error("Error listening to documents collection: ", error);
+            toast({ variant: "destructive", title: "Error", description: "No se pudieron sincronizar los documentos."});
         });
     }
 
     return () => {
         unsubscribeAuth();
-        unsubscribeDocuments();
+        if (unsubscribeDocuments) {
+            unsubscribeDocuments();
+        }
     };
-  }, [loadUserData, user]);
+  }, [loadUserData, user, toast]);
   
   const signOutUser = async () => {
     try { await signOut(auth); } 
