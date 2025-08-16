@@ -6,6 +6,7 @@ import type { PersonalInfo, HealthInfo, Appointment, Document as DocumentType, M
 import { auth, db } from '@/lib/firebase';
 import { onAuthStateChanged, User, signOut, updateProfile } from 'firebase/auth';
 import { doc, getDoc, setDoc, Timestamp, collection, getDocs, addDoc, updateDoc, deleteDoc, query, orderBy, onSnapshot } from 'firebase/firestore';
+import { getStorage, ref, uploadString, getDownloadURL } from "firebase/storage";
 import { useToast } from '@/hooks/use-toast';
 
 type SerializablePersonalInfo = Omit<PersonalInfo, 'dateOfBirth'> & {
@@ -16,7 +17,7 @@ type SerializableAppointment = Omit<Appointment, 'date'> & {
     date: Timestamp;
 };
 
-type SerializableDocument = Omit<DocumentType, 'uploadedAt' | 'studyDate'> & {
+type SerializableDocument = Omit<DocumentType, 'uploadedAt' | 'studyDate' | 'files'> & {
     uploadedAt: Timestamp;
     studyDate?: Timestamp;
 };
@@ -113,6 +114,15 @@ const initialAnonymousHealthInfo: HealthInfo = {
     surgicalHistory: '',
     gynecologicalHistory: '',
     emergencyContacts: [],
+};
+
+const fileToDataUri = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
 };
 
 export const UserProvider = ({ children }: { children: ReactNode }) => {
@@ -257,14 +267,17 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   const addDocument = async (docData: Omit<DocumentType, 'id'>) => {
     if (!user) return;
 
+    // Convert files to data URIs for uploading
+    const dataUris = await Promise.all((docData.files || []).map(fileToDataUri));
+
     const dataToSave: any = { 
-        ...docData,
+        name: docData.name,
+        category: docData.category,
+        consent: docData.consent,
+        urls: dataUris, // Pass the data URIs to be processed by the Cloud Function
         uploadedAt: Timestamp.fromDate(docData.uploadedAt),
         studyDate: docData.studyDate ? Timestamp.fromDate(docData.studyDate) : Timestamp.fromDate(docData.uploadedAt),
     };
-
-    delete dataToSave.labResults;
-    delete dataToSave.transcription;
     
     await addDoc(collection(db, 'users', user.uid, 'documents'), dataToSave);
 
@@ -279,6 +292,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       if (!user) return;
       const dataToUpdate: Partial<SerializableDocument> & { [key: string]: any } = { ...docData };
       if (docData.studyDate) dataToUpdate.studyDate = Timestamp.fromDate(docData.studyDate);
+      delete dataToUpdate.files; // Don't try to save files on update
       await updateDoc(doc(db, 'users', user.uid, 'documents', id), dataToUpdate);
   };
 
@@ -318,3 +332,5 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     </UserContext.Provider>
   );
 };
+
+    

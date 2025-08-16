@@ -105,15 +105,6 @@ export function DocumentList() {
         toast({ title: "Documento eliminado." });
     }
 
-    const fileToDataUri = (file: File): Promise<string> => {
-        return new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve(reader.result as string);
-            reader.onerror = reject;
-            reader.readAsDataURL(file);
-        });
-    }
-
     const handleSubmit = async () => {
         if (!name || !category || !studyDate) {
             toast({ variant: 'destructive', title: "Por favor, completa todos los campos." });
@@ -127,8 +118,7 @@ export function DocumentList() {
         
         try {
             if (dialogMode === 'add') {
-                const dataUris = await Promise.all(files.map(fileToDataUri));
-                const docData = { name, category, studyDate, uploadedAt: new Date(), urls: dataUris, consent };
+                const docData = { name, category, studyDate, uploadedAt: new Date(), files, consent };
                 await addDocument(docData);
                 toast({ title: "Documento guardado con éxito." });
             } else if (selectedDoc) {
@@ -462,3 +452,5 @@ export function DocumentList() {
         </Card>
     );
 }
+
+    

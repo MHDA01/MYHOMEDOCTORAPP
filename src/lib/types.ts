@@ -11,7 +11,8 @@ export type Document = {
   name: string;
   category: 'Lab Result' | 'Prescription' | 'Imaging Report' | 'Other';
   uploadedAt: Date;
-  urls: string[];
+  files?: File[]; // Only for frontend state, not stored in Firestore
+  urls: string[]; // URLs pointing to files in Cloud Storage
   studyDate?: Date;
   labResults?: LabResult[];
   transcription?: string; // Full text from OCR
@@ -64,3 +65,5 @@ export type PersonalInfo = {
   insuranceProvider: string;
   insuranceProviderName?: string;
 }
+
+    
