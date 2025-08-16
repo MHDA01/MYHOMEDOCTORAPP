@@ -24,7 +24,6 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 
 type DialogMode = 'add' | 'edit';
-const MAX_FILES = 1; 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
 export function DocumentList() {
@@ -41,7 +40,7 @@ export function DocumentList() {
     const [name, setName] = useState('');
     const [category, setCategory] = useState<DocumentType['category']>('Lab Result');
     const [studyDate, setStudyDate] = useState<Date | undefined>();
-    const [files, setFiles] = useState<File[]>([]);
+    const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
     const { toast } = useToast();
     const [isDatePopoverOpen, setIsDatePopoverOpen] = useState(false);
@@ -100,39 +99,34 @@ export function DocumentList() {
         setName('');
         setCategory('Lab Result');
         setStudyDate(new Date());
-        setFiles([]);
+        setSelectedFile(null);
         setIsCameraOpen(false);
         setCapturedImage(null);
     }
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files) {
-            const newFiles = Array.from(e.target.files);
-            if (files.length + newFiles.length > MAX_FILES) {
-                toast({ variant: "destructive", title: `Solo puedes subir ${MAX_FILES} archivo a la vez.` });
+        if (e.target.files && e.target.files.length > 0) {
+            const file = e.target.files[0];
+             if (file.size > MAX_FILE_SIZE) {
+                toast({ variant: "destructive", title: `El archivo supera el límite de ${MAX_FILE_SIZE / 1024 / 1024}MB.` });
                 return;
             }
-            const oversizedFiles = newFiles.filter(f => f.size > MAX_FILE_SIZE);
-            if (oversizedFiles.length > 0) {
-                toast({ variant: "destructive", title: `Algunos archivos superan el límite de ${MAX_FILE_SIZE / 1024 / 1024}MB.` });
-                return;
-            }
-            setFiles(prev => [...prev, ...newFiles]);
+            setSelectedFile(file);
         }
     };
 
-    const removeFile = (index: number) => {
-        setFiles(prev => prev.filter((_, i) => i !== index));
+    const removeFile = () => {
+        setSelectedFile(null);
     };
 
     const handleOpenDialog = (mode: DialogMode, doc?: DocumentType) => {
         setDialogMode(mode);
         if (mode === 'edit' && doc) {
             setSelectedDoc(doc);
-setName(doc.name);
+            setName(doc.name);
             setCategory(doc.category);
             setStudyDate(doc.studyDate || doc.uploadedAt);
-            setFiles([]); // No se pueden editar los archivos, solo los metadatos
+            setSelectedFile(null); // No se pueden editar los archivos, solo los metadatos
         } else {
             setSelectedDoc(null);
             resetForm();
@@ -170,7 +164,7 @@ setName(doc.name);
                 .then(res => res.blob())
                 .then(blob => {
                     const file = new File([blob], `captura-${Date.now()}.png`, { type: 'image/png' });
-                    setFiles(prev => [...prev, file]);
+                    setSelectedFile(file);
                     setCapturedImage(null);
                     setIsCameraOpen(false);
                 });
@@ -178,19 +172,19 @@ setName(doc.name);
     }
 
     const handleSubmit = async () => {
-        if (!name || !category || !studyDate) {
-            toast({ variant: 'destructive', title: "Por favor, completa todos los campos." });
+        if (dialogMode === 'add' && !selectedFile) {
+            toast({ variant: 'destructive', title: "Debes subir o tomar un archivo." });
             return;
         }
-        if (dialogMode === 'add' && files.length === 0) {
-            toast({ variant: 'destructive', title: "Debes subir o tomar al menos un archivo." });
+        if (!name || !category || !studyDate) {
+            toast({ variant: 'destructive', title: "Por favor, completa todos los campos." });
             return;
         }
         setIsSaving(true);
         
         try {
-            if (dialogMode === 'add') {
-                const docData = { name, category, studyDate, uploadedAt: new Date(), file: files[0] };
+            if (dialogMode === 'add' && selectedFile) {
+                const docData = { name, category, studyDate, uploadedAt: new Date(), file: selectedFile };
                 await addDocument(docData);
                 toast({ title: "Documento en proceso de carga.", description: "El análisis comenzará en breve." });
             } else if (selectedDoc) {
@@ -443,41 +437,40 @@ setName(doc.name);
                                                     <Camera className="mr-2" /> Capturar
                                                 </Button>
                                             )}
-                                             <Button variant="ghost" onClick={() => setIsCameraOpen(false)}>Cancelar</Button>
+                                             <Button variant="ghost" onClick={() => { setIsCameraOpen(false); setCapturedImage(null); }}>Cancelar</Button>
                                         </div>
                                          <canvas ref={canvasRef} className="hidden"></canvas>
                                     </div>
                                 ) : (
-                                    <div className="flex gap-2">
-                                        <label htmlFor="file-upload" className="flex-1 cursor-pointer">
-                                            <div className="border-2 border-dashed rounded-lg p-6 text-center hover:border-primary transition-colors h-full flex flex-col justify-center items-center">
-                                                <UploadCloud className="h-10 w-10 text-muted-foreground" />
-                                                <span className="mt-2 text-sm font-semibold text-primary">Selecciona archivo</span>
-                                                <p className="text-xs text-muted-foreground mt-1">Solo imágenes</p>
-                                                <input id="file-upload" name="file-upload" type="file" className="sr-only" accept="image/*" onChange={handleFileChange} />
-                                            </div>
-                                        </label>
-                                        <Button variant="outline" onClick={() => setIsCameraOpen(true)} className="h-auto flex-1 flex-col p-6">
-                                            <Camera className="h-10 w-10 text-muted-foreground" />
-                                            <span className="mt-2 text-sm font-semibold text-primary">Tomar Foto</span>
-                                            <p className="text-xs text-muted-foreground mt-1">Usa tu cámara</p>
-                                        </Button>
-                                    </div>
-                                )}
-                                {files.length > 0 && (
-                                    <div className="mt-4 space-y-2">
-                                        <h4 className="font-medium text-sm">Archivo seleccionado:</h4>
-                                        <ul className="divide-y rounded-md border">
-                                            {files.map((file, index) => (
-                                                <li key={index} className="flex items-center justify-between p-2 text-sm">
-                                                    <span className="truncate">{file.name}</span>
-                                                    <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => removeFile(index)}>
+                                    <>
+                                        {selectedFile ? (
+                                             <div className="mt-2 space-y-2">
+                                                <h4 className="font-medium text-sm">Archivo seleccionado:</h4>
+                                                <div className="flex items-center justify-between p-2 text-sm rounded-md border">
+                                                    <span className="truncate">{selectedFile.name}</span>
+                                                    <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={removeFile}>
                                                         <X className="h-4 w-4"/>
                                                     </Button>
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    </div>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div className="flex gap-2">
+                                                <label htmlFor="file-upload" className="flex-1 cursor-pointer">
+                                                    <div className="border-2 border-dashed rounded-lg p-6 text-center hover:border-primary transition-colors h-full flex flex-col justify-center items-center">
+                                                        <UploadCloud className="h-10 w-10 text-muted-foreground" />
+                                                        <span className="mt-2 text-sm font-semibold text-primary">Selecciona archivo</span>
+                                                        <p className="text-xs text-muted-foreground mt-1">Solo imágenes</p>
+                                                        <input id="file-upload" name="file-upload" type="file" className="sr-only" accept="image/*" onChange={handleFileChange} />
+                                                    </div>
+                                                </label>
+                                                <Button variant="outline" onClick={() => setIsCameraOpen(true)} className="h-auto flex-1 flex-col p-6">
+                                                    <Camera className="h-10 w-10 text-muted-foreground" />
+                                                    <span className="mt-2 text-sm font-semibold text-primary">Tomar Foto</span>
+                                                    <p className="text-xs text-muted-foreground mt-1">Usa tu cámara</p>
+                                                </Button>
+                                            </div>
+                                        )}
+                                    </>
                                 )}
                             </div>
                            )}
