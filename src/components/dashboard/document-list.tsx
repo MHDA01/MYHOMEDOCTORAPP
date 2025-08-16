@@ -4,7 +4,7 @@
 import { useState, useEffect, useContext, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { FileText, PlusCircle, MoreVertical, FilePenLine, Trash2, Loader2, UploadCloud, X, BrainCircuit, AlertTriangle, Eye, Download, TestTube2 } from "lucide-react";
+import { FileText, PlusCircle, MoreVertical, FilePenLine, Trash2, Loader2, UploadCloud, X, BrainCircuit, AlertTriangle, Eye, Download, TestTube2, History } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose, DialogDescription } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
@@ -114,11 +114,11 @@ export function DocumentList() {
         
         try {
             if (dialogMode === 'add') {
-                const docData = { name, category, studyDate, uploadedAt: new Date(), files, consent: true };
+                const docData = { name, category, studyDate, uploadedAt: new Date(), files };
                 await addDocument(docData);
                 toast({ title: "Documento guardado con éxito." });
             } else if (selectedDoc) {
-                const updatedData: Partial<DocumentType> = { name, category, studyDate, consent: selectedDoc.consent };
+                const updatedData: Partial<DocumentType> = { name, category, studyDate };
                 await updateDocument(selectedDoc.id, updatedData);
                 toast({ title: "Documento actualizado con éxito." });
             }
@@ -140,6 +140,47 @@ export function DocumentList() {
         };
         return labels[category];
     };
+
+    const getStatusIndicator = (doc: DocumentType) => {
+        switch (doc.processingStatus) {
+            case 'completed':
+                if (doc.labResults && doc.labResults.length > 0) {
+                    return (
+                        <div className="flex items-center text-xs text-blue-600 mt-2 gap-1.5">
+                            <BrainCircuit className="h-3 w-3" />
+                            <span>Datos extraídos por IA</span>
+                        </div>
+                    );
+                }
+                return null;
+            case 'processing':
+            case 'pending':
+                return (
+                    <div className="flex items-center text-xs text-amber-600 mt-2 gap-1.5">
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                        <span>Procesando...</span>
+                    </div>
+                );
+            case 'error':
+                 return (
+                    <div className="flex items-center text-xs text-destructive mt-2 gap-1.5">
+                        <AlertTriangle className="h-3 w-3" />
+                        <span>Error al procesar</span>
+                    </div>
+                );
+            default:
+                if (!doc.labResults) {
+                     return (
+                        <div className="flex items-center text-xs text-muted-foreground mt-2 gap-1.5">
+                            <History className="h-3 w-3" />
+                            <span>Pendiente de análisis</span>
+                        </div>
+                    );
+                }
+                return null;
+        }
+    };
+
 
     const groupedDocuments = documents.reduce((acc, doc) => {
         const year = format(doc.studyDate || doc.uploadedAt, 'yyyy');
@@ -204,12 +245,7 @@ export function DocumentList() {
                                         <button className="flex-1 text-left" onClick={() => handleViewDialog(doc)}>
                                             <p className="font-semibold">{doc.name}</p>
                                             <p className="text-sm text-muted-foreground">{getCategoryLabel(doc.category)} - {format(doc.studyDate || doc.uploadedAt, "d 'de' MMMM", { locale: es })}</p>
-                                            {doc.labResults && (
-                                                 <div className="flex items-center text-xs text-blue-600 mt-2 gap-1.5">
-                                                    <BrainCircuit className="h-3 w-3" />
-                                                    <span>Datos extraídos por IA</span>
-                                                </div>
-                                            )}
+                                            {getStatusIndicator(doc)}
                                         </button>
                                         <div className="flex items-center">
                                             <DropdownMenu>
@@ -370,7 +406,7 @@ export function DocumentList() {
                                 </div>
                                 <div className="space-y-4">
                                      <h3 className="font-semibold text-lg flex items-center gap-2"><BrainCircuit className="h-5 w-5 text-primary"/> Resultados por IA</h3>
-                                     {viewingDoc.labResults && viewingDoc.labResults.length > 0 ? (
+                                     {viewingDoc.processingStatus === 'completed' && viewingDoc.labResults && viewingDoc.labResults.length > 0 ? (
                                         <div className="space-y-4 text-sm p-4 bg-muted/50 rounded-lg">
                                            <Table>
                                                 <TableHeader>
@@ -400,11 +436,11 @@ export function DocumentList() {
                                         </div>
                                      ) : (
                                         <div className="text-center p-6 border-2 border-dashed rounded-lg">
-                                             {viewingDoc.processingError ? (
+                                             {viewingDoc.processingStatus === 'error' ? (
                                                 <>
                                                     <AlertTriangle className="mx-auto h-8 w-8 text-destructive" />
                                                     <p className="mt-2 text-sm text-destructive">Error en el procesamiento</p>
-                                                    <p className="mt-1 text-xs text-muted-foreground">La IA no pudo analizar este documento. Inténtalo de nuevo con una imagen más clara.</p>
+                                                    <p className="mt-1 text-xs text-muted-foreground">{viewingDoc.processingError || "La IA no pudo analizar este documento."}</p>
                                                 </>
                                              ) : (
                                                 <>

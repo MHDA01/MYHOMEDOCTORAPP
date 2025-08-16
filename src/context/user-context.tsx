@@ -266,16 +266,15 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   const addDocument = async (docData: Omit<DocumentType, 'id'>) => {
     if (!user) return;
 
-    // Convert files to data URIs for uploading
     const dataUris = await Promise.all((docData.files || []).map(fileToDataUri));
 
     const dataToSave: any = { 
         name: docData.name,
         category: docData.category,
-        consent: true, // Always consent
-        urls: dataUris, // Pass the data URIs to be processed by the Cloud Function
+        urls: dataUris,
         uploadedAt: Timestamp.fromDate(docData.uploadedAt),
         studyDate: docData.studyDate ? Timestamp.fromDate(docData.studyDate) : Timestamp.fromDate(docData.uploadedAt),
+        processingStatus: 'pending',
     };
     
     await addDoc(collection(db, 'users', user.uid, 'documents'), dataToSave);

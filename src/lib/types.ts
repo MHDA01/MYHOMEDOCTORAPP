@@ -16,8 +16,8 @@ export type Document = {
   studyDate?: Date;
   labResults?: LabResult[];
   transcription?: string; // Full text from OCR
-  processingError?: boolean;
-  consent: boolean;
+  processingError?: string; // To store any error message during processing
+  processingStatus?: 'pending' | 'processing' | 'completed' | 'error'; // For traceability
 };
 
 export type Appointment = {

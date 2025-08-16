@@ -101,37 +101,42 @@ export const oncreatedocument = onDocumentCreated(
   async (event) => {
     const {userId, docId} = event.params;
     const snap = event.data;
+    const docRef = getFirestore().collection("users").doc(userId).collection("documents").doc(docId);
 
     if (!snap) {
       logger.log("No data associated with the event");
       return;
     }
-
     const data = snap.data();
 
-    // Skip if results already exist or it is already being processed
-    if (data.labResults || data.processingError) {
-      logger.log(
-        `Skipping document ${docId}: results or error already exist.`
-      );
+    // Skip if results already exist or status is not 'pending'
+    if (data.labResults || (data.processingStatus && data.processingStatus !== 'pending')) {
+      logger.log(`Skipping document ${docId}: already processed or not pending.`);
       return;
     }
 
     logger.info(`Processing document ${docId} for user ${userId}`);
 
     try {
+      await docRef.update({ processingStatus: 'processing' });
+      logger.info(`Document ${docId} status updated to 'processing'.`);
+
       const result = await processDocumentFlow(data.urls);
       
-      await getFirestore().collection("users").doc(userId).collection("documents").doc(docId).update({
+      await docRef.update({
         transcription: result.transcription,
         labResults: result.labResults.results, // Save the array of results
+        processingStatus: 'completed',
+        processingError: null, // Clear any previous error
       });
 
       logger.info(`Successfully updated document ${docId} with extracted lab values.`);
-    } catch (error) {
+    } catch (error: any) {
       logger.error(`Error processing document ${docId}:`, error);
-      await getFirestore().collection("users").doc(userId).collection("documents").doc(docId).update({
-        processingError: true,
+      const errorMessage = error instanceof AIFlowError ? error.message : "Un error inesperado ocurrió durante el procesamiento.";
+      await docRef.update({
+        processingStatus: 'error',
+        processingError: errorMessage,
       });
     }
   }
