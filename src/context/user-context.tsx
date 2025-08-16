@@ -5,7 +5,7 @@ import { createContext, useState, useEffect, ReactNode, useCallback } from 'reac
 import type { PersonalInfo, HealthInfo, Appointment, Document as DocumentType, Medication } from '@/lib/types';
 import { auth, db } from '@/lib/firebase';
 import { onAuthStateChanged, User, signOut, updateProfile } from 'firebase/auth';
-import { doc, getDoc, setDoc, Timestamp, collection, addDoc, updateDoc, deleteDoc, query, orderBy, onSnapshot } from 'firebase/firestore';
+import { doc, getDoc, setDoc, Timestamp, collection, addDoc, updateDoc, deleteDoc, query, orderBy, onSnapshot, getDocs } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 
 type SerializablePersonalInfo = Omit<PersonalInfo, 'dateOfBirth'> & {
@@ -295,6 +295,8 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     Object.keys(dataToUpdate).forEach(key => {
         if (dataToUpdate[key] === undefined) {
             delete dataToUpdate[key];
+        } else if (dataToUpdate[key] === null) {
+            dataToUpdate[key] = null;
         }
     });
 
