@@ -262,32 +262,45 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   const addDocument = async (docData: Omit<DocumentType, 'id'>) => {
     if (!user || !docData.file) return;
 
-    // 1. Create Firestore document to get an ID
-    const tempDocRef = doc(collection(db, 'users', user.uid, 'documents'));
-    const docId = tempDocRef.id;
+    // 1. Create Firestore document to get an ID and for immediate UI feedback
+    const docRef = doc(collection(db, 'users', user.uid, 'documents'));
+    const docId = docRef.id;
 
-    // 2. Prepare data for Firestore
     const dataToSave: Omit<SerializableDocument, 'id' | 'url'> = {
         name: docData.name,
         category: docData.category,
         uploadedAt: Timestamp.now(),
         studyDate: docData.studyDate ? Timestamp.fromDate(docData.studyDate) : Timestamp.now(),
-        processingStatus: 'pending',
+        processingStatus: 'uploading', // New status for UI
     };
     
-    // 3. Set the initial document data
-    await setDoc(tempDocRef, dataToSave);
+    // Set initial document data so it appears in the UI instantly
+    await setDoc(docRef, dataToSave);
     
-    // 4. Upload file to Storage using the docId
+    // 2. Upload file to Storage in the background
     const storage = getStorage();
     const filePath = `users/${user.uid}/documents/${docId}-${docData.file.name}`;
     const storageRef = ref(storage, filePath);
     
-    const snapshot = await uploadBytes(storageRef, docData.file);
-    const downloadURL = await getDownloadURL(snapshot.ref);
+    try {
+        const snapshot = await uploadBytes(storageRef, docData.file);
+        const downloadURL = await getDownloadURL(snapshot.ref);
 
-    // 5. Update Firestore document with the file URL
-    await updateDoc(tempDocRef, { url: downloadURL, processingStatus: 'processing' });
+        // 3. Update Firestore document with the file URL and trigger processing
+        // The Cloud Function will be triggered by this file upload.
+        // We update the doc here to indicate the upload is complete.
+        await updateDoc(docRef, { 
+            url: downloadURL,
+            processingStatus: 'processing' // Status for the Cloud Function to pick up
+        });
+    } catch (uploadError) {
+        console.error("Error uploading file:", uploadError);
+        // If upload fails, update the document status to 'error'
+        await updateDoc(docRef, {
+            processingStatus: 'error',
+            processingError: 'Error al subir el archivo.',
+        });
+    }
   };
 
   const updateDocument = async (id: string, docData: Partial<Omit<DocumentType, 'id' | 'file'>>) => {

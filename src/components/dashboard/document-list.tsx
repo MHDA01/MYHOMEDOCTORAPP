@@ -4,7 +4,7 @@
 import { useState, useContext, useRef, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { FileText, PlusCircle, MoreVertical, FilePenLine, Trash2, Loader2, UploadCloud, X, Eye, Download, Camera, SwitchCamera, CircleDot, BrainCircuit, AlertTriangle, History, CheckCircle } from "lucide-react";
+import { FileText, PlusCircle, MoreVertical, FilePenLine, Trash2, Loader2, UploadCloud, X, Eye, Download, Camera, SwitchCamera, CircleDot, BrainCircuit, AlertTriangle, History, CheckCircle, Upload } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose, DialogDescription } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
@@ -24,7 +24,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 
 type DialogMode = 'add' | 'edit';
-const MAX_FILES = 1; // Limit to one file for simplicity with the new flow
+const MAX_FILES = 1; 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
 export function DocumentList() {
@@ -129,7 +129,7 @@ export function DocumentList() {
         setDialogMode(mode);
         if (mode === 'edit' && doc) {
             setSelectedDoc(doc);
-            setName(doc.name);
+setName(doc.name);
             setCategory(doc.category);
             setStudyDate(doc.studyDate || doc.uploadedAt);
             setFiles([]); // No se pueden editar los archivos, solo los metadatos
@@ -192,7 +192,7 @@ export function DocumentList() {
             if (dialogMode === 'add') {
                 const docData = { name, category, studyDate, uploadedAt: new Date(), file: files[0] };
                 await addDocument(docData);
-                toast({ title: "Documento guardado con éxito.", description: "El análisis de IA comenzará en breve." });
+                toast({ title: "Documento en proceso de carga.", description: "El análisis comenzará en breve." });
             } else if (selectedDoc) {
                 const updatedData: Partial<DocumentType> = { name, category, studyDate };
                 await updateDocument(selectedDoc.id, updatedData);
@@ -228,6 +228,8 @@ export function DocumentList() {
     
     const getStatusIcon = (status?: DocumentType['processingStatus']) => {
         switch (status) {
+            case 'uploading':
+                return <Upload className="h-4 w-4 text-blue-500 animate-pulse" />;
             case 'processing':
             case 'summarizing':
                 return <Loader2 className="h-4 w-4 text-blue-500 animate-spin" />;
@@ -243,6 +245,8 @@ export function DocumentList() {
     
     const getStatusText = (doc: DocumentType) => {
         switch (doc.processingStatus) {
+            case 'uploading':
+                return 'Subiendo archivo...';
             case 'processing':
                 return 'Extrayendo texto...';
             case 'summarizing':
@@ -526,10 +530,15 @@ export function DocumentList() {
 
                                 <h3 className="font-semibold text-lg">Imagen del Documento</h3>
                                  <div className="space-y-2">
-                                    {viewingDoc.url && (
+                                    {viewingDoc.url ? (
                                         <a href={viewingDoc.url} target="_blank" rel="noopener noreferrer" className="block border rounded-lg overflow-hidden hover:opacity-80 transition-opacity">
                                             <img src={viewingDoc.url} alt={`Imagen de ${viewingDoc.name}`} className="w-full h-auto object-contain" data-ai-hint="medical document"/>
                                         </a>
+                                    ) : (
+                                        <div className="flex items-center justify-center p-8 border-2 border-dashed rounded-lg">
+                                            <Loader2 className="h-8 w-8 text-muted-foreground animate-spin"/>
+                                            <p className="ml-4 text-muted-foreground">Cargando imagen...</p>
+                                        </div>
                                     )}
                                 </div>
                                 {viewingDoc.transcription && (

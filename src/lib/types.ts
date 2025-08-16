@@ -19,7 +19,7 @@ export type Document = {
   studyDate?: Date;
   
   // AI Processing fields
-  processingStatus?: 'pending' | 'processing' | 'summarizing' | 'completed' | 'error';
+  processingStatus?: 'uploading' | 'pending' | 'processing' | 'summarizing' | 'completed' | 'error';
   processingError?: string;
   transcription?: string;
   summary?: DocumentSummary;
