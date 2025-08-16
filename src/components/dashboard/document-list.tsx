@@ -4,7 +4,7 @@
 import { useState, useContext, useRef, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { FileText, PlusCircle, MoreVertical, FilePenLine, Trash2, Loader2, UploadCloud, X, Eye, Download, Camera } from "lucide-react";
+import { FileText, PlusCircle, MoreVertical, FilePenLine, Trash2, Loader2, UploadCloud, X, Eye, Download, Camera, History } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose, DialogDescription } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
@@ -20,6 +20,7 @@ import { useToast } from "@/hooks/use-toast";
 import { UserContext } from '@/context/user-context';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Calendar as CalendarIcon } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 
 type DialogMode = 'add' | 'edit';
@@ -38,13 +39,12 @@ export function DocumentList() {
     // Form state
     const [name, setName] = useState('');
     const [category, setCategory] = useState<DocumentType['category']>('Lab Result');
-    const [studyDate, setStudyDate] = useState<Date | undefined>();
+    const [studyDate, setStudyDate] = useState<Date | undefined>(new Date());
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
     const { toast } = useToast();
     const [isDatePopoverOpen, setIsDatePopoverOpen] = useState(false);
     
-    // Camera state
     const videoRef = useRef<HTMLVideoElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const [hasCameraPermission, setHasCameraPermission] = useState(true);
@@ -62,14 +62,15 @@ export function DocumentList() {
     };
     
     useEffect(() => {
-        if (!isCameraOpen || capturedImage) {
+        if (!isCameraOpen) {
             stopCameraStream();
             return;
         }
     
+        let stream: MediaStream;
         const getCameraPermission = async () => {
           try {
-            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+            stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
             setHasCameraPermission(true);
             if (videoRef.current) {
                 videoRef.current.srcObject = stream;
@@ -88,9 +89,11 @@ export function DocumentList() {
         getCameraPermission();
     
         return () => {
-            stopCameraStream();
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+            }
         };
-    }, [isCameraOpen, capturedImage, toast]);
+    }, [isCameraOpen, toast]);
 
     const resetForm = () => {
         setName('');
@@ -99,6 +102,7 @@ export function DocumentList() {
         setSelectedFile(null);
         setIsCameraOpen(false);
         setCapturedImage(null);
+        setIsSaving(false);
     }
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -121,7 +125,6 @@ export function DocumentList() {
             setCategory(doc.category);
             setStudyDate(doc.studyDate || doc.uploadedAt);
         } else {
-            // For 'add' mode, set a default date
             setStudyDate(new Date());
         }
         setIsDialogOpen(true);
@@ -169,33 +172,45 @@ export function DocumentList() {
     }
 
     const handleSubmit = async () => {
-        if (dialogMode === 'add' && !selectedFile) {
-            toast({ variant: 'destructive', title: "Debes subir o tomar un archivo." });
-            return;
-        }
-        if (!name || !category || !studyDate) {
-            toast({ variant: 'destructive', title: "Por favor, completa todos los campos." });
-            return;
-        }
-        setIsSaving(true);
-        
-        try {
-            if (dialogMode === 'add' && selectedFile) {
+        if (dialogMode === 'add') {
+            // Validation for 'add' mode
+            if (!name || !category || !studyDate || !selectedFile) {
+                toast({ variant: 'destructive', title: "Formulario incompleto", description: "Por favor, completa todos los campos y selecciona un archivo." });
+                return;
+            }
+            
+            setIsSaving(true);
+            try {
                 const docData = { name, category, studyDate, uploadedAt: new Date(), file: selectedFile };
                 await addDocument(docData);
                 toast({ title: "Documento guardado con éxito." });
                 setIsDialogOpen(false);
-            } else if (selectedDoc) {
+            } catch (error) {
+                toast({ variant: 'destructive', title: "Error al guardar el documento.", description: (error as Error).message });
+                console.error("Error saving document: ", error);
+            } finally {
+                setIsSaving(false);
+            }
+
+        } else if (dialogMode === 'edit' && selectedDoc) {
+             // Validation for 'edit' mode
+            if (!name || !category || !studyDate) {
+                toast({ variant: 'destructive', title: "Formulario incompleto", description: "Por favor, completa todos los campos." });
+                return;
+            }
+
+            setIsSaving(true);
+            try {
                 const updatedData: Partial<DocumentType> = { name, category, studyDate };
                 await updateDocument(selectedDoc.id, updatedData);
                 toast({ title: "Documento actualizado con éxito." });
                 setIsDialogOpen(false);
+            } catch (error) {
+                toast({ variant: 'destructive', title: "Error al actualizar el documento.", description: (error as Error).message });
+                 console.error("Error updating document: ", error);
+            } finally {
+                 setIsSaving(false);
             }
-        } catch (error) {
-             toast({ variant: 'destructive', title: "Error al guardar el documento.", description: (error as Error).message });
-             console.error("Error saving document: ", error);
-        } finally {
-            setIsSaving(false);
         }
     }
     
@@ -208,6 +223,10 @@ export function DocumentList() {
         };
         return labels[category];
     };
+
+    const isAddFormValid = !!name && !!category && !!studyDate && !!selectedFile;
+    const isEditFormValid = !!name && !!category && !!studyDate;
+    const isButtonDisabled = isSaving || (dialogMode === 'add' && !isAddFormValid) || (dialogMode === 'edit' && !isEditFormValid);
     
     const groupedDocuments = documents.reduce((acc, doc) => {
         const year = format(doc.studyDate || doc.uploadedAt, 'yyyy');
@@ -372,12 +391,16 @@ export function DocumentList() {
                                             {capturedImage ? (
                                                 <img src={capturedImage} alt="Captura" className="w-full h-full object-contain"/>
                                             ) : (
-                                                <video ref={videoRef} className="w-full h-full object-contain" autoPlay muted playsInline></video>
-                                            )}
-                                            {!hasCameraPermission && (
-                                                <div className="absolute inset-0 flex items-center justify-center bg-black/50">
-                                                    <p className="text-white text-center p-4">La cámara no está disponible. Revisa los permisos.</p>
-                                                </div>
+                                                <>
+                                                    <video ref={videoRef} className="w-full h-full object-contain" autoPlay muted playsInline></video>
+                                                    {!hasCameraPermission && (
+                                                        <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/50 text-white p-4 text-center">
+                                                            <Camera className="h-8 w-8 mb-2" />
+                                                            <p className="font-semibold">Cámara no disponible</p>
+                                                            <p className="text-sm">Revisa los permisos de tu navegador.</p>
+                                                        </div>
+                                                    )}
+                                                </>
                                             )}
                                          </div>
                                         <div className="flex justify-center gap-2">
@@ -391,7 +414,7 @@ export function DocumentList() {
                                                     <Camera className="mr-2" /> Capturar
                                                 </Button>
                                             )}
-                                             <Button variant="ghost" onClick={() => { setIsCameraOpen(false); setCapturedImage(null); stopCameraStream(); }}>Cancelar</Button>
+                                             <Button variant="ghost" onClick={() => { setIsCameraOpen(false); setCapturedImage(null); }}>Cancelar</Button>
                                         </div>
                                          <canvas ref={canvasRef} className="hidden"></canvas>
                                     </div>
@@ -433,7 +456,7 @@ export function DocumentList() {
                              <DialogClose asChild>
                                 <Button variant="outline" disabled={isSaving}>Cancelar</Button>
                              </DialogClose>
-                            <Button type="submit" onClick={handleSubmit} disabled={isSaving}>
+                            <Button type="submit" onClick={handleSubmit} disabled={isButtonDisabled}>
                                 {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                 {dialogMode === 'add' ? 'Subir y Guardar' : 'Guardar Cambios'}
                             </Button>
