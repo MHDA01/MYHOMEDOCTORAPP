@@ -130,7 +130,6 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   const { toast } = useToast();
   
   const loadUserData = useCallback(async (currentUser: User) => {
-    setLoading(true);
     try {
         const userDoc = await getUserDocument(currentUser.uid);
         
@@ -167,8 +166,6 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     } catch (error) {
        console.error("Failed to manage user profile:", error);
        toast({ variant: 'destructive', title: 'Error de Carga', description: 'No se pudieron cargar los datos del perfil.'});
-    } finally {
-       setLoading(false);
     }
   }, [toast]);
   
@@ -181,14 +178,15 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     const unsubscribeAuth = onAuthStateChanged(auth, async (currentUser) => {
+      setLoading(true);
       if (currentUser) {
         setUser(currentUser);
         await loadUserData(currentUser);
       } else {
         setUser(null); setPersonalInfo(null); setHealthInfo(null);
         setAppointments([]); setDocuments([]); setMedications([]);
-        setLoading(false);
       }
+      setLoading(false);
     });
 
     let unsubscribeDocuments: () => void = () => {};
@@ -290,6 +288,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     if (docData.studyDate) {
       dataToUpdate.studyDate = Timestamp.fromDate(new Date(docData.studyDate));
     }
+    
     await updateDoc(docRef, dataToUpdate);
   };
 

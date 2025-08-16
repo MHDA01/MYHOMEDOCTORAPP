@@ -1,6 +1,14 @@
 # Settings to manage and configure a Firebase App Hosting backend.
 # https://firebase.google.com/docs/app-hosting/configure
 
+# The IAM roles that are granted to the App Hosting service account.
+requiredAPIs:
+  - serviceName: vision.googleapis.com
+  - serviceName: firestore.googleapis.com
+iam:
+  - role: roles/run.invoker
+  - role: roles/secretmanager.secretAccessor
+  - role: roles/aiplatform.user
 runConfig:
   # Increase this value if you'd like to automatically spin up
   # more instances in response to increased traffic.
