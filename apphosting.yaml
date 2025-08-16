@@ -4,9 +4,13 @@
 # The IAM roles that are granted to the App Hosting service account.
 requiredAPIs:
   - serviceName: firestore.googleapis.com
+  - serviceName: vision.googleapis.com
+  - serviceName: aiplatform.googleapis.com
 iam:
   - role: roles/run.invoker
   - role: roles/secretmanager.secretAccessor
+  - role: roles/vision.user
+  - role: roles/aiplatform.user
 runConfig:
   # Increase this value if you'd like to automatically spin up
   # more instances in response to increased traffic.

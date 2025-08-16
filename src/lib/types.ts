@@ -1,9 +1,12 @@
 
-export type LabResult = {
-  examen: string;
-  valor: string;
-  unidades: string;
-  rangoDeReferencia: string;
+export type DocumentSummary = {
+  documentType: "exam" | "prescription" | "report" | "other";
+  date: string;
+  attendingPhysician: string;
+  relevantFindings: string;
+  diagnosis: string;
+  medications: string[];
+  patientRecommendations: string;
 };
 
 export type Document = {
@@ -11,9 +14,16 @@ export type Document = {
   name: string;
   category: 'Lab Result' | 'Prescription' | 'Imaging Report' | 'Other';
   uploadedAt: Date;
-  files?: File[]; // Only for frontend state, not stored in Firestore
-  urls: string[]; // URLs pointing to files in Cloud Storage
+  file?: File; // Only for frontend state during upload
+  url?: string; // URL to file in Cloud Storage
   studyDate?: Date;
+  
+  // AI Processing fields
+  processingStatus?: 'pending' | 'processing' | 'summarizing' | 'completed' | 'error';
+  processingError?: string;
+  transcription?: string;
+  summary?: DocumentSummary;
+  processedAt?: string;
 };
 
 export type Appointment = {
@@ -24,6 +34,7 @@ export type Appointment = {
   status: 'Upcoming' | 'Past';
   reminder?: string;
   notified?: boolean;
+  uploadedAt: Date;
 };
 
 export type Medication = {
@@ -34,6 +45,7 @@ export type Medication = {
   administrationPeriod: string; // e.g., '7 days', 'Permanent'
   time: string[];
   active: boolean;
+  uploadedAt: Date;
 };
 
 export type EmergencyContact = {

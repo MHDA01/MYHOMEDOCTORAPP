@@ -5,7 +5,7 @@ import { createContext, useState, useEffect, ReactNode, useCallback } from 'reac
 import type { PersonalInfo, HealthInfo, Appointment, Document as DocumentType, Medication } from '@/lib/types';
 import { auth, db } from '@/lib/firebase';
 import { onAuthStateChanged, User, signOut, updateProfile } from 'firebase/auth';
-import { doc, getDoc, setDoc, Timestamp, collection, addDoc, updateDoc, deleteDoc, query, orderBy, onSnapshot, getDocs } from 'firebase/firestore';
+import { doc, getDoc, setDoc, Timestamp, collection, addDoc, updateDoc, deleteDoc, query, orderBy, onSnapshot } from 'firebase/firestore';
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { useToast } from '@/hooks/use-toast';
 
@@ -17,7 +17,7 @@ type SerializableAppointment = Omit<Appointment, 'date'> & {
     date: Timestamp;
 };
 
-type SerializableDocument = Omit<DocumentType, 'uploadedAt' | 'studyDate' | 'files'> & {
+type SerializableDocument = Omit<DocumentType, 'uploadedAt' | 'studyDate' | 'file'> & {
     uploadedAt: Timestamp;
     studyDate?: Timestamp;
 };
@@ -80,7 +80,7 @@ interface UserContextType {
   updateAppointment: (id: string, appointment: Partial<Omit<Appointment, 'id'>>) => Promise<void>;
   deleteAppointment: (id: string) => Promise<void>;
   addDocument: (doc: Omit<DocumentType, 'id'>) => Promise<void>;
-  updateDocument: (id: string, doc: Partial<Omit<DocumentType, 'id' | 'files'>>) => Promise<void>;
+  updateDocument: (id: string, doc: Partial<Omit<DocumentType, 'id' | 'file'>>) => Promise<void>;
   deleteDocument: (id: string) => Promise<void>;
   addMedication: (med: Omit<Medication, 'id'>) => Promise<void>;
   updateMedication: (id: string, med: Partial<Medication>) => Promise<void>;
@@ -121,7 +121,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   
   const { toast } = useToast();
   
-  const loadUserData = useCallback(async (currentUser: User) => {
+  const loadInitialData = useCallback(async (currentUser: User) => {
     setLoading(true);
     try {
         const userDoc = await getUserDocument(currentUser.uid);
@@ -149,16 +149,6 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
             setPersonalInfo(defaultPersonalInfo);
             setHealthInfo(defaultHealthInfo);
         }
-        
-        const appointmentsData = await getCollection<SerializableAppointment>(currentUser.uid, 'appointments', 'date');
-        setAppointments(appointmentsData.map(a => ({...a, date: a.date.toDate() })));
-
-        const medicationsData = await getCollection<Medication>(currentUser.uid, 'medications', 'name', 'asc');
-        setMedications(medicationsData);
-
-        const documentsData = await getCollection<SerializableDocument>(currentUser.uid, 'documents', 'uploadedAt');
-        setDocuments(documentsData.map(d => ({...d, uploadedAt: d.uploadedAt.toDate(), studyDate: d.studyDate?.toDate()} as DocumentType)));
-
     } catch (error) {
        console.error("Failed to manage user profile:", error);
        toast({ variant: 'destructive', title: 'Error de Carga', description: 'No se pudieron cargar los datos del perfil.'});
@@ -166,19 +156,47 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         setLoading(false);
     }
   }, [toast]);
-  
-  async function getCollection<T>(userId: string, collectionName: string, orderByField: string, orderDirection: 'asc' | 'desc' = 'desc'): Promise<T[]> {
-      const q = query(collection(db, 'users', userId, collectionName), orderBy(orderByField, orderDirection));
-      const snapshot = await getDocs(q);
-      return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as T));
-  }
-
 
   useEffect(() => {
+    let unsubscribes: (() => void)[] = [];
+
     const unsubscribeAuth = onAuthStateChanged(auth, async (currentUser) => {
+      // Clean up previous listeners
+      unsubscribes.forEach(unsub => unsub());
+      unsubscribes = [];
+
       if (currentUser) {
         setUser(currentUser);
-        await loadUserData(currentUser);
+        await loadInitialData(currentUser);
+
+        // Set up real-time listeners for subcollections
+        const collectionsToSync = ['appointments', 'documents', 'medications'];
+        collectionsToSync.forEach(collName => {
+            const q = query(collection(db, 'users', currentUser.uid, collName), orderBy('uploadedAt', 'desc'));
+            const unsubscribe = onSnapshot(q, (snapshot) => {
+                const data = snapshot.docs.map(doc => {
+                    const docData = doc.data();
+                    const id = doc.id;
+                    // Convert timestamps
+                    Object.keys(docData).forEach(key => {
+                        if (docData[key] instanceof Timestamp) {
+                            docData[key] = docData[key].toDate();
+                        }
+                    });
+                    return { id, ...docData };
+                });
+                
+                if (collName === 'appointments') setAppointments(data as Appointment[]);
+                if (collName === 'documents') setDocuments(data as DocumentType[]);
+                if (collName === 'medications') setMedications(data as Medication[]);
+
+            }, (error) => {
+                console.error(`Error listening to ${collName}:`, error);
+                toast({ variant: 'destructive', title: 'Error de Sincronización', description: `No se pudo actualizar ${collName}.`});
+            });
+            unsubscribes.push(unsubscribe);
+        });
+
       } else {
         setUser(null); setPersonalInfo(null); setHealthInfo(null);
         setAppointments([]); setDocuments([]); setMedications([]);
@@ -186,10 +204,12 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       }
     });
 
+    unsubscribes.push(unsubscribeAuth);
+
     return () => {
-        unsubscribeAuth();
+        unsubscribes.forEach(unsub => unsub());
     };
-  }, [loadUserData]);
+  }, [loadInitialData, toast]);
   
   const signOutUser = async () => {
     try { await signOut(auth); } 
@@ -215,9 +235,13 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
 
   const addAppointment = async (appointment: Omit<Appointment, 'id' | 'notified'>) => {
       if (!user) return;
-      const docRef = await addDoc(collection(db, 'users', user.uid, 'appointments'), { ...appointment, date: Timestamp.fromDate(appointment.date), notified: false });
-      const newAppointment = { ...appointment, id: docRef.id, date: appointment.date, notified: false };
-      setAppointments(prev => [...prev, newAppointment].sort((a,b) => b.date.getTime() - a.date.getTime()));
+      const dataWithTimestamp = {
+          ...appointment,
+          date: Timestamp.fromDate(appointment.date),
+          uploadedAt: Timestamp.now(), // For consistent ordering
+          notified: false,
+      };
+      await addDoc(collection(db, 'users', user.uid, 'appointments'), dataWithTimestamp);
   };
   
   const updateAppointment = async (id: string, appointment: Partial<Omit<Appointment, 'id'>>) => {
@@ -228,45 +252,45 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         dataToUpdate.date = Timestamp.fromDate(new Date(appointment.date));
       }
       await updateDoc(docRef, dataToUpdate);
-      setAppointments(prev => prev.map(app => app.id === id ? { ...app, ...appointment } : app).sort((a,b) => b.date.getTime() - a.date.getTime()));
   };
   
   const deleteAppointment = async (id: string) => {
       if (!user) return;
       await deleteDoc(doc(db, 'users', user.uid, 'appointments', id));
-      setAppointments(prev => prev.filter(app => app.id !== id));
   };
   
   const addDocument = async (docData: Omit<DocumentType, 'id'>) => {
-    if (!user || !docData.files || docData.files.length === 0) return;
+    if (!user || !docData.file) return;
 
-    const storage = getStorage();
-    const uploadPromises = docData.files.map(file => {
-        const storageRef = ref(storage, `users/${user.uid}/documents/${Date.now()}_${file.name}`);
-        return uploadBytes(storageRef, file).then(snapshot => getDownloadURL(snapshot.ref));
-    });
+    // 1. Create Firestore document to get an ID
+    const tempDocRef = doc(collection(db, 'users', user.uid, 'documents'));
+    const docId = tempDocRef.id;
 
-    const urls = await Promise.all(uploadPromises);
-
-    const dataToSave: Omit<SerializableDocument, 'id'> = {
+    // 2. Prepare data for Firestore
+    const dataToSave: Omit<SerializableDocument, 'id' | 'url'> = {
         name: docData.name,
         category: docData.category,
-        urls,
-        uploadedAt: Timestamp.fromDate(docData.uploadedAt),
-        studyDate: docData.studyDate ? Timestamp.fromDate(docData.studyDate) : Timestamp.fromDate(docData.uploadedAt),
+        uploadedAt: Timestamp.now(),
+        studyDate: docData.studyDate ? Timestamp.fromDate(docData.studyDate) : Timestamp.now(),
+        processingStatus: 'pending',
     };
     
-    const docRef = await addDoc(collection(db, 'users', user.uid, 'documents'), dataToSave);
-    const newDoc: DocumentType = {
-        ...docData,
-        id: docRef.id,
-        urls: urls,
-    };
-    delete newDoc.files; // Remove files from the object that is stored in state
-    setDocuments(prev => [...prev, newDoc].sort((a,b) => b.uploadedAt.getTime() - a.uploadedAt.getTime()));
+    // 3. Set the initial document data
+    await setDoc(tempDocRef, dataToSave);
+    
+    // 4. Upload file to Storage using the docId
+    const storage = getStorage();
+    const filePath = `users/${user.uid}/documents/${docId}-${docData.file.name}`;
+    const storageRef = ref(storage, filePath);
+    
+    const snapshot = await uploadBytes(storageRef, docData.file);
+    const downloadURL = await getDownloadURL(snapshot.ref);
+
+    // 5. Update Firestore document with the file URL
+    await updateDoc(tempDocRef, { url: downloadURL, processingStatus: 'processing' });
   };
 
-  const updateDocument = async (id: string, docData: Partial<Omit<DocumentType, 'id' | 'files'>>) => {
+  const updateDocument = async (id: string, docData: Partial<Omit<DocumentType, 'id' | 'file'>>) => {
     if (!user) return;
     const docRef = doc(db, 'users', user.uid, 'documents', id);
     const dataToUpdate: { [key: string]: any } = { ...docData };
@@ -276,34 +300,30 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     }
     
     await updateDoc(docRef, dataToUpdate);
-    setDocuments(prev => prev.map(d => d.id === id ? { ...d, ...docData } as DocumentType : d));
   };
 
   const deleteDocument = async (id: string) => {
       if (!user) return;
+      // Note: This does not delete the file from Storage to prevent accidental data loss.
+      // A cleanup function could be implemented for this.
       await deleteDoc(doc(db, 'users', user.uid, 'documents', id));
-      setDocuments(prev => prev.filter(d => d.id !== id));
   };
 
   const addMedication = async (med: Omit<Medication, 'id'>) => {
       if (!user) return;
-      const docRef = await addDoc(collection(db, 'users', user.uid, 'medications'), med);
-      setMedications(prev => [...prev, { ...med, id: docRef.id}]);
+      const dataWithTimestamp = { ...med, uploadedAt: Timestamp.now() };
+      await addDoc(collection(db, 'users', user.uid, 'medications'), dataWithTimestamp);
   };
 
   const updateMedication = async (id: string, med: Partial<Medication>) => {
       if (!user) return;
-      const docRef = doc(db, 'users', user.uid, 'medications', id);
-      await updateDoc(docRef, med);
-      setMedications(prev => prev.map(m => m.id === id ? { ...m, ...med } : m));
+      await updateDoc(doc(db, 'users', user.uid, 'medications', id), med);
   };
   
   const deleteMedication = async (id: string) => {
       if (!user) return;
       await deleteDoc(doc(db, 'users', user.uid, 'medications', id));
-      setMedications(prev => prev.filter(m => m.id !== id));
   };
-
 
   return (
     <UserContext.Provider value={{
