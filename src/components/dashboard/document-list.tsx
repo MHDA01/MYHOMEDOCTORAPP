@@ -21,7 +21,6 @@ import { UserContext } from '@/context/user-context';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Calendar as CalendarIcon } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Checkbox } from '../ui/checkbox';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 
@@ -43,7 +42,6 @@ export function DocumentList() {
     const [category, setCategory] = useState<DocumentType['category']>('Lab Result');
     const [studyDate, setStudyDate] = useState<Date | undefined>();
     const [files, setFiles] = useState<File[]>([]);
-    const [consent, setConsent] = useState(false);
 
     const { toast } = useToast();
     const [isDatePopoverOpen, setIsDatePopoverOpen] = useState(false);
@@ -56,7 +54,6 @@ export function DocumentList() {
         setCategory('Lab Result');
         setStudyDate(new Date());
         setFiles([]);
-        setConsent(false);
     }
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -86,7 +83,6 @@ export function DocumentList() {
             setName(doc.name);
             setCategory(doc.category);
             setStudyDate(doc.studyDate || doc.uploadedAt);
-            setConsent(doc.consent);
             setFiles([]); // No se pueden editar los archivos, solo los metadatos
         } else {
             setSelectedDoc(null);
@@ -118,11 +114,11 @@ export function DocumentList() {
         
         try {
             if (dialogMode === 'add') {
-                const docData = { name, category, studyDate, uploadedAt: new Date(), files, consent };
+                const docData = { name, category, studyDate, uploadedAt: new Date(), files, consent: true };
                 await addDocument(docData);
                 toast({ title: "Documento guardado con éxito." });
             } else if (selectedDoc) {
-                const updatedData: Partial<DocumentType> = { name, category, studyDate, consent };
+                const updatedData: Partial<DocumentType> = { name, category, studyDate, consent: selectedDoc.consent };
                 await updateDocument(selectedDoc.id, updatedData);
                 toast({ title: "Documento actualizado con éxito." });
             }
@@ -339,21 +335,6 @@ export function DocumentList() {
                                 )}
                             </div>
                            )}
-
-                             <div className="items-top flex space-x-2 mt-4">
-                                <Checkbox id="terms1" checked={consent} onCheckedChange={(checked) => setConsent(Boolean(checked))} />
-                                <div className="grid gap-1.5 leading-none">
-                                    <label
-                                    htmlFor="terms1"
-                                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                                    >
-                                    Autorizo el análisis con IA
-                                    </label>
-                                    <p className="text-sm text-muted-foreground">
-                                    Al marcar esta casilla, autorizas el uso de IA para procesar tu documento y extraer datos. No se compartirán datos personales identificables. Revisa nuestros términos de privacidad.
-                                    </p>
-                                </div>
-                            </div>
                         </div>
                         <DialogFooter>
                              <DialogClose asChild>
@@ -417,7 +398,7 @@ export function DocumentList() {
                                                 </AlertDescription>
                                             </Alert>
                                         </div>
-                                     ) : viewingDoc.consent ? (
+                                     ) : (
                                         <div className="text-center p-6 border-2 border-dashed rounded-lg">
                                              {viewingDoc.processingError ? (
                                                 <>
@@ -429,13 +410,9 @@ export function DocumentList() {
                                                 <>
                                                     <Loader2 className="mx-auto h-8 w-8 text-muted-foreground animate-spin" />
                                                     <p className="mt-2 text-sm text-muted-foreground">Los datos se están procesando...</p>
+                                                    <p className="mt-1 text-xs text-muted-foreground">Esto puede tardar unos minutos.</p>
                                                 </>
                                              )}
-                                        </div>
-                                     ) : (
-                                        <div className="text-center p-6 border-2 border-dashed rounded-lg">
-                                            <AlertTriangle className="mx-auto h-8 w-8 text-muted-foreground" />
-                                            <p className="mt-2 text-sm text-muted-foreground">No se generó un resumen de IA para este documento porque no se otorgó el consentimiento.</p>
                                         </div>
                                      )}
                                 </div>
@@ -452,5 +429,3 @@ export function DocumentList() {
         </Card>
     );
 }
-
-    

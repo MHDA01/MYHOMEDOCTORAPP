@@ -6,7 +6,6 @@ import type { PersonalInfo, HealthInfo, Appointment, Document as DocumentType, M
 import { auth, db } from '@/lib/firebase';
 import { onAuthStateChanged, User, signOut, updateProfile } from 'firebase/auth';
 import { doc, getDoc, setDoc, Timestamp, collection, getDocs, addDoc, updateDoc, deleteDoc, query, orderBy, onSnapshot } from 'firebase/firestore';
-import { getStorage, ref, uploadString, getDownloadURL } from "firebase/storage";
 import { useToast } from '@/hooks/use-toast';
 
 type SerializablePersonalInfo = Omit<PersonalInfo, 'dateOfBirth'> & {
@@ -166,7 +165,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         }
         
         const appointmentsData = await getCollection<SerializableAppointment>(currentUser.uid, 'appointments', 'date');
-        const medicationsData = await getCollection<Medication>(currentUser.uid, 'name', 'asc');
+        const medicationsData = await getCollection<Medication>(currentUser.uid, 'medications', 'name', 'asc');
 
         setAppointments(appointmentsData.map(a => ({...a, date: a.date.toDate() })));
         setMedications(medicationsData);
@@ -273,7 +272,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     const dataToSave: any = { 
         name: docData.name,
         category: docData.category,
-        consent: docData.consent,
+        consent: true, // Always consent
         urls: dataUris, // Pass the data URIs to be processed by the Cloud Function
         uploadedAt: Timestamp.fromDate(docData.uploadedAt),
         studyDate: docData.studyDate ? Timestamp.fromDate(docData.studyDate) : Timestamp.fromDate(docData.uploadedAt),
@@ -281,11 +280,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     
     await addDoc(collection(db, 'users', user.uid, 'documents'), dataToSave);
 
-    if (docData.consent) {
-        toast({ title: "Documento subido", description: "Se está procesando para extraer los datos. Esto puede tardar unos minutos." });
-    } else {
-        toast({ title: "Documento subido", description: "El documento se guardó sin procesamiento de IA." });
-    }
+    toast({ title: "Documento subido", description: "Se está procesando para extraer los datos. Esto puede tardar unos minutos." });
   };
 
   const updateDocument = async (id: string, docData: Partial<DocumentType>) => {
@@ -332,5 +327,3 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     </UserContext.Provider>
   );
 };
-
-    

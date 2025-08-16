@@ -105,9 +105,10 @@ export const oncreatedocument = onDocumentCreated(
 
     const data = snap.data();
 
-    if (!data.consent || data.labResults) {
+    // Skip if results already exist
+    if (data.labResults) {
       logger.log(
-        `Skipping document ${docId}: consent not given or results already exist.`
+        `Skipping document ${docId}: results already exist.`
       );
       return;
     }
