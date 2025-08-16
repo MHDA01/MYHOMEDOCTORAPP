@@ -93,7 +93,11 @@ ${transcription}
 
 // Define the Cloud Function that triggers on new document creation
 export const oncreatedocument = onDocumentCreated(
-  "users/{userId}/documents/{docId}",
+  {
+    document: "users/{userId}/documents/{docId}",
+    timeoutSeconds: 300, // Increase timeout to 5 minutes
+    memory: "512MiB", // Allocate more memory
+  },
   async (event) => {
     const {userId, docId} = event.params;
     const snap = event.data;
@@ -105,10 +109,10 @@ export const oncreatedocument = onDocumentCreated(
 
     const data = snap.data();
 
-    // Skip if results already exist
-    if (data.labResults) {
+    // Skip if results already exist or it is already being processed
+    if (data.labResults || data.processingError) {
       logger.log(
-        `Skipping document ${docId}: results already exist.`
+        `Skipping document ${docId}: results or error already exist.`
       );
       return;
     }
