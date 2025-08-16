@@ -1,10 +1,10 @@
 
 'use client';
 
-import { useState, useContext } from 'react';
+import { useState, useContext, useRef, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { FileText, PlusCircle, MoreVertical, FilePenLine, Trash2, Loader2, UploadCloud, X, BrainCircuit, AlertTriangle, Eye, Download, History } from "lucide-react";
+import { FileText, PlusCircle, MoreVertical, FilePenLine, Trash2, Loader2, UploadCloud, X, Eye, Download, Camera, SwitchCamera, CircleDot } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose, DialogDescription } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
@@ -21,7 +21,6 @@ import { UserContext } from '@/context/user-context';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Calendar as CalendarIcon } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 
 type DialogMode = 'add' | 'edit';
@@ -36,6 +35,7 @@ export function DocumentList() {
     const [selectedDoc, setSelectedDoc] = useState<DocumentType | null>(null);
     const [viewingDoc, setViewingDoc] = useState<DocumentType | null>(null);
     const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
+    const [isCameraOpen, setIsCameraOpen] = useState(false);
 
     // Form state
     const [name, setName] = useState('');
@@ -45,15 +45,52 @@ export function DocumentList() {
 
     const { toast } = useToast();
     const [isDatePopoverOpen, setIsDatePopoverOpen] = useState(false);
+    
+    // Camera state
+    const videoRef = useRef<HTMLVideoElement>(null);
+    const canvasRef = useRef<HTMLCanvasElement>(null);
+    const [hasCameraPermission, setHasCameraPermission] = useState(true);
+    const [capturedImage, setCapturedImage] = useState<string | null>(null);
 
     if (!context) throw new Error("DocumentList must be used within a UserProvider");
     const { documents, addDocument, updateDocument, deleteDocument, loading } = context;
+
+    useEffect(() => {
+        const getCameraPermission = async () => {
+          if (!isCameraOpen || capturedImage) return;
+          try {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+            setHasCameraPermission(true);
+            if (videoRef.current) {
+              videoRef.current.srcObject = stream;
+            }
+          } catch (error) {
+            console.error('Error accessing camera:', error);
+            setHasCameraPermission(false);
+            toast({
+              variant: 'destructive',
+              title: 'Acceso a la cámara denegado',
+              description: 'Por favor, habilita los permisos de cámara en tu navegador.',
+            });
+          }
+        };
+        getCameraPermission();
+    
+        return () => { // Cleanup function
+            if (videoRef.current && videoRef.current.srcObject) {
+                const stream = videoRef.current.srcObject as MediaStream;
+                stream.getTracks().forEach(track => track.stop());
+            }
+        };
+    }, [isCameraOpen, capturedImage, toast]);
 
     const resetForm = () => {
         setName('');
         setCategory('Lab Result');
         setStudyDate(new Date());
         setFiles([]);
+        setIsCameraOpen(false);
+        setCapturedImage(null);
     }
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -100,6 +137,32 @@ export function DocumentList() {
         await deleteDocument(id);
         toast({ title: "Documento eliminado." });
     }
+    
+    const handleTakePhoto = () => {
+        if (videoRef.current && canvasRef.current) {
+            const video = videoRef.current;
+            const canvas = canvasRef.current;
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            const context = canvas.getContext('2d');
+            context?.drawImage(video, 0, 0, video.videoWidth, video.videoHeight);
+            const dataUrl = canvas.toDataURL('image/png');
+            setCapturedImage(dataUrl);
+        }
+    }
+    
+    const handleConfirmPhoto = () => {
+        if (capturedImage) {
+            fetch(capturedImage)
+                .then(res => res.blob())
+                .then(blob => {
+                    const file = new File([blob], `captura-${Date.now()}.png`, { type: 'image/png' });
+                    setFiles(prev => [...prev, file]);
+                    setCapturedImage(null);
+                    setIsCameraOpen(false);
+                });
+        }
+    }
 
     const handleSubmit = async () => {
         if (!name || !category || !studyDate) {
@@ -107,7 +170,7 @@ export function DocumentList() {
             return;
         }
         if (dialogMode === 'add' && files.length === 0) {
-            toast({ variant: 'destructive', title: "Debes subir al menos un archivo." });
+            toast({ variant: 'destructive', title: "Debes subir o tomar al menos un archivo." });
             return;
         }
         setIsSaving(true);
@@ -140,51 +203,7 @@ export function DocumentList() {
         };
         return labels[category];
     };
-
-    const getStatusIndicator = (doc: DocumentType) => {
-        switch (doc.processingStatus) {
-            case 'completed':
-                if (doc.labResults && doc.labResults.length > 0) {
-                    return (
-                        <div className="flex items-center text-xs text-blue-600 mt-2 gap-1.5">
-                            <BrainCircuit className="h-3 w-3" />
-                            <span>Datos extraídos por IA</span>
-                        </div>
-                    );
-                }
-                return null;
-            case 'processing':
-                return (
-                    <div className="flex items-center text-xs text-amber-600 mt-2 gap-1.5">
-                        <Loader2 className="h-3 w-3 animate-spin" />
-                        <span>Procesando...</span>
-                    </div>
-                );
-            case 'pending':
-                 return (
-                    <div className="flex items-center text-xs text-muted-foreground mt-2 gap-1.5">
-                        <History className="h-3 w-3" />
-                        <span>Pendiente de análisis</span>
-                    </div>
-                );
-            case 'error':
-                 return (
-                    <div className="flex items-center text-xs text-destructive mt-2 gap-1.5">
-                        <AlertTriangle className="h-3 w-3" />
-                        <span>Error al procesar</span>
-                    </div>
-                );
-            default:
-                return (
-                    <div className="flex items-center text-xs text-muted-foreground mt-2 gap-1.5">
-                        <History className="h-3 w-3" />
-                        <span>Pendiente de análisis</span>
-                    </div>
-                );
-        }
-    };
-
-
+    
     const groupedDocuments = documents.reduce((acc, doc) => {
         const year = format(doc.studyDate || doc.uploadedAt, 'yyyy');
         if (!acc[year]) acc[year] = [];
@@ -193,7 +212,6 @@ export function DocumentList() {
     }, {} as Record<string, DocumentType[]>);
 
     const sortedYears = Object.keys(groupedDocuments).sort((a, b) => b.localeCompare(a));
-
 
     if(loading) {
         return (
@@ -248,7 +266,6 @@ export function DocumentList() {
                                         <button className="flex-1 text-left" onClick={() => handleViewDialog(doc)}>
                                             <p className="font-semibold">{doc.name}</p>
                                             <p className="text-sm text-muted-foreground">{getCategoryLabel(doc.category)} - {format(doc.studyDate || doc.uploadedAt, "d 'de' MMMM", { locale: es })}</p>
-                                            {getStatusIndicator(doc)}
                                         </button>
                                         <div className="flex items-center">
                                             <DropdownMenu>
@@ -349,14 +366,52 @@ export function DocumentList() {
                            {dialogMode === 'add' && (
                             <div className="grid gap-2">
                                 <Label>Archivos</Label>
-                                <div className="border-2 border-dashed rounded-lg p-6 text-center hover:border-primary transition-colors">
-                                    <UploadCloud className="mx-auto h-12 w-12 text-muted-foreground" />
-                                    <label htmlFor="file-upload" className="relative cursor-pointer rounded-md font-semibold text-primary focus-within:outline-none focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 hover:text-primary/80">
-                                        <span>Selecciona archivos para subir</span>
-                                        <input id="file-upload" name="file-upload" type="file" className="sr-only" multiple accept="image/*,application/pdf" onChange={handleFileChange} />
-                                    </label>
-                                    <p className="text-xs text-muted-foreground mt-1">Imágenes o PDF hasta {MAX_FILE_SIZE / 1024 / 1024}MB. Máximo {MAX_FILES} archivos.</p>
-                                </div>
+                                {isCameraOpen ? (
+                                    <div className="space-y-2">
+                                         <div className="relative w-full aspect-video bg-black rounded-lg overflow-hidden">
+                                            {capturedImage ? (
+                                                <img src={capturedImage} alt="Captura" className="w-full h-full object-contain"/>
+                                            ) : (
+                                                <video ref={videoRef} className="w-full h-full object-contain" autoPlay muted playsInline></video>
+                                            )}
+                                            {!hasCameraPermission && (
+                                                <div className="absolute inset-0 flex items-center justify-center bg-black/50">
+                                                    <p className="text-white text-center p-4">La cámara no está disponible. Revisa los permisos.</p>
+                                                </div>
+                                            )}
+                                         </div>
+                                        <div className="flex justify-center gap-2">
+                                            {capturedImage ? (
+                                                <>
+                                                    <Button variant="outline" onClick={() => setCapturedImage(null)}>Tomar de nuevo</Button>
+                                                    <Button onClick={handleConfirmPhoto}>Confirmar foto</Button>
+                                                </>
+                                            ) : (
+                                                <Button onClick={handleTakePhoto} disabled={!hasCameraPermission}>
+                                                    <Camera className="mr-2" /> Capturar
+                                                </Button>
+                                            )}
+                                             <Button variant="ghost" onClick={() => setIsCameraOpen(false)}>Cancelar</Button>
+                                        </div>
+                                         <canvas ref={canvasRef} className="hidden"></canvas>
+                                    </div>
+                                ) : (
+                                    <div className="flex gap-2">
+                                        <label htmlFor="file-upload" className="flex-1 cursor-pointer">
+                                            <div className="border-2 border-dashed rounded-lg p-6 text-center hover:border-primary transition-colors h-full flex flex-col justify-center items-center">
+                                                <UploadCloud className="h-10 w-10 text-muted-foreground" />
+                                                <span className="mt-2 text-sm font-semibold text-primary">Selecciona archivos</span>
+                                                <p className="text-xs text-muted-foreground mt-1">Imágenes o PDF</p>
+                                                <input id="file-upload" name="file-upload" type="file" className="sr-only" multiple accept="image/*,application/pdf" onChange={handleFileChange} />
+                                            </div>
+                                        </label>
+                                        <Button variant="outline" onClick={() => setIsCameraOpen(true)} className="h-auto flex-1 flex-col p-6">
+                                            <Camera className="h-10 w-10 text-muted-foreground" />
+                                            <span className="mt-2 text-sm font-semibold text-primary">Tomar Foto</span>
+                                            <p className="text-xs text-muted-foreground mt-1">Usa tu cámara</p>
+                                        </Button>
+                                    </div>
+                                )}
                                 {files.length > 0 && (
                                     <div className="mt-4 space-y-2">
                                         <h4 className="font-medium text-sm">Archivos seleccionados:</h4>
@@ -389,79 +444,21 @@ export function DocumentList() {
 
                 {viewingDoc && (
                     <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
-                        <DialogContent className="sm:max-w-3xl">
+                        <DialogContent className="sm:max-w-xl">
                             <DialogHeader>
                                 <DialogTitle>{viewingDoc.name}</DialogTitle>
                                 <DialogDescription>
                                     {getCategoryLabel(viewingDoc.category)} &bull; Fecha: {format(viewingDoc.studyDate || viewingDoc.uploadedAt, "d 'de' MMMM, yyyy", { locale: es })}
                                 </DialogDescription>
                             </DialogHeader>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-4 max-h-[70vh] overflow-y-auto pr-4">
-                                <div className="space-y-4">
-                                    <h3 className="font-semibold text-lg">Imágenes del Documento</h3>
-                                     <div className="space-y-2">
-                                        {viewingDoc.urls.map((url, i) => (
-                                            <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="block border rounded-lg overflow-hidden hover:opacity-80 transition-opacity">
-                                                <img src={url} alt={`Página ${i+1}`} className="w-full h-auto object-contain" data-ai-hint="medical document"/>
-                                            </a>
-                                        ))}
-                                    </div>
-                                </div>
-                                <div className="space-y-4">
-                                     <h3 className="font-semibold text-lg flex items-center gap-2"><BrainCircuit className="h-5 w-5 text-primary"/> Resultados por IA</h3>
-                                     {viewingDoc.processingStatus === 'completed' && viewingDoc.labResults && viewingDoc.labResults.length > 0 ? (
-                                        <div className="space-y-4 text-sm p-4 bg-muted/50 rounded-lg">
-                                           <Table>
-                                                <TableHeader>
-                                                    <TableRow>
-                                                        <TableHead>Examen</TableHead>
-                                                        <TableHead>Valor</TableHead>
-                                                        <TableHead>Referencia</TableHead>
-                                                    </TableRow>
-                                                </TableHeader>
-                                                <TableBody>
-                                                    {viewingDoc.labResults.map((result, i) => (
-                                                        <TableRow key={i}>
-                                                            <TableCell className="font-medium">{result.examen}</TableCell>
-                                                            <TableCell>{result.valor} {result.unidades}</TableCell>
-                                                            <TableCell>{result.rangoDeReferencia}</TableCell>
-                                                        </TableRow>
-                                                    ))}
-                                                </TableBody>
-                                            </Table>
-                                             <Alert variant="default" className="mt-4">
-                                                <AlertTriangle className="h-4 w-4" />
-                                                <AlertTitle>Descargo de Responsabilidad</AlertTitle>
-                                                <AlertDescription>
-                                                   Estos datos fueron extraídos por IA y son solo para fines informativos. Compara siempre con el documento original y consulta a un profesional médico.
-                                                </AlertDescription>
-                                            </Alert>
-                                        </div>
-                                     ) : (
-                                        <div className="text-center p-6 border-2 border-dashed rounded-lg">
-                                            {viewingDoc.processingStatus === 'processing' ? (
-                                                <>
-                                                    <Loader2 className="mx-auto h-8 w-8 text-muted-foreground animate-spin" />
-                                                    <p className="mt-2 text-sm text-muted-foreground">Los datos se están procesando...</p>
-                                                    <p className="mt-1 text-xs text-muted-foreground">Esto puede tardar unos minutos.</p>
-                                                </>
-                                            ) : (
-                                                <>
-                                                    {viewingDoc.processingStatus === 'error' ? (
-                                                        <AlertTriangle className="mx-auto h-8 w-8 text-destructive" />
-                                                    ) : (
-                                                        <History className="mx-auto h-8 w-8 text-muted-foreground" />
-                                                    )}
-                                                    <p className="mt-2 text-sm font-semibold">
-                                                        {viewingDoc.processingStatus === 'error' ? 'Error en el procesamiento' : 'Análisis Pendiente'}
-                                                    </p>
-                                                    <p className="mt-1 text-xs text-muted-foreground">
-                                                        {viewingDoc.processingError || 'La IA no pudo analizar este documento o aún no ha sido procesado.'}
-                                                    </p>
-                                                </>
-                                            )}
-                                        </div>
-                                     )}
+                            <div className="space-y-4 py-4 max-h-[70vh] overflow-y-auto pr-4">
+                                <h3 className="font-semibold text-lg">Imágenes del Documento</h3>
+                                 <div className="space-y-2">
+                                    {viewingDoc.urls.map((url, i) => (
+                                        <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="block border rounded-lg overflow-hidden hover:opacity-80 transition-opacity">
+                                            <img src={url} alt={`Página ${i+1}`} className="w-full h-auto object-contain" data-ai-hint="medical document"/>
+                                        </a>
+                                    ))}
                                 </div>
                             </div>
                              <DialogFooter>

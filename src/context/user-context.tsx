@@ -6,6 +6,7 @@ import type { PersonalInfo, HealthInfo, Appointment, Document as DocumentType, M
 import { auth, db } from '@/lib/firebase';
 import { onAuthStateChanged, User, signOut, updateProfile } from 'firebase/auth';
 import { doc, getDoc, setDoc, Timestamp, collection, addDoc, updateDoc, deleteDoc, query, orderBy, onSnapshot, getDocs } from 'firebase/firestore';
+import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { useToast } from '@/hooks/use-toast';
 
 type SerializablePersonalInfo = Omit<PersonalInfo, 'dateOfBirth'> & {
@@ -109,15 +110,6 @@ const initialAnonymousHealthInfo: HealthInfo = {
     emergencyContacts: [],
 };
 
-const fileToDataUri = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-    });
-};
-
 export const UserProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [personalInfo, setPersonalInfo] = useState<PersonalInfo | null>(null);
@@ -164,6 +156,9 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         const medicationsData = await getCollection<Medication>(currentUser.uid, 'medications', 'name', 'asc');
         setMedications(medicationsData);
 
+        const documentsData = await getCollection<SerializableDocument>(currentUser.uid, 'documents', 'uploadedAt');
+        setDocuments(documentsData.map(d => ({...d, uploadedAt: d.uploadedAt.toDate(), studyDate: d.studyDate?.toDate()} as DocumentType)));
+
     } catch (error) {
        console.error("Failed to manage user profile:", error);
        toast({ variant: 'destructive', title: 'Error de Carga', description: 'No se pudieron cargar los datos del perfil.'});
@@ -191,38 +186,10 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       }
     });
 
-    let unsubscribeDocuments: () => void = () => {};
-    if (user) {
-        const q = query(collection(db, 'users', user.uid, 'documents'), orderBy('uploadedAt', 'desc'));
-        unsubscribeDocuments = onSnapshot(q, (snapshot) => {
-            const docs = snapshot.docs.map(doc => {
-                const data = doc.data() as SerializableDocument;
-                // Basic validation to prevent crashes from malformed data.
-                if (!data.uploadedAt || !(data.uploadedAt instanceof Timestamp)) {
-                    console.warn(`Document ${doc.id} has malformed or missing 'uploadedAt', skipping.`);
-                    return null;
-                }
-                return {
-                    ...data,
-                    id: doc.id,
-                    uploadedAt: data.uploadedAt.toDate(),
-                    studyDate: data.studyDate?.toDate()
-                } as DocumentType;
-            }).filter(Boolean) as DocumentType[];
-            setDocuments(docs);
-        }, (error) => {
-            console.error("Error listening to documents collection: ", error);
-            toast({ variant: "destructive", title: "Error", description: "No se pudieron sincronizar los documentos."});
-        });
-    }
-
     return () => {
         unsubscribeAuth();
-        if (unsubscribeDocuments) {
-            unsubscribeDocuments();
-        }
     };
-  }, [loadUserData, user, toast]);
+  }, [loadUserData]);
   
   const signOutUser = async () => {
     try { await signOut(auth); } 
@@ -270,24 +237,33 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       setAppointments(prev => prev.filter(app => app.id !== id));
   };
   
-
   const addDocument = async (docData: Omit<DocumentType, 'id'>) => {
-    if (!user) return;
+    if (!user || !docData.files || docData.files.length === 0) return;
 
-    const dataUris = await Promise.all((docData.files || []).map(fileToDataUri));
+    const storage = getStorage();
+    const uploadPromises = docData.files.map(file => {
+        const storageRef = ref(storage, `users/${user.uid}/documents/${Date.now()}_${file.name}`);
+        return uploadBytes(storageRef, file).then(snapshot => getDownloadURL(snapshot.ref));
+    });
 
-    const dataToSave: any = { 
+    const urls = await Promise.all(uploadPromises);
+
+    const dataToSave: Omit<SerializableDocument, 'id'> = {
         name: docData.name,
         category: docData.category,
-        urls: dataUris,
+        urls,
         uploadedAt: Timestamp.fromDate(docData.uploadedAt),
         studyDate: docData.studyDate ? Timestamp.fromDate(docData.studyDate) : Timestamp.fromDate(docData.uploadedAt),
-        processingStatus: 'pending',
     };
     
-    await addDoc(collection(db, 'users', user.uid, 'documents'), dataToSave);
-
-    toast({ title: "Documento subido", description: "Se está procesando para extraer los datos. Esto puede tardar unos minutos." });
+    const docRef = await addDoc(collection(db, 'users', user.uid, 'documents'), dataToSave);
+    const newDoc: DocumentType = {
+        ...docData,
+        id: docRef.id,
+        urls: urls,
+    };
+    delete newDoc.files; // Remove files from the object that is stored in state
+    setDocuments(prev => [...prev, newDoc].sort((a,b) => b.uploadedAt.getTime() - a.uploadedAt.getTime()));
   };
 
   const updateDocument = async (id: string, docData: Partial<Omit<DocumentType, 'id' | 'files'>>) => {
@@ -300,11 +276,13 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     }
     
     await updateDoc(docRef, dataToUpdate);
+    setDocuments(prev => prev.map(d => d.id === id ? { ...d, ...docData } as DocumentType : d));
   };
 
   const deleteDocument = async (id: string) => {
       if (!user) return;
       await deleteDoc(doc(db, 'users', user.uid, 'documents', id));
+      setDocuments(prev => prev.filter(d => d.id !== id));
   };
 
   const addMedication = async (med: Omit<Medication, 'id'>) => {
