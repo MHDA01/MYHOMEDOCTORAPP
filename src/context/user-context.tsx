@@ -290,16 +290,6 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     if (docData.studyDate) {
       dataToUpdate.studyDate = Timestamp.fromDate(new Date(docData.studyDate));
     }
-    
-    // Handle null values to delete fields
-    Object.keys(dataToUpdate).forEach(key => {
-        if (dataToUpdate[key] === undefined) {
-            delete dataToUpdate[key];
-        } else if (dataToUpdate[key] === null) {
-            dataToUpdate[key] = null;
-        }
-    });
-
     await updateDoc(docRef, dataToUpdate);
   };
 

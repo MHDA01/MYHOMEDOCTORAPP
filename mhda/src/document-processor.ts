@@ -6,7 +6,7 @@
  * performs OCR, extracts structured lab values, and updates the document.
  */
 import * as logger from "firebase-functions/logger";
-import { onDocumentUpdated } from "firebase-functions/v2/firestore";
+import { onDocumentCreated } from "firebase-functions/v2/firestore";
 import { genkit, z } from "genkit";
 import { googleAI } from "@genkit-ai/googleai";
 import { defineFlow, AIFlowError, run } from "@genkit-ai/flow";
@@ -90,7 +90,7 @@ ${transcription}
   }
 );
 
-export const processdocument = onDocumentUpdated(
+export const processdocument = onDocumentCreated(
   {
     document: "users/{userId}/documents/{docId}",
     timeoutSeconds: 300,
@@ -98,8 +98,12 @@ export const processdocument = onDocumentUpdated(
   },
   async (event) => {
     const {userId, docId} = event.params;
-    const snapAfter = event.data?.after;
-    const data = snapAfter?.data();
+    const snap = event.data;
+    if (!snap) {
+        logger.log(`No data associated with the event for document ${docId}.`);
+        return;
+    }
+    const data = snap.data();
 
     // Guard: Only proceed if the status is 'pending'.
     if (data?.processingStatus !== 'pending' || !data.urls || data.urls.length === 0) {
@@ -108,7 +112,7 @@ export const processdocument = onDocumentUpdated(
     }
 
     logger.info(`Processing document ${docId} for user ${userId}`);
-    const docRef = snapAfter.ref;
+    const docRef = snap.ref;
 
     try {
       await docRef.update({ processingStatus: 'processing' });
