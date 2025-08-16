@@ -1,10 +1,10 @@
 
 'use client';
 
-import { useState, useEffect, useContext, useCallback } from 'react';
+import { useState, useContext } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { FileText, PlusCircle, MoreVertical, FilePenLine, Trash2, Loader2, UploadCloud, X, BrainCircuit, AlertTriangle, Eye, Download, TestTube2, History, RefreshCw } from "lucide-react";
+import { FileText, PlusCircle, MoreVertical, FilePenLine, Trash2, Loader2, UploadCloud, X, BrainCircuit, AlertTriangle, Eye, Download, History, RefreshCw } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose, DialogDescription } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
@@ -114,7 +114,7 @@ export function DocumentList() {
         
         try {
             if (dialogMode === 'add') {
-                const docData = { name, category, studyDate, uploadedAt: new Date(), files, consent: true };
+                const docData = { name, category, studyDate, uploadedAt: new Date(), files };
                 await addDocument(docData);
                 toast({ title: "Documento guardado con éxito." });
             } else if (selectedDoc) {
@@ -133,10 +133,21 @@ export function DocumentList() {
     
     const handleRetryAnalysis = async (docId: string) => {
         try {
-            await updateDocument(docId, { processingStatus: 'pending' });
-            if (viewingDoc && viewingDoc.id === docId) {
-                setViewingDoc({ ...viewingDoc, processingStatus: 'processing' });
-            }
+            // "Reset" the document's analysis fields to trigger a new processing run
+            await updateDocument(docId, { 
+                processingStatus: 'pending',
+                processingError: null,
+                labResults: null,
+                transcription: null,
+            });
+            
+            // Optimistically update the local state to show "processing" immediately
+            setViewingDoc(prevDoc => 
+                prevDoc && prevDoc.id === docId 
+                    ? { ...prevDoc, processingStatus: 'processing', processingError: undefined, labResults: undefined } 
+                    : prevDoc
+            );
+            
             toast({ title: "Reintentando análisis", description: "Se ha enviado el documento para ser procesado nuevamente." });
         } catch (error) {
             toast({ variant: 'destructive', title: "Error", description: "No se pudo reintentar el análisis." });
@@ -462,21 +473,25 @@ export function DocumentList() {
                                                 </>
                                             ) : (
                                                 <>
-                                                    {viewingDoc.processingStatus === 'error' ? (
-                                                        <AlertTriangle className="mx-auto h-8 w-8 text-destructive" />
-                                                    ) : (
-                                                        <History className="mx-auto h-8 w-8 text-muted-foreground" />
-                                                    )}
-                                                    <p className="mt-2 text-sm font-semibold">
-                                                        {viewingDoc.processingStatus === 'error' ? 'Error en el procesamiento' : 'Análisis Pendiente'}
-                                                    </p>
-                                                    <p className="mt-1 text-xs text-muted-foreground">
-                                                        {viewingDoc.processingError || 'La IA no pudo analizar este documento o aún no ha sido procesado.'}
-                                                    </p>
-                                                    <Button size="sm" variant="outline" className="mt-4" onClick={() => handleRetryAnalysis(viewingDoc.id)}>
-                                                        <RefreshCw className="mr-2 h-4 w-4"/>
-                                                        Reintentar Análisis
-                                                    </Button>
+                                                    {viewingDoc.processingStatus === 'error' || viewingDoc.processingStatus === 'pending' ? (
+                                                        <>
+                                                            {viewingDoc.processingStatus === 'error' ? (
+                                                                <AlertTriangle className="mx-auto h-8 w-8 text-destructive" />
+                                                            ) : (
+                                                                <History className="mx-auto h-8 w-8 text-muted-foreground" />
+                                                            )}
+                                                            <p className="mt-2 text-sm font-semibold">
+                                                                {viewingDoc.processingStatus === 'error' ? 'Error en el procesamiento' : 'Análisis Pendiente'}
+                                                            </p>
+                                                            <p className="mt-1 text-xs text-muted-foreground">
+                                                                {viewingDoc.processingError || 'La IA no pudo analizar este documento o aún no ha sido procesado.'}
+                                                            </p>
+                                                            <Button size="sm" variant="outline" className="mt-4" onClick={() => viewingDoc.id && handleRetryAnalysis(viewingDoc.id)}>
+                                                                <RefreshCw className="mr-2 h-4 w-4"/>
+                                                                Reintentar Análisis
+                                                            </Button>
+                                                        </>
+                                                    ) : null}
                                                 </>
                                             )}
                                         </div>

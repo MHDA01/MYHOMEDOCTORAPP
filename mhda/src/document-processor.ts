@@ -2,16 +2,15 @@
 "use strict";
 /**
  * @fileoverview Cloud Function to process medical documents using Genkit AI.
- * This function triggers on creation of a new document in Firestore,
+ * This function triggers on creation or update of a document in Firestore,
  * performs OCR, extracts structured lab values, and updates the document.
  */
 import * as logger from "firebase-functions/logger";
-import {onDocumentUpdated} from "firebase-functions/v2/firestore";
-
-import {genkit, z} from "genkit";
-import {googleAI} from "@genkit-ai/googleai";
-import {defineFlow, AIFlowError, run} from "@genkit-ai/flow";
-import {getFirestore} from "firebase-admin/firestore";
+import { onDocumentUpdated } from "firebase-functions/v2/firestore";
+import { genkit, z } from "genkit";
+import { googleAI } from "@genkit-ai/googleai";
+import { defineFlow, AIFlowError, run } from "@genkit-ai/flow";
+import { getFirestore } from "firebase-admin/firestore";
 
 // Initialize Genkit with the Google AI plugin
 genkit({
@@ -91,7 +90,7 @@ ${transcription}
   }
 );
 
-export const onupdatedocument = onDocumentUpdated(
+export const processdocument = onDocumentUpdated(
   {
     document: "users/{userId}/documents/{docId}",
     timeoutSeconds: 300,
@@ -102,14 +101,9 @@ export const onupdatedocument = onDocumentUpdated(
     const snapAfter = event.data?.after;
     const data = snapAfter?.data();
 
-    if (!data) {
-      logger.log(`No data for document ${docId}, skipping.`);
-      return;
-    }
-    
-    // This is the main guard: only proceed if the status is 'pending'.
-    if (data.processingStatus !== 'pending') {
-      logger.log(`Document ${docId} status is '${data.processingStatus}', not 'pending'. Skipping.`);
+    // Guard: Only proceed if the status is 'pending'.
+    if (data?.processingStatus !== 'pending' || !data.urls || data.urls.length === 0) {
+      logger.log(`Document ${docId} status is not 'pending' or has no URLs. Skipping.`);
       return;
     }
 
@@ -126,7 +120,7 @@ export const onupdatedocument = onDocumentUpdated(
         transcription: result.transcription,
         labResults: result.labResults.results, // Save the array of results
         processingStatus: 'completed',
-        processingError: null, // Clear any previous error
+        processingError: null,
       });
 
       logger.info(`Successfully updated document ${docId} with extracted lab values.`);

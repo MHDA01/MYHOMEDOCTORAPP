@@ -14,9 +14,9 @@ export type Document = {
   files?: File[]; // Only for frontend state, not stored in Firestore
   urls: string[]; // URLs pointing to files in Cloud Storage
   studyDate?: Date;
-  labResults?: LabResult[];
-  transcription?: string; // Full text from OCR
-  processingError?: string; // To store any error message during processing
+  labResults?: LabResult[] | null;
+  transcription?: string | null;
+  processingError?: string | null;
   processingStatus?: 'pending' | 'processing' | 'completed' | 'error'; // For traceability
 };
 
@@ -65,5 +65,3 @@ export type PersonalInfo = {
   insuranceProvider: string;
   insuranceProviderName?: string;
 }
-
-    

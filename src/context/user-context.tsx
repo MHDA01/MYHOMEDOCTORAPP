@@ -5,7 +5,7 @@ import { createContext, useState, useEffect, ReactNode, useCallback } from 'reac
 import type { PersonalInfo, HealthInfo, Appointment, Document as DocumentType, Medication } from '@/lib/types';
 import { auth, db } from '@/lib/firebase';
 import { onAuthStateChanged, User, signOut, updateProfile } from 'firebase/auth';
-import { doc, getDoc, setDoc, Timestamp, collection, getDocs, addDoc, updateDoc, deleteDoc, query, orderBy, onSnapshot } from 'firebase/firestore';
+import { doc, getDoc, setDoc, Timestamp, collection, addDoc, updateDoc, deleteDoc, query, orderBy, onSnapshot } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 
 type SerializablePersonalInfo = Omit<PersonalInfo, 'dateOfBirth'> & {
@@ -29,12 +29,6 @@ type UserDocumentData = {
 type UserDocument = {
     personalInfo: PersonalInfo;
     healthInfo: HealthInfo;
-}
-
-async function getCollection<T>(userId: string, collectionName: string, orderByField: string, orderDirection: 'asc' | 'desc' = 'desc'): Promise<T[]> {
-    const q = query(collection(db, 'users', userId, collectionName), orderBy(orderByField, orderDirection));
-    const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as T));
 }
 
 async function getUserDocument(userId: string): Promise<UserDocument | null> {
@@ -177,6 +171,13 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
        setLoading(false);
     }
   }, [toast]);
+  
+  async function getCollection<T>(userId: string, collectionName: string, orderByField: string, orderDirection: 'asc' | 'desc' = 'desc'): Promise<T[]> {
+      const q = query(collection(db, 'users', userId, collectionName), orderBy(orderByField, orderDirection));
+      const snapshot = await getDocs(q);
+      return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as T));
+  }
+
 
   useEffect(() => {
     const unsubscribeAuth = onAuthStateChanged(auth, async (currentUser) => {
@@ -239,10 +240,9 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
 
   const addAppointment = async (appointment: Omit<Appointment, 'id' | 'notified'>) => {
       if (!user) return;
-      const docRef = collection(db, 'users', user.uid, 'appointments');
-      await addDoc(docRef, { ...appointment, date: Timestamp.fromDate(appointment.date), notified: false });
-      const newAppointments = [...appointments, { ...appointment, id: 'temp-id', date: appointment.date, notified: false }];
-      setAppointments(newAppointments.sort((a,b) => b.date.getTime() - a.date.getTime()));
+      const docRef = await addDoc(collection(db, 'users', user.uid, 'appointments'), { ...appointment, date: Timestamp.fromDate(appointment.date), notified: false });
+      const newAppointment = { ...appointment, id: docRef.id, date: appointment.date, notified: false };
+      setAppointments(prev => [...prev, newAppointment].sort((a,b) => b.date.getTime() - a.date.getTime()));
   };
   
   const updateAppointment = async (id: string, appointment: Partial<Omit<Appointment, 'id'>>) => {
@@ -284,13 +284,21 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
 
   const updateDocument = async (id: string, docData: Partial<Omit<DocumentType, 'id' | 'files'>>) => {
     if (!user) return;
+    const docRef = doc(db, 'users', user.uid, 'documents', id);
     const dataToUpdate: { [key: string]: any } = { ...docData };
     
     if (docData.studyDate) {
       dataToUpdate.studyDate = Timestamp.fromDate(new Date(docData.studyDate));
     }
+    
+    // Handle null values to delete fields
+    Object.keys(dataToUpdate).forEach(key => {
+        if (dataToUpdate[key] === undefined) {
+            delete dataToUpdate[key];
+        }
+    });
 
-    await updateDoc(doc(db, 'users', user.uid, 'documents', id), dataToUpdate);
+    await updateDoc(docRef, dataToUpdate);
   };
 
   const deleteDocument = async (id: string) => {
