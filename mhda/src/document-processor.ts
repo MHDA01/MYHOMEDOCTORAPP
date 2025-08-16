@@ -2,7 +2,7 @@
 "use strict";
 /**
  * @fileoverview Cloud Function to process medical documents using Genkit AI.
- * This function triggers on creation or update of a document in Firestore,
+ * This function triggers on creation of a document in Firestore,
  * performs OCR, extracts structured lab values, and updates the document.
  */
 import * as logger from "firebase-functions/logger";
