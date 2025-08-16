@@ -62,59 +62,43 @@ export function DocumentList() {
     };
     
     useEffect(() => {
-        if (!isCameraOpen) {
-            stopCameraStream();
-            return;
-        }
-    
-        let stream: MediaStream;
-        const getCameraPermission = async () => {
+      let stream: MediaStream | null = null;
+      const getCameraPermission = async () => {
+        if (isCameraOpen) {
           try {
-            stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+            stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
             setHasCameraPermission(true);
             if (videoRef.current) {
-                videoRef.current.srcObject = stream;
+              videoRef.current.srcObject = stream;
             }
           } catch (error) {
-            console.error('Error accessing camera:', error);
+            console.error("Error accessing camera:", error);
             setHasCameraPermission(false);
             toast({
-                variant: 'destructive',
-                title: 'Acceso a la cámara denegado',
-                description: 'Por favor, habilita los permisos de cámara en tu navegador.',
+              variant: "destructive",
+              title: "Acceso a la cámara denegado",
+              description: "Por favor, habilita los permisos de cámara en tu navegador.",
             });
           }
-        };
-    
-        getCameraPermission();
-    
-        return () => {
-            if (stream) {
-                stream.getTracks().forEach(track => track.stop());
-            }
-        };
+        }
+      };
+      getCameraPermission();
+      return () => {
+        if (stream) {
+          stream.getTracks().forEach(track => track.stop());
+        }
+      };
     }, [isCameraOpen, toast]);
+
 
     const resetForm = () => {
         setName('');
         setCategory('Lab Result');
         setStudyDate(new Date());
         setSelectedFile(null);
-        setIsCameraOpen(false);
         setCapturedImage(null);
-        setIsSaving(false);
+        setIsCameraOpen(false);
     }
-
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files && e.target.files.length > 0) {
-            const file = e.target.files[0];
-             if (file.size > MAX_FILE_SIZE) {
-                toast({ variant: "destructive", title: `El archivo supera el límite de ${MAX_FILE_SIZE / 1024 / 1024}MB.` });
-                return;
-            }
-            setSelectedFile(file);
-        }
-    };
 
     const handleOpenDialog = (mode: DialogMode, doc?: DocumentType) => {
         setDialogMode(mode);
@@ -124,8 +108,11 @@ export function DocumentList() {
             setName(doc.name);
             setCategory(doc.category);
             setStudyDate(doc.studyDate || doc.uploadedAt);
+            setIsCameraOpen(false); // No camera in edit mode
         } else {
+            setSelectedDoc(null);
             setStudyDate(new Date());
+            setIsCameraOpen(true); // Open camera directly in add mode
         }
         setIsDialogOpen(true);
     };
@@ -151,6 +138,7 @@ export function DocumentList() {
             const dataUrl = canvas.toDataURL('image/png');
             setCapturedImage(dataUrl);
             stopCameraStream();
+            setIsCameraOpen(false); // Close camera view after taking photo
         }
     }
     
@@ -160,22 +148,28 @@ export function DocumentList() {
                 .then(res => res.blob())
                 .then(blob => {
                     const file = new File([blob], `captura-${Date.now()}.png`, { type: 'image/png' });
-                    if (file.size > MAX_FILE_SIZE) {
+                     if (file.size > MAX_FILE_SIZE) {
                         toast({ variant: "destructive", title: `La foto supera el límite de ${MAX_FILE_SIZE / 1024 / 1024}MB.` });
                         return;
                     }
                     setSelectedFile(file);
-                    setCapturedImage(null);
-                    setIsCameraOpen(false);
                 });
         }
     }
 
+    // Effect to auto-confirm photo once captured
+    useEffect(() => {
+        if (capturedImage) {
+            handleConfirmPhoto();
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [capturedImage]);
+
+
     const handleSubmit = async () => {
         if (dialogMode === 'add') {
-            // Validation for 'add' mode
             if (!name || !category || !studyDate || !selectedFile) {
-                toast({ variant: 'destructive', title: "Formulario incompleto", description: "Por favor, completa todos los campos y selecciona un archivo." });
+                toast({ variant: 'destructive', title: "Formulario incompleto", description: "Por favor, completa todos los campos y toma una foto." });
                 return;
             }
             
@@ -187,13 +181,11 @@ export function DocumentList() {
                 setIsDialogOpen(false);
             } catch (error) {
                 toast({ variant: 'destructive', title: "Error al guardar el documento.", description: (error as Error).message });
-                console.error("Error saving document: ", error);
             } finally {
                 setIsSaving(false);
             }
 
         } else if (dialogMode === 'edit' && selectedDoc) {
-             // Validation for 'edit' mode
             if (!name || !category || !studyDate) {
                 toast({ variant: 'destructive', title: "Formulario incompleto", description: "Por favor, completa todos los campos." });
                 return;
@@ -207,7 +199,6 @@ export function DocumentList() {
                 setIsDialogOpen(false);
             } catch (error) {
                 toast({ variant: 'destructive', title: "Error al actualizar el documento.", description: (error as Error).message });
-                 console.error("Error updating document: ", error);
             } finally {
                  setIsSaving(false);
             }
@@ -223,10 +214,6 @@ export function DocumentList() {
         };
         return labels[category];
     };
-
-    const isAddFormValid = !!name && !!category && !!studyDate && !!selectedFile;
-    const isEditFormValid = !!name && !!category && !!studyDate;
-    const isButtonDisabled = isSaving || (dialogMode === 'add' && !isAddFormValid) || (dialogMode === 'edit' && !isEditFormValid);
     
     const groupedDocuments = documents.reduce((acc, doc) => {
         const year = format(doc.studyDate || doc.uploadedAt, 'yyyy');
@@ -262,16 +249,16 @@ export function DocumentList() {
                     <FileText className="h-6 w-6 text-primary" />
                     <CardTitle className="font-headline text-xl">Documentos Médicos</CardTitle>
                 </div>
-                <CardDescription>Sube y gestiona tus exámenes, recetas e informes.</CardDescription>
+                <CardDescription>Añade y gestiona tus exámenes, recetas e informes tomando una foto.</CardDescription>
             </CardHeader>
             <CardContent>
                 {documents.length === 0 ? (
                      <div className="text-center py-10 border-2 border-dashed rounded-lg">
-                        <UploadCloud className="mx-auto h-12 w-12 text-muted-foreground" />
+                        <Camera className="mx-auto h-12 w-12 text-muted-foreground" />
                         <h3 className="mt-2 text-sm font-semibold text-gray-900">No hay documentos</h3>
-                        <p className="mt-1 text-sm text-gray-500">Empieza subiendo tu primer documento.</p>
+                        <p className="mt-1 text-sm text-gray-500">Empieza tomando una foto de tu primer documento.</p>
                         <div className="mt-6">
-                            <Button onClick={() => handleOpenDialog('add')}><PlusCircle className="mr-2"/>Subir Documento</Button>
+                            <Button onClick={() => handleOpenDialog('add')}><PlusCircle className="mr-2"/>Añadir con Foto</Button>
                         </div>
                     </div>
                 ) : (
@@ -322,28 +309,28 @@ export function DocumentList() {
                 )}
             </CardContent>
             <CardFooter>
-                 <Dialog open={isDialogOpen} onOpenChange={(open) => { if(!isSaving) setIsDialogOpen(open) }}>
+                 <Dialog open={isDialogOpen} onOpenChange={(open) => { if(!isSaving) { setIsDialogOpen(open); if(!open) stopCameraStream(); }}}>
                     <DialogTrigger asChild>
-                         <Button onClick={() => handleOpenDialog('add')}><PlusCircle className="mr-2"/>Subir Documento</Button>
+                         <Button onClick={() => handleOpenDialog('add')}><PlusCircle className="mr-2"/>Añadir con Foto</Button>
                     </DialogTrigger>
-                    <DialogContent modal={true} className="sm:max-w-2xl">
+                    <DialogContent modal={true} className="sm:max-w-md">
                         <DialogHeader>
-                            <DialogTitle>{dialogMode === 'add' ? 'Subir Nuevo Documento' : 'Editar Documento'}</DialogTitle>
-                            <DialogDescription>
-                                {dialogMode === 'add' ? 'Sube una imagen de tu informe, receta o resultado.' : 'Edita los detalles de tu documento.'}
+                            <DialogTitle>{dialogMode === 'add' ? 'Añadir Nuevo Documento' : 'Editar Documento'}</DialogTitle>
+                             <DialogDescription>
+                                {dialogMode === 'add' ? 'Completa los datos y toma una foto del documento.' : 'Edita los detalles de tu documento.'}
                             </DialogDescription>
                         </DialogHeader>
-                         <div className="grid gap-6 py-4 max-h-[75vh] overflow-y-auto pr-4">
-                            <div className="grid gap-2">
+                         <div className="grid gap-4 py-4 max-h-[75vh] overflow-y-auto pr-4">
+                           <div className="grid gap-2">
                                 <Label htmlFor="doc-name">Nombre del Documento</Label>
-                                <Input id="doc-name" placeholder="Ej: Examen de Sangre, Receta Oftalmológica" value={name} onChange={e => setName(e.target.value)} />
+                                <Input id="doc-name" placeholder="Ej: Examen de Sangre" value={name} onChange={e => setName(e.target.value)} />
                             </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div className="grid gap-2">
                                     <Label htmlFor="category">Categoría</Label>
                                     <Select value={category} onValueChange={(value: DocumentType['category']) => setCategory(value)}>
                                         <SelectTrigger id="category">
-                                            <SelectValue placeholder="Selecciona una categoría" />
+                                            <SelectValue placeholder="Selecciona" />
                                         </SelectTrigger>
                                         <SelectContent>
                                             <SelectItem value="Lab Result">Resultado de Laboratorio</SelectItem>
@@ -362,7 +349,7 @@ export function DocumentList() {
                                             className={cn("w-full justify-start text-left font-normal", !studyDate && "text-muted-foreground")}
                                             >
                                             <CalendarIcon className="mr-2 h-4 w-4" />
-                                            {studyDate ? format(studyDate, "PPP", { locale: es }) : <span>Elige una fecha</span>}
+                                            {studyDate ? format(studyDate, "PPP", { locale: es }) : <span>Elige fecha</span>}
                                             </Button>
                                         </PopoverTrigger>
                                         <PopoverContent className="w-auto p-0" align="start" portal={false}>
@@ -381,73 +368,39 @@ export function DocumentList() {
                                     </Popover>
                                 </div>
                             </div>
-
                            {dialogMode === 'add' && (
-                            <div className="grid gap-2">
-                                <Label>Archivo (1 archivo, solo imágenes)</Label>
+                            <div className="space-y-2">
+                                <Label>Foto del Documento</Label>
                                 {isCameraOpen ? (
-                                    <div className="space-y-2">
-                                         <div className="relative w-full aspect-video bg-black rounded-lg overflow-hidden">
-                                            {capturedImage ? (
-                                                <img src={capturedImage} alt="Captura" className="w-full h-full object-contain"/>
-                                            ) : (
-                                                <>
-                                                    <video ref={videoRef} className="w-full h-full object-contain" autoPlay muted playsInline></video>
-                                                    {!hasCameraPermission && (
-                                                        <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/50 text-white p-4 text-center">
-                                                            <Camera className="h-8 w-8 mb-2" />
-                                                            <p className="font-semibold">Cámara no disponible</p>
-                                                            <p className="text-sm">Revisa los permisos de tu navegador.</p>
-                                                        </div>
-                                                    )}
-                                                </>
-                                            )}
-                                         </div>
-                                        <div className="flex justify-center gap-2">
-                                            {capturedImage ? (
-                                                <>
-                                                    <Button variant="outline" onClick={() => { setCapturedImage(null); }}>Tomar de nuevo</Button>
-                                                    <Button onClick={handleConfirmPhoto}>Confirmar foto</Button>
-                                                </>
-                                            ) : (
-                                                <Button onClick={handleTakePhoto} disabled={!hasCameraPermission}>
-                                                    <Camera className="mr-2" /> Capturar
-                                                </Button>
-                                            )}
-                                             <Button variant="ghost" onClick={() => { setIsCameraOpen(false); setCapturedImage(null); }}>Cancelar</Button>
+                                     <div className="relative w-full aspect-video bg-black rounded-lg overflow-hidden">
+                                        <video ref={videoRef} className="w-full h-full object-contain" autoPlay muted playsInline></video>
+                                        {!hasCameraPermission && (
+                                            <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/50 text-white p-4 text-center">
+                                                <Camera className="h-8 w-8 mb-2" />
+                                                <p className="font-semibold">Cámara no disponible</p>
+                                                <p className="text-sm">Revisa los permisos de tu navegador.</p>
+                                            </div>
+                                        )}
+                                        <div className="absolute bottom-4 left-1/2 -translate-x-1/2">
+                                            <Button onClick={handleTakePhoto} disabled={!hasCameraPermission} size="lg" className="rounded-full w-16 h-16">
+                                                <Camera className="h-8 w-8"/>
+                                            </Button>
                                         </div>
                                          <canvas ref={canvasRef} className="hidden"></canvas>
                                     </div>
+                                ) : capturedImage ? (
+                                    <div className="relative w-full aspect-video bg-black rounded-lg overflow-hidden">
+                                        <img src={capturedImage} alt="Captura" className="w-full h-full object-contain"/>
+                                        <div className="absolute top-2 right-2">
+                                            <Button variant="destructive" size="icon" onClick={() => { setCapturedImage(null); setSelectedFile(null); setIsCameraOpen(true);}}>
+                                                <X className="h-4 w-4" />
+                                            </Button>
+                                        </div>
+                                    </div>
                                 ) : (
-                                    <>
-                                        {selectedFile ? (
-                                             <div className="mt-2 space-y-2">
-                                                <h4 className="font-medium text-sm">Archivo seleccionado:</h4>
-                                                <div className="flex items-center justify-between p-2 text-sm rounded-md border">
-                                                    <span className="truncate">{selectedFile.name}</span>
-                                                    <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => setSelectedFile(null)}>
-                                                        <X className="h-4 w-4"/>
-                                                    </Button>
-                                                </div>
-                                            </div>
-                                        ) : (
-                                            <div className="flex gap-2">
-                                                <label htmlFor="file-upload" className="flex-1 cursor-pointer">
-                                                    <div className="border-2 border-dashed rounded-lg p-6 text-center hover:border-primary transition-colors h-full flex flex-col justify-center items-center">
-                                                        <UploadCloud className="h-10 w-10 text-muted-foreground" />
-                                                        <span className="mt-2 text-sm font-semibold text-primary">Selecciona archivo</span>
-                                                        <p className="text-xs text-muted-foreground mt-1">Solo imágenes</p>
-                                                        <input id="file-upload" name="file-upload" type="file" className="sr-only" accept="image/*" onChange={handleFileChange} />
-                                                    </div>
-                                                </label>
-                                                <Button variant="outline" onClick={() => setIsCameraOpen(true)} className="h-auto flex-1 flex-col p-6">
-                                                    <Camera className="h-10 w-10 text-muted-foreground" />
-                                                    <span className="mt-2 text-sm font-semibold text-primary">Tomar Foto</span>
-                                                    <p className="text-xs text-muted-foreground mt-1">Usa tu cámara</p>
-                                                </Button>
-                                            </div>
-                                        )}
-                                    </>
+                                    <Button variant="outline" className="w-full h-24" onClick={() => setIsCameraOpen(true)}>
+                                        <Camera className="mr-2"/> Abrir Cámara
+                                    </Button>
                                 )}
                             </div>
                            )}
@@ -456,9 +409,9 @@ export function DocumentList() {
                              <DialogClose asChild>
                                 <Button variant="outline" disabled={isSaving}>Cancelar</Button>
                              </DialogClose>
-                            <Button type="submit" onClick={handleSubmit} disabled={isButtonDisabled}>
+                            <Button type="submit" onClick={handleSubmit} disabled={isSaving || (dialogMode === 'add' && !selectedFile)}>
                                 {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                {dialogMode === 'add' ? 'Subir y Guardar' : 'Guardar Cambios'}
+                                {dialogMode === 'add' ? 'Guardar Documento' : 'Guardar Cambios'}
                             </Button>
                         </DialogFooter>
                     </DialogContent>
@@ -500,3 +453,5 @@ export function DocumentList() {
         </Card>
     );
 }
+
+    
