@@ -163,11 +163,17 @@ export function DocumentList() {
                 }
                 return null;
             case 'processing':
-            case 'pending':
                 return (
                     <div className="flex items-center text-xs text-amber-600 mt-2 gap-1.5">
                         <Loader2 className="h-3 w-3 animate-spin" />
                         <span>Procesando...</span>
+                    </div>
+                );
+            case 'pending':
+                 return (
+                    <div className="flex items-center text-xs text-muted-foreground mt-2 gap-1.5">
+                        <History className="h-3 w-3" />
+                        <span>Pendiente de análisis</span>
                     </div>
                 );
             case 'error':
@@ -384,7 +390,7 @@ export function DocumentList() {
                         <DialogFooter>
                              <DialogClose asChild>
                                 <Button variant="outline" disabled={isSaving}>Cancelar</Button>
-                            </DialogClose>
+                             </DialogClose>
                             <Button type="submit" onClick={handleSubmit} disabled={isSaving}>
                                 {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                 {dialogMode === 'add' ? 'Subir y Guardar' : 'Guardar Cambios'}
@@ -445,33 +451,31 @@ export function DocumentList() {
                                         </div>
                                      ) : (
                                         <div className="text-center p-6 border-2 border-dashed rounded-lg">
-                                             {(viewingDoc.processingStatus === 'error' || viewingDoc.processingStatus === 'pending') ? (
-                                                <>
-                                                    {viewingDoc.processingStatus === 'error' ? (
-                                                        <>
-                                                            <AlertTriangle className="mx-auto h-8 w-8 text-destructive" />
-                                                            <p className="mt-2 text-sm text-destructive">Error en el procesamiento</p>
-                                                            <p className="mt-1 text-xs text-muted-foreground">{viewingDoc.processingError || "La IA no pudo analizar este documento."}</p>
-                                                        </>
-                                                    ) : (
-                                                        <>
-                                                            <Loader2 className="mx-auto h-8 w-8 text-muted-foreground animate-spin" />
-                                                            <p className="mt-2 text-sm text-muted-foreground">Los datos se están procesando...</p>
-                                                            <p className="mt-1 text-xs text-muted-foreground">Esto puede tardar unos minutos.</p>
-                                                        </>
-                                                    )}
-                                                     <Button size="sm" variant="outline" className="mt-4" onClick={() => handleRetryAnalysis(viewingDoc.id)}>
-                                                        <RefreshCw className="mr-2 h-4 w-4"/>
-                                                        Reintentar Análisis
-                                                    </Button>
-                                                </>
-                                             ) : (
+                                            {viewingDoc.processingStatus === 'processing' ? (
                                                 <>
                                                     <Loader2 className="mx-auto h-8 w-8 text-muted-foreground animate-spin" />
                                                     <p className="mt-2 text-sm text-muted-foreground">Los datos se están procesando...</p>
                                                     <p className="mt-1 text-xs text-muted-foreground">Esto puede tardar unos minutos.</p>
                                                 </>
-                                             )}
+                                            ) : (
+                                                <>
+                                                    {viewingDoc.processingStatus === 'error' ? (
+                                                        <AlertTriangle className="mx-auto h-8 w-8 text-destructive" />
+                                                    ) : (
+                                                        <History className="mx-auto h-8 w-8 text-muted-foreground" />
+                                                    )}
+                                                    <p className="mt-2 text-sm font-semibold">
+                                                        {viewingDoc.processingStatus === 'error' ? 'Error en el procesamiento' : 'Análisis Pendiente'}
+                                                    </p>
+                                                    <p className="mt-1 text-xs text-muted-foreground">
+                                                        {viewingDoc.processingError || 'La IA no pudo analizar este documento o aún no ha sido procesado.'}
+                                                    </p>
+                                                    <Button size="sm" variant="outline" className="mt-4" onClick={() => handleRetryAnalysis(viewingDoc.id)}>
+                                                        <RefreshCw className="mr-2 h-4 w-4"/>
+                                                        Reintentar Análisis
+                                                    </Button>
+                                                </>
+                                            )}
                                         </div>
                                      )}
                                 </div>
