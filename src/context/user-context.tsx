@@ -260,26 +260,43 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   };
   
   const addDocument = async (docData: Omit<DocumentType, 'id'>) => {
-    if (!user || !docData.file) return;
-
-    const docRef = doc(collection(db, 'users', user.uid, 'documents'));
-    const docId = docRef.id;
-
-    const filePath = `users/${user.uid}/documents/${docId}-${docData.file.name}`;
-    const storageRef = ref(storage, filePath);
+    if (!user || !docData.file) {
+      throw new Error("Usuario no autenticado o archivo no proporcionado.");
+    }
     
-    const snapshot = await uploadBytes(storageRef, docData.file);
-    const downloadURL = await getDownloadURL(snapshot.ref);
+    // This is a robust, sequential flow to ensure reliability.
+    try {
+        console.log("addDocument: Iniciando subida...");
+        const docRef = doc(collection(db, 'users', user.uid, 'documents'));
+        const docId = docRef.id;
 
-    const dataToSave: Omit<SerializableDocument, 'id'> = {
-        name: docData.name,
-        category: docData.category,
-        uploadedAt: Timestamp.now(),
-        studyDate: docData.studyDate ? Timestamp.fromDate(docData.studyDate) : Timestamp.now(),
-        url: downloadURL,
-    };
-    
-    await setDoc(docRef, dataToSave);
+        const filePath = `users/${user.uid}/documents/${docId}-${docData.file.name}`;
+        const storageRef = ref(storage, filePath);
+        
+        console.log(`addDocument: Subiendo a la ruta: ${filePath}`);
+        const snapshot = await uploadBytes(storageRef, docData.file);
+        console.log("addDocument: Subida a Storage completada.");
+        
+        const downloadURL = await getDownloadURL(snapshot.ref);
+        console.log("addDocument: URL de descarga obtenida.");
+
+        const dataToSave: Omit<SerializableDocument, 'id'> = {
+            name: docData.name,
+            category: docData.category,
+            uploadedAt: Timestamp.now(),
+            studyDate: docData.studyDate ? Timestamp.fromDate(docData.studyDate) : Timestamp.now(),
+            url: downloadURL,
+        };
+        
+        console.log("addDocument: Guardando documento en Firestore...");
+        await setDoc(docRef, dataToSave);
+        console.log("addDocument: Documento guardado en Firestore exitosamente.");
+
+    } catch (error) {
+        console.error("addDocument: Error en el proceso de subida:", error);
+        // Re-throw the error so the calling component can handle it and show a toast.
+        throw new Error("No se pudo subir el documento. Inténtalo de nuevo.");
+    }
   };
 
   const updateDocument = async (id: string, docData: Partial<Omit<DocumentType, 'id' | 'file'>>) => {

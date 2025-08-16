@@ -120,6 +120,9 @@ export function DocumentList() {
             setName(doc.name);
             setCategory(doc.category);
             setStudyDate(doc.studyDate || doc.uploadedAt);
+        } else {
+            // For 'add' mode, set a default date
+            setStudyDate(new Date());
         }
         setIsDialogOpen(true);
     };
@@ -154,6 +157,10 @@ export function DocumentList() {
                 .then(res => res.blob())
                 .then(blob => {
                     const file = new File([blob], `captura-${Date.now()}.png`, { type: 'image/png' });
+                    if (file.size > MAX_FILE_SIZE) {
+                        toast({ variant: "destructive", title: `La foto supera el límite de ${MAX_FILE_SIZE / 1024 / 1024}MB.` });
+                        return;
+                    }
                     setSelectedFile(file);
                     setCapturedImage(null);
                     setIsCameraOpen(false);
@@ -177,17 +184,18 @@ export function DocumentList() {
                 const docData = { name, category, studyDate, uploadedAt: new Date(), file: selectedFile };
                 await addDocument(docData);
                 toast({ title: "Documento guardado con éxito." });
+                setIsDialogOpen(false);
             } else if (selectedDoc) {
                 const updatedData: Partial<DocumentType> = { name, category, studyDate };
                 await updateDocument(selectedDoc.id, updatedData);
                 toast({ title: "Documento actualizado con éxito." });
+                setIsDialogOpen(false);
             }
         } catch (error) {
-             toast({ variant: 'destructive', title: "Error al guardar el documento." });
+             toast({ variant: 'destructive', title: "Error al guardar el documento.", description: (error as Error).message });
              console.error("Error saving document: ", error);
         } finally {
             setIsSaving(false);
-            setIsDialogOpen(false);
         }
     }
     
@@ -244,11 +252,7 @@ export function DocumentList() {
                         <h3 className="mt-2 text-sm font-semibold text-gray-900">No hay documentos</h3>
                         <p className="mt-1 text-sm text-gray-500">Empieza subiendo tu primer documento.</p>
                         <div className="mt-6">
-                            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                                <DialogTrigger asChild>
-                                    <Button onClick={() => handleOpenDialog('add')}><PlusCircle className="mr-2"/>Subir Documento</Button>
-                                </DialogTrigger>
-                            </Dialog>
+                            <Button onClick={() => handleOpenDialog('add')}><PlusCircle className="mr-2"/>Subir Documento</Button>
                         </div>
                     </div>
                 ) : (
