@@ -115,10 +115,6 @@ export function DocumentList() {
         }
     };
 
-    const removeFile = () => {
-        setSelectedFile(null);
-    };
-
     const handleOpenDialog = (mode: DialogMode, doc?: DocumentType) => {
         setDialogMode(mode);
         if (mode === 'edit' && doc) {
@@ -186,7 +182,6 @@ export function DocumentList() {
             if (dialogMode === 'add' && selectedFile) {
                 const docData = { name, category, studyDate, uploadedAt: new Date(), file: selectedFile };
                 await addDocument(docData);
-                toast({ title: "Documento en proceso de carga.", description: "El análisis comenzará en breve." });
             } else if (selectedDoc) {
                 const updatedData: Partial<DocumentType> = { name, category, studyDate };
                 await updateDocument(selectedDoc.id, updatedData);
@@ -448,7 +443,7 @@ export function DocumentList() {
                                                 <h4 className="font-medium text-sm">Archivo seleccionado:</h4>
                                                 <div className="flex items-center justify-between p-2 text-sm rounded-md border">
                                                     <span className="truncate">{selectedFile.name}</span>
-                                                    <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={removeFile}>
+                                                    <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => setSelectedFile(null)}>
                                                         <X className="h-4 w-4"/>
                                                     </Button>
                                                 </div>
@@ -553,3 +548,5 @@ export function DocumentList() {
         </Card>
     );
 }
+
+    
