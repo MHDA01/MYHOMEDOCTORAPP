@@ -4,8 +4,7 @@
 import { useState, useEffect, useContext, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { FileText, PlusCircle, MoreVertical, FilePenLine, Trash2, Loader2, UploadCloud, X, BrainCircuit, AlertTriangle, Eye, Download } from "lucide-react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { FileText, PlusCircle, MoreVertical, FilePenLine, Trash2, Loader2, UploadCloud, X, BrainCircuit, AlertTriangle, Eye, Download, TestTube2 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose, DialogDescription } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
@@ -23,6 +22,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Calendar as CalendarIcon } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Checkbox } from '../ui/checkbox';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 
 type DialogMode = 'add' | 'edit';
@@ -218,10 +218,10 @@ export function DocumentList() {
                                         <button className="flex-1 text-left" onClick={() => handleViewDialog(doc)}>
                                             <p className="font-semibold">{doc.name}</p>
                                             <p className="text-sm text-muted-foreground">{getCategoryLabel(doc.category)} - {format(doc.studyDate || doc.uploadedAt, "d 'de' MMMM", { locale: es })}</p>
-                                            {doc.aiSummary && (
+                                            {doc.labResults && (
                                                  <div className="flex items-center text-xs text-blue-600 mt-2 gap-1.5">
                                                     <BrainCircuit className="h-3 w-3" />
-                                                    <span>Resumen de IA disponible</span>
+                                                    <span>Datos extraídos por IA</span>
                                                 </div>
                                             )}
                                         </button>
@@ -360,7 +360,7 @@ export function DocumentList() {
                                     Autorizo el análisis con IA
                                     </label>
                                     <p className="text-sm text-muted-foreground">
-                                    Al marcar esta casilla, autorizas el uso de IA para procesar tu documento y generar un resumen. No se compartirán datos personales identificables. Revisa nuestros términos de privacidad.
+                                    Al marcar esta casilla, autorizas el uso de IA para procesar tu documento y extraer datos. No se compartirán datos personales identificables. Revisa nuestros términos de privacidad.
                                     </p>
                                 </div>
                             </div>
@@ -398,43 +398,49 @@ export function DocumentList() {
                                     </div>
                                 </div>
                                 <div className="space-y-4">
-                                     <h3 className="font-semibold text-lg flex items-center gap-2"><BrainCircuit className="h-5 w-5 text-primary"/> Resumen de IA</h3>
-                                     {viewingDoc.aiSummary ? (
+                                     <h3 className="font-semibold text-lg flex items-center gap-2"><BrainCircuit className="h-5 w-5 text-primary"/> Resultados por IA</h3>
+                                     {viewingDoc.labResults && viewingDoc.labResults.length > 0 ? (
                                         <div className="space-y-4 text-sm p-4 bg-muted/50 rounded-lg">
-                                            <div>
-                                                <h4 className="font-semibold mb-1">Diagnóstico Principal</h4>
-                                                <p className="text-muted-foreground">{viewingDoc.aiSummary.diagnosticoPrincipal}</p>
-                                            </div>
-                                             <div>
-                                                <h4 className="font-semibold mb-1">Hallazgos Clave</h4>
-                                                <ul className="list-disc list-inside pl-2 space-y-1 text-muted-foreground">
-                                                    {viewingDoc.aiSummary.hallazgosClave && Array.isArray(viewingDoc.aiSummary.hallazgosClave) ? 
-                                                        viewingDoc.aiSummary.hallazgosClave.map((item, i) => <li key={i}>{item}</li>)
-                                                        : <li>No se encontraron hallazgos clave.</li>
-                                                    }
-                                                </ul>
-                                            </div>
-                                            <div>
-                                                <h4 className="font-semibold mb-1">Recomendaciones</h4>
-                                                 <ul className="list-disc list-inside pl-2 space-y-1 text-muted-foreground">
-                                                    {viewingDoc.aiSummary.recomendaciones && Array.isArray(viewingDoc.aiSummary.recomendaciones) ?
-                                                        viewingDoc.aiSummary.recomendaciones.map((item, i) => <li key={i}>{item}</li>)
-                                                        : <li>No se encontraron recomendaciones.</li>
-                                                    }
-                                                </ul>
-                                            </div>
+                                           <Table>
+                                                <TableHeader>
+                                                    <TableRow>
+                                                        <TableHead>Examen</TableHead>
+                                                        <TableHead>Valor</TableHead>
+                                                        <TableHead>Referencia</TableHead>
+                                                    </TableRow>
+                                                </TableHeader>
+                                                <TableBody>
+                                                    {viewingDoc.labResults.map((result, i) => (
+                                                        <TableRow key={i}>
+                                                            <TableCell className="font-medium">{result.examen}</TableCell>
+                                                            <TableCell>{result.valor} {result.unidades}</TableCell>
+                                                            <TableCell>{result.rangoDeReferencia}</TableCell>
+                                                        </TableRow>
+                                                    ))}
+                                                </TableBody>
+                                            </Table>
                                              <Alert variant="default" className="mt-4">
                                                 <AlertTriangle className="h-4 w-4" />
                                                 <AlertTitle>Descargo de Responsabilidad</AlertTitle>
                                                 <AlertDescription>
-                                                   Este resumen fue generado por IA y es solo para fines informativos. Consulta siempre a un profesional médico para obtener un diagnóstico y tratamiento.
+                                                   Estos datos fueron extraídos por IA y son solo para fines informativos. Compara siempre con el documento original y consulta a un profesional médico.
                                                 </AlertDescription>
                                             </Alert>
                                         </div>
                                      ) : viewingDoc.consent ? (
                                         <div className="text-center p-6 border-2 border-dashed rounded-lg">
-                                            <Loader2 className="mx-auto h-8 w-8 text-muted-foreground animate-spin" />
-                                            <p className="mt-2 text-sm text-muted-foreground">El resumen aún se está procesando...</p>
+                                             {viewingDoc.processingError ? (
+                                                <>
+                                                    <AlertTriangle className="mx-auto h-8 w-8 text-destructive" />
+                                                    <p className="mt-2 text-sm text-destructive">Error en el procesamiento</p>
+                                                    <p className="mt-1 text-xs text-muted-foreground">La IA no pudo analizar este documento. Inténtalo de nuevo con una imagen más clara.</p>
+                                                </>
+                                             ) : (
+                                                <>
+                                                    <Loader2 className="mx-auto h-8 w-8 text-muted-foreground animate-spin" />
+                                                    <p className="mt-2 text-sm text-muted-foreground">Los datos se están procesando...</p>
+                                                </>
+                                             )}
                                         </div>
                                      ) : (
                                         <div className="text-center p-6 border-2 border-dashed rounded-lg">

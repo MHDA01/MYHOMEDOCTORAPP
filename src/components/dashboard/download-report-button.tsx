@@ -87,12 +87,12 @@ export function DownloadReportButton() {
 
         const drawSectionHeader = (title: string) => {
             checkPageBreak(y, 40);
-            y += 25; // Increased space before section header
+            y += 25;
             doc.setFontSize(14);
             doc.setFont('helvetica', 'bold');
             doc.setTextColor(primaryColor);
             doc.text(title, pageMargin, y);
-            y += 20; // Increased space after section header
+            y += 20;
             doc.setFont('helvetica', 'normal');
             doc.setFontSize(10);
             doc.setTextColor(textColor);
@@ -113,7 +113,7 @@ export function DownloadReportButton() {
             doc.text(row[0], pageMargin, y);
             doc.setFont('helvetica', 'normal');
             doc.text(row[1], pageMargin + 150, y);
-            y += 22; // Increased line spacing
+            y += 22;
         });
 
         // --- 2. Contactos de Emergencia ---
@@ -122,7 +122,7 @@ export function DownloadReportButton() {
             healthInfo.emergencyContacts.forEach(contact => {
                 checkPageBreak(y, 22);
                 doc.text(`${contact.name} (${contact.relationship}) - ${contact.phone}`, pageMargin, y);
-                y += 22; // Increased line spacing
+                y += 22;
             });
         }
         
@@ -174,46 +174,41 @@ export function DownloadReportButton() {
         if (documents.length > 0) {
             drawSectionHeader('6. Documentos Médicos');
             documents.forEach(docItem => {
-                checkPageBreak(y, 40);
+                checkPageBreak(y, 25);
                 doc.setFontSize(10);
                 doc.setFont('helvetica', 'bold');
                 doc.text(docItem.name, pageMargin, y);
                 doc.setFont('helvetica', 'normal');
                 doc.text(getCategoryLabel(docItem.category), pageMargin + 250, y);
                 doc.text(formatDate(docItem.studyDate || docItem.uploadedAt), pageWidth - pageMargin, y, { align: 'right' });
-                y += 22;
+                y += 18;
 
-                if (docItem.aiSummary) {
-                    const summaryIndent = pageMargin + 15;
-                    const summaryContentWidth = contentWidth - 15;
+                if (docItem.labResults && docItem.labResults.length > 0) {
+                    checkPageBreak(y, 30); // space for table header
+                    // Draw table header
                     doc.setFontSize(9);
+                    doc.setFont('helvetica', 'bold');
                     doc.setTextColor(80, 80, 80);
+                    doc.text('Examen', pageMargin + 15, y);
+                    doc.text('Valor', pageMargin + 200, y);
+                    doc.text('Rango de Referencia', pageMargin + 300, y);
+                    y += 5;
+                    doc.setDrawColor(200, 200, 200);
+                    doc.line(pageMargin + 15, y, pageWidth - pageMargin - 15, y);
+                    y += 15;
                     
-                    const diagText = doc.splitTextToSize(`Diagnóstico: ${docItem.aiSummary.diagnosticoPrincipal || 'No registrado'}`, summaryContentWidth);
-                    checkPageBreak(y, diagText.length * 12);
-                    doc.text(diagText, summaryIndent, y);
-                    y += (diagText.length * 12) + 5; // Add space after text block
-
-                    const hallazgos = Array.isArray(docItem.aiSummary.hallazgosClave) && docItem.aiSummary.hallazgosClave.length > 0
-                        ? docItem.aiSummary.hallazgosClave.map(h => `- ${h}`).join('\n')
-                        : 'No registrados';
-                    const hallazgosText = doc.splitTextToSize(`Hallazgos:\n${hallazgos}`, summaryContentWidth);
-                    checkPageBreak(y, hallazgosText.length * 12);
-                    doc.text(hallazgosText, summaryIndent, y);
-                    y += (hallazgosText.length * 12) + 5;
-                    
-                    const recomendaciones = Array.isArray(docItem.aiSummary.recomendaciones) && docItem.aiSummary.recomendaciones.length > 0
-                        ? docItem.aiSummary.recomendaciones.map(r => `- ${r}`).join('\n')
-                        : 'No registradas';
-                    const recomText = doc.splitTextToSize(`Recomendaciones:\n${recomendaciones}`, summaryContentWidth);
-                    checkPageBreak(y, recomText.length * 12);
-                    doc.text(recomText, summaryIndent, y);
-                    y += (recomText.length * 12) + 5;
-                    
-                    doc.setFontSize(10);
-                    doc.setTextColor(textColor);
+                    // Draw table rows
+                    doc.setFont('helvetica', 'normal');
+                    docItem.labResults.forEach(result => {
+                         checkPageBreak(y, 20);
+                         doc.text(result.examen, pageMargin + 15, y);
+                         doc.text(`${result.valor} ${result.unidades}`, pageMargin + 200, y);
+                         doc.text(result.rangoDeReferencia, pageMargin + 300, y);
+                         y += 18;
+                    });
+                     doc.setTextColor(textColor);
                 }
-                y += 15; // Extra space between documents
+                y += 15;
             });
         }
         

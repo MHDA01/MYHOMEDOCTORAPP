@@ -1,8 +1,9 @@
 
-export type Summary = {
-  diagnosticoPrincipal: string;
-  hallazgosClave: string[];
-  recomendaciones: string[];
+export type LabResult = {
+  examen: string;
+  valor: string;
+  unidades: string;
+  rangoDeReferencia: string;
 };
 
 export type Document = {
@@ -12,8 +13,9 @@ export type Document = {
   uploadedAt: Date;
   urls: string[];
   studyDate?: Date;
-  aiSummary?: Summary;
-  transcription?: string;
+  labResults?: LabResult[];
+  transcription?: string; // Full text from OCR
+  processingError?: boolean;
   consent: boolean;
 };
 

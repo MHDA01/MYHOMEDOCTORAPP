@@ -2,7 +2,7 @@
 'use client';
 
 import { createContext, useState, useEffect, ReactNode, useCallback } from 'react';
-import type { PersonalInfo, HealthInfo, Appointment, Document as DocumentType, Medication, Summary } from '@/lib/types';
+import type { PersonalInfo, HealthInfo, Appointment, Document as DocumentType, Medication } from '@/lib/types';
 import { auth, db } from '@/lib/firebase';
 import { onAuthStateChanged, User, signOut, updateProfile } from 'firebase/auth';
 import { doc, getDoc, setDoc, Timestamp, collection, getDocs, addDoc, updateDoc, deleteDoc, query, orderBy, onSnapshot } from 'firebase/firestore';
@@ -155,10 +155,8 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
             setHealthInfo(defaultHealthInfo);
         }
         
-        const [appointmentsData, medicationsData] = await Promise.all([
-            getCollection<SerializableAppointment>(currentUser.uid, 'appointments', 'date'),
-            getCollection<Medication>(currentUser.uid, 'name', 'asc'),
-        ]);
+        const appointmentsData = await getCollection<SerializableAppointment>(currentUser.uid, 'appointments', 'date');
+        const medicationsData = await getCollection<Medication>(currentUser.uid, 'name', 'asc');
 
         setAppointments(appointmentsData.map(a => ({...a, date: a.date.toDate() })));
         setMedications(medicationsData);
@@ -232,37 +230,49 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
 
   const addAppointment = async (appointment: Omit<Appointment, 'id' | 'notified'>) => {
       if (!user) return;
-      await addDoc(collection(db, 'users', user.uid, 'appointments'), { ...appointment, date: Timestamp.fromDate(appointment.date), notified: false });
+      const docRef = collection(db, 'users', user.uid, 'appointments');
+      await addDoc(docRef, { ...appointment, date: Timestamp.fromDate(appointment.date), notified: false });
+      const newAppointments = [...appointments, { ...appointment, id: 'temp-id', date: appointment.date, notified: false }];
+      setAppointments(newAppointments.sort((a,b) => b.date.getTime() - a.date.getTime()));
   };
-
+  
   const updateAppointment = async (id: string, appointment: Partial<Omit<Appointment, 'id'>>) => {
       if (!user) return;
       const docRef = doc(db, 'users', user.uid, 'appointments', id);
-      const dataToUpdate = { ...appointment, notified: false };
-      const data = dataToUpdate.date ? { ...dataToUpdate, date: Timestamp.fromDate(new Date(dataToUpdate.date)) } : dataToUpdate;
-      await updateDoc(docRef, data);
+      const dataToUpdate: any = { ...appointment, notified: false };
+      if (appointment.date) {
+        dataToUpdate.date = Timestamp.fromDate(new Date(appointment.date));
+      }
+      await updateDoc(docRef, dataToUpdate);
+      setAppointments(prev => prev.map(app => app.id === id ? { ...app, ...appointment } : app).sort((a,b) => b.date.getTime() - a.date.getTime()));
   };
-
+  
   const deleteAppointment = async (id: string) => {
       if (!user) return;
       await deleteDoc(doc(db, 'users', user.uid, 'appointments', id));
+      setAppointments(prev => prev.filter(app => app.id !== id));
   };
+  
 
   const addDocument = async (docData: Omit<DocumentType, 'id'>) => {
     if (!user) return;
 
-    const dataToSave = { 
+    const dataToSave: any = { 
         ...docData,
         uploadedAt: Timestamp.fromDate(docData.uploadedAt),
         studyDate: docData.studyDate ? Timestamp.fromDate(docData.studyDate) : Timestamp.fromDate(docData.uploadedAt),
     };
 
-    // Remove fields that are not yet available. They will be added by the Cloud Function.
-    delete (dataToSave as any).aiSummary;
-    delete (dataToSave as any).transcription;
+    delete dataToSave.labResults;
+    delete dataToSave.transcription;
     
     await addDoc(collection(db, 'users', user.uid, 'documents'), dataToSave);
-    toast({ title: "Documento subido", description: "Se está procesando para generar el resumen. Esto puede tardar unos minutos." });
+
+    if (docData.consent) {
+        toast({ title: "Documento subido", description: "Se está procesando para extraer los datos. Esto puede tardar unos minutos." });
+    } else {
+        toast({ title: "Documento subido", description: "El documento se guardó sin procesamiento de IA." });
+    }
   };
 
   const updateDocument = async (id: string, docData: Partial<DocumentType>) => {
@@ -279,18 +289,21 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
 
   const addMedication = async (med: Omit<Medication, 'id'>) => {
       if (!user) return;
-      await addDoc(collection(db, 'users', user.uid, 'medications'), med);
+      const docRef = await addDoc(collection(db, 'users', user.uid, 'medications'), med);
+      setMedications(prev => [...prev, { ...med, id: docRef.id}]);
   };
 
   const updateMedication = async (id: string, med: Partial<Medication>) => {
       if (!user) return;
       const docRef = doc(db, 'users', user.uid, 'medications', id);
       await updateDoc(docRef, med);
+      setMedications(prev => prev.map(m => m.id === id ? { ...m, ...med } : m));
   };
   
   const deleteMedication = async (id: string) => {
       if (!user) return;
       await deleteDoc(doc(db, 'users', user.uid, 'medications', id));
+      setMedications(prev => prev.filter(m => m.id !== id));
   };
 
 
