@@ -175,15 +175,12 @@ export function DocumentList() {
                     </div>
                 );
             default:
-                if (!doc.labResults) {
-                     return (
-                        <div className="flex items-center text-xs text-muted-foreground mt-2 gap-1.5">
-                            <History className="h-3 w-3" />
-                            <span>Pendiente de análisis</span>
-                        </div>
-                    );
-                }
-                return null;
+                return (
+                    <div className="flex items-center text-xs text-muted-foreground mt-2 gap-1.5">
+                        <History className="h-3 w-3" />
+                        <span>Pendiente de análisis</span>
+                    </div>
+                );
         }
     };
 
