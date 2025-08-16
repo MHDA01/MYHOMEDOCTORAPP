@@ -54,32 +54,40 @@ export function DocumentList() {
 
     if (!context) throw new Error("DocumentList must be used within a UserProvider");
     const { documents, addDocument, updateDocument, deleteDocument, loading } = context;
-
+    
     useEffect(() => {
+        let stream: MediaStream | null = null;
+    
         const getCameraPermission = async () => {
-          if (!isCameraOpen || capturedImage) return;
-          try {
-            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-            setHasCameraPermission(true);
-            if (videoRef.current) {
-              videoRef.current.srcObject = stream;
+            if (!isCameraOpen || capturedImage) {
+                return;
             }
-          } catch (error) {
-            console.error('Error accessing camera:', error);
-            setHasCameraPermission(false);
-            toast({
-              variant: 'destructive',
-              title: 'Acceso a la cámara denegado',
-              description: 'Por favor, habilita los permisos de cámara en tu navegador.',
-            });
-          }
+    
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+                setHasCameraPermission(true);
+                if (videoRef.current) {
+                    videoRef.current.srcObject = stream;
+                }
+            } catch (error) {
+                console.error('Error accessing camera:', error);
+                setHasCameraPermission(false);
+                toast({
+                    variant: 'destructive',
+                    title: 'Acceso a la cámara denegado',
+                    description: 'Por favor, habilita los permisos de cámara en tu navegador.',
+                });
+            }
         };
+    
         getCameraPermission();
     
-        return () => { // Cleanup function
-            if (videoRef.current && videoRef.current.srcObject) {
-                const stream = videoRef.current.srcObject as MediaStream;
+        return () => {
+            if (stream) {
                 stream.getTracks().forEach(track => track.stop());
+            }
+            if (videoRef.current) {
+                videoRef.current.srcObject = null;
             }
         };
     }, [isCameraOpen, capturedImage, toast]);
