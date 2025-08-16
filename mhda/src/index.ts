@@ -8,5 +8,3 @@ setGlobalOptions({
   maxInstances: 10,
   region: "us-central1"
 });
-
-export * from "./document-processor";

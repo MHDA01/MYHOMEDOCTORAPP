@@ -4,7 +4,7 @@
 import { useState, useContext, useRef, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { FileText, PlusCircle, MoreVertical, FilePenLine, Trash2, Loader2, UploadCloud, X, Eye, Download, Camera, SwitchCamera, CircleDot, BrainCircuit, AlertTriangle, History, CheckCircle, Upload } from "lucide-react";
+import { FileText, PlusCircle, MoreVertical, FilePenLine, Trash2, Loader2, UploadCloud, X, Eye, Download, Camera } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose, DialogDescription } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
@@ -20,7 +20,6 @@ import { useToast } from "@/hooks/use-toast";
 import { UserContext } from '@/context/user-context';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Calendar as CalendarIcon } from 'lucide-react';
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 
 type DialogMode = 'add' | 'edit';
@@ -63,29 +62,27 @@ export function DocumentList() {
     };
     
     useEffect(() => {
-        if (!isCameraOpen) {
+        if (!isCameraOpen || capturedImage) {
             stopCameraStream();
             return;
         }
     
         const getCameraPermission = async () => {
-            if (capturedImage) return;
-    
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-                setHasCameraPermission(true);
-                if (videoRef.current) {
-                    videoRef.current.srcObject = stream;
-                }
-            } catch (error) {
-                console.error('Error accessing camera:', error);
-                setHasCameraPermission(false);
-                toast({
-                    variant: 'destructive',
-                    title: 'Acceso a la cámara denegado',
-                    description: 'Por favor, habilita los permisos de cámara en tu navegador.',
-                });
+          try {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+            setHasCameraPermission(true);
+            if (videoRef.current) {
+                videoRef.current.srcObject = stream;
             }
+          } catch (error) {
+            console.error('Error accessing camera:', error);
+            setHasCameraPermission(false);
+            toast({
+                variant: 'destructive',
+                title: 'Acceso a la cámara denegado',
+                description: 'Por favor, habilita los permisos de cámara en tu navegador.',
+            });
+          }
         };
     
         getCameraPermission();
@@ -117,15 +114,12 @@ export function DocumentList() {
 
     const handleOpenDialog = (mode: DialogMode, doc?: DocumentType) => {
         setDialogMode(mode);
+        resetForm();
         if (mode === 'edit' && doc) {
             setSelectedDoc(doc);
             setName(doc.name);
             setCategory(doc.category);
             setStudyDate(doc.studyDate || doc.uploadedAt);
-            setSelectedFile(null); // No se pueden editar los archivos, solo los metadatos
-        } else {
-            setSelectedDoc(null);
-            resetForm();
         }
         setIsDialogOpen(true);
     };
@@ -182,6 +176,7 @@ export function DocumentList() {
             if (dialogMode === 'add' && selectedFile) {
                 const docData = { name, category, studyDate, uploadedAt: new Date(), file: selectedFile };
                 await addDocument(docData);
+                toast({ title: "Documento guardado con éxito." });
             } else if (selectedDoc) {
                 const updatedData: Partial<DocumentType> = { name, category, studyDate };
                 await updateDocument(selectedDoc.id, updatedData);
@@ -215,41 +210,6 @@ export function DocumentList() {
 
     const sortedYears = Object.keys(groupedDocuments).sort((a, b) => b.localeCompare(a));
     
-    const getStatusIcon = (status?: DocumentType['processingStatus']) => {
-        switch (status) {
-            case 'uploading':
-                return <Upload className="h-4 w-4 text-blue-500 animate-pulse" />;
-            case 'processing':
-            case 'summarizing':
-                return <Loader2 className="h-4 w-4 text-blue-500 animate-spin" />;
-            case 'completed':
-                return <CheckCircle className="h-4 w-4 text-green-500" />;
-            case 'error':
-                return <AlertTriangle className="h-4 w-4 text-destructive" />;
-            case 'pending':
-            default:
-                return <History className="h-4 w-4 text-yellow-500" />;
-        }
-    };
-    
-    const getStatusText = (doc: DocumentType) => {
-        switch (doc.processingStatus) {
-            case 'uploading':
-                return 'Subiendo archivo...';
-            case 'processing':
-                return 'Extrayendo texto...';
-            case 'summarizing':
-                return 'Resumiendo con IA...';
-            case 'completed':
-                return 'Análisis completado';
-            case 'error':
-                return 'Error en el análisis';
-            case 'pending':
-            default:
-                return 'Pendiente de análisis';
-        }
-    };
-
     if(loading) {
         return (
             <Card>
@@ -275,7 +235,7 @@ export function DocumentList() {
                     <FileText className="h-6 w-6 text-primary" />
                     <CardTitle className="font-headline text-xl">Documentos Médicos</CardTitle>
                 </div>
-                <CardDescription>Sube y gestiona tus exámenes, recetas e informes. La IA te ayudará a resumirlos.</CardDescription>
+                <CardDescription>Sube y gestiona tus exámenes, recetas e informes.</CardDescription>
             </CardHeader>
             <CardContent>
                 {documents.length === 0 ? (
@@ -288,7 +248,6 @@ export function DocumentList() {
                                 <DialogTrigger asChild>
                                     <Button onClick={() => handleOpenDialog('add')}><PlusCircle className="mr-2"/>Subir Documento</Button>
                                 </DialogTrigger>
-                                {/* Dialog Content is in the footer */}
                             </Dialog>
                         </div>
                     </div>
@@ -303,10 +262,6 @@ export function DocumentList() {
                                         <button className="flex-1 text-left" onClick={() => handleViewDialog(doc)}>
                                             <p className="font-semibold">{doc.name}</p>
                                             <p className="text-sm text-muted-foreground">{getCategoryLabel(doc.category)} - {format(doc.studyDate || doc.uploadedAt, "d 'de' MMMM", { locale: es })}</p>
-                                            <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
-                                                {getStatusIcon(doc.processingStatus)}
-                                                <span>{getStatusText(doc)}</span>
-                                            </div>
                                         </button>
                                         <div className="flex items-center">
                                             <DropdownMenu>
@@ -344,7 +299,7 @@ export function DocumentList() {
                 )}
             </CardContent>
             <CardFooter>
-                 <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                 <Dialog open={isDialogOpen} onOpenChange={(open) => { if(!isSaving) setIsDialogOpen(open) }}>
                     <DialogTrigger asChild>
                          <Button onClick={() => handleOpenDialog('add')}><PlusCircle className="mr-2"/>Subir Documento</Button>
                     </DialogTrigger>
@@ -424,7 +379,7 @@ export function DocumentList() {
                                         <div className="flex justify-center gap-2">
                                             {capturedImage ? (
                                                 <>
-                                                    <Button variant="outline" onClick={() => { setCapturedImage(null); setIsCameraOpen(true); }}>Tomar de nuevo</Button>
+                                                    <Button variant="outline" onClick={() => { setCapturedImage(null); }}>Tomar de nuevo</Button>
                                                     <Button onClick={handleConfirmPhoto}>Confirmar foto</Button>
                                                 </>
                                             ) : (
@@ -432,7 +387,7 @@ export function DocumentList() {
                                                     <Camera className="mr-2" /> Capturar
                                                 </Button>
                                             )}
-                                             <Button variant="ghost" onClick={() => { setIsCameraOpen(false); setCapturedImage(null); }}>Cancelar</Button>
+                                             <Button variant="ghost" onClick={() => { setIsCameraOpen(false); setCapturedImage(null); stopCameraStream(); }}>Cancelar</Button>
                                         </div>
                                          <canvas ref={canvasRef} className="hidden"></canvas>
                                     </div>
@@ -492,30 +447,6 @@ export function DocumentList() {
                                 </DialogDescription>
                             </DialogHeader>
                             <div className="space-y-4 py-4 max-h-[70vh] overflow-y-auto pr-4">
-                                {viewingDoc.processingStatus === 'completed' && viewingDoc.summary && (
-                                    <Card>
-                                        <CardHeader>
-                                            <CardTitle className="text-lg flex items-center gap-2"><BrainCircuit className="h-5 w-5 text-primary" />Resumen de IA</CardTitle>
-                                        </CardHeader>
-                                        <CardContent className="space-y-3 text-sm">
-                                            <p><strong>Tipo:</strong> {viewingDoc.summary.documentType}</p>
-                                            <p><strong>Fecha del Documento:</strong> {viewingDoc.summary.date}</p>
-                                            <p><strong>Médico Tratante:</strong> {viewingDoc.summary.attendingPhysician}</p>
-                                            <div><strong>Hallazgos Relevantes:</strong> <p className="text-muted-foreground whitespace-pre-wrap">{viewingDoc.summary.relevantFindings}</p></div>
-                                            <div><strong>Diagnóstico:</strong> <p className="text-muted-foreground whitespace-pre-wrap">{viewingDoc.summary.diagnosis}</p></div>
-                                            <div><strong>Medicamentos:</strong> {viewingDoc.summary.medications?.length > 0 ? <ul className="list-disc pl-5 text-muted-foreground">{viewingDoc.summary.medications.map((m,i) => <li key={i}>{m}</li>)}</ul> : <p className="text-muted-foreground">N/A</p>}</div>
-                                            <div><strong>Recomendaciones:</strong> <p className="text-muted-foreground whitespace-pre-wrap">{viewingDoc.summary.patientRecommendations}</p></div>
-                                        </CardContent>
-                                    </Card>
-                                )}
-                                {viewingDoc.processingStatus === 'error' && (
-                                     <Alert variant="destructive">
-                                        <AlertTriangle className="h-4 w-4" />
-                                        <AlertTitle>Error en el Análisis</AlertTitle>
-                                        <AlertDescription>{viewingDoc.processingError || 'No se pudo procesar el documento.'}</AlertDescription>
-                                    </Alert>
-                                )}
-
                                 <h3 className="font-semibold text-lg">Imagen del Documento</h3>
                                  <div className="space-y-2">
                                     {viewingDoc.url ? (
@@ -529,12 +460,6 @@ export function DocumentList() {
                                         </div>
                                     )}
                                 </div>
-                                {viewingDoc.transcription && (
-                                    <div>
-                                        <h3 className="font-semibold text-lg mt-4 mb-2">Texto Extraído (OCR)</h3>
-                                        <pre className="text-xs bg-muted p-3 rounded-md whitespace-pre-wrap font-sans">{viewingDoc.transcription}</pre>
-                                    </div>
-                                )}
                             </div>
                              <DialogFooter>
                                 <DialogClose asChild>
@@ -548,5 +473,3 @@ export function DocumentList() {
         </Card>
     );
 }
-
-    

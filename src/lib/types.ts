@@ -1,14 +1,4 @@
 
-export type DocumentSummary = {
-  documentType: "exam" | "prescription" | "report" | "other";
-  date: string;
-  attendingPhysician: string;
-  relevantFindings: string;
-  diagnosis: string;
-  medications: string[];
-  patientRecommendations: string;
-};
-
 export type Document = {
   id: string;
   name: string;
@@ -17,13 +7,6 @@ export type Document = {
   file?: File; // Only for frontend state during upload
   url?: string; // URL to file in Cloud Storage
   studyDate?: Date;
-  
-  // AI Processing fields
-  processingStatus?: 'uploading' | 'pending' | 'processing' | 'summarizing' | 'completed' | 'error';
-  processingError?: string;
-  transcription?: string;
-  summary?: DocumentSummary;
-  processedAt?: string;
 };
 
 export type Appointment = {
