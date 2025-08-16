@@ -5,7 +5,7 @@ import { createContext, useState, useEffect, ReactNode, useCallback } from 'reac
 import type { PersonalInfo, HealthInfo, Appointment, Document as DocumentType, Medication } from '@/lib/types';
 import { auth, db } from '@/lib/firebase';
 import { onAuthStateChanged, User, signOut, updateProfile } from 'firebase/auth';
-import { doc, getDoc, setDoc, Timestamp, collection, addDoc, updateDoc, deleteDoc, query, orderBy, onSnapshot, getDocs } from 'firebase/firestore';
+import { doc, getDoc, setDoc, Timestamp, collection, addDoc, updateDoc, deleteDoc, query, orderBy, onSnapshot, getDocs, deleteField } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 
 type SerializablePersonalInfo = Omit<PersonalInfo, 'dateOfBirth'> & {
@@ -195,13 +195,17 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         unsubscribeDocuments = onSnapshot(q, (snapshot) => {
             const docs = snapshot.docs.map(doc => {
                 const data = doc.data() as SerializableDocument;
+                if (!data.uploadedAt) {
+                    console.warn(`Document ${doc.id} is missing 'uploadedAt', skipping.`);
+                    return null;
+                }
                 return {
                     ...data,
                     id: doc.id,
                     uploadedAt: data.uploadedAt.toDate(),
                     studyDate: data.studyDate?.toDate()
                 } as DocumentType;
-            });
+            }).filter(Boolean) as DocumentType[];
             setDocuments(docs);
         }, (error) => {
             console.error("Error listening to documents collection: ", error);
