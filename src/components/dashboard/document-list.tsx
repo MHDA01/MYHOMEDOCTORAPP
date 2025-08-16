@@ -4,7 +4,7 @@
 import { useState, useContext, useRef, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { FileText, PlusCircle, MoreVertical, FilePenLine, Trash2, Loader2, UploadCloud, X, Eye, Download, Camera, History } from "lucide-react";
+import { FileText, PlusCircle, MoreVertical, FilePenLine, Trash2, Loader2, X, Eye, Download, Camera, History } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose, DialogDescription } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
@@ -108,11 +108,9 @@ export function DocumentList() {
             setName(doc.name);
             setCategory(doc.category);
             setStudyDate(doc.studyDate || doc.uploadedAt);
-            setIsCameraOpen(false); // No camera in edit mode
         } else {
             setSelectedDoc(null);
             setStudyDate(new Date());
-            setIsCameraOpen(true); // Open camera directly in add mode
         }
         setIsDialogOpen(true);
     };
@@ -157,7 +155,6 @@ export function DocumentList() {
         }
     }
 
-    // Effect to auto-confirm photo once captured
     useEffect(() => {
         if (capturedImage) {
             handleConfirmPhoto();
@@ -175,8 +172,7 @@ export function DocumentList() {
             
             setIsSaving(true);
             try {
-                const docData = { name, category, studyDate, uploadedAt: new Date(), file: selectedFile };
-                await addDocument(docData);
+                await addDocument({ name, category, studyDate, uploadedAt: new Date(), file: selectedFile });
                 toast({ title: "Documento guardado con éxito." });
                 setIsDialogOpen(false);
             } catch (error) {
@@ -371,7 +367,16 @@ export function DocumentList() {
                            {dialogMode === 'add' && (
                             <div className="space-y-2">
                                 <Label>Foto del Documento</Label>
-                                {isCameraOpen ? (
+                                {capturedImage ? (
+                                    <div className="relative w-full aspect-video bg-black rounded-lg overflow-hidden">
+                                        <img src={capturedImage} alt="Captura" className="w-full h-full object-contain"/>
+                                        <div className="absolute top-2 right-2">
+                                            <Button variant="destructive" size="icon" onClick={() => { setCapturedImage(null); setSelectedFile(null);}}>
+                                                <X className="h-4 w-4" />
+                                            </Button>
+                                        </div>
+                                    </div>
+                                ) : isCameraOpen ? (
                                      <div className="relative w-full aspect-video bg-black rounded-lg overflow-hidden">
                                         <video ref={videoRef} className="w-full h-full object-contain" autoPlay muted playsInline></video>
                                         {!hasCameraPermission && (
@@ -387,15 +392,6 @@ export function DocumentList() {
                                             </Button>
                                         </div>
                                          <canvas ref={canvasRef} className="hidden"></canvas>
-                                    </div>
-                                ) : capturedImage ? (
-                                    <div className="relative w-full aspect-video bg-black rounded-lg overflow-hidden">
-                                        <img src={capturedImage} alt="Captura" className="w-full h-full object-contain"/>
-                                        <div className="absolute top-2 right-2">
-                                            <Button variant="destructive" size="icon" onClick={() => { setCapturedImage(null); setSelectedFile(null); setIsCameraOpen(true);}}>
-                                                <X className="h-4 w-4" />
-                                            </Button>
-                                        </div>
                                     </div>
                                 ) : (
                                     <Button variant="outline" className="w-full h-24" onClick={() => setIsCameraOpen(true)}>
