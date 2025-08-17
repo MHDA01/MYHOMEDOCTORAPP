@@ -1,15 +1,10 @@
-import Image from 'next/image';
-
-export function Logo({ className }: { className?: string }) {
+export function Logo() {
   return (
-    <Image 
-      src="https://i.postimg.cc/SsRdwdzD/LOGO-1-transparent.png" 
-      alt="MyHomeDoctorApp Logo" 
-      width={160} 
-      height={120} 
-      className={className}
-      data-ai-hint="app logo"
-      priority
-    />
+    <div className="flex flex-col items-center justify-center h-screen">
+      {/* Add your SVG or image for the logo here */}
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-12 h-12 text-blue-600">
+        <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path>
+      </svg>
+    </div>
   );
 }

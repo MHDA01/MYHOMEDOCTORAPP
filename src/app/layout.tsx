@@ -2,7 +2,13 @@
 'use client';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster"
+import { PT_Sans } from 'next/font/google';
 
+const ptSans = PT_Sans({
+  subsets: ['latin'],
+  weight: ['400', '700'],
+  variable: '--font-pt-sans',
+});
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -16,9 +22,6 @@ export default function RootLayout({
         <meta name="description" content="Tu asistente personal de gestión de salud." />
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
         <link rel="canonical" href="https://www.myhomedoctorapp.com" />
-        <link rel="manifest" href="/manifest.webmanifest" />
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=PT+Sans:wght@400;700&display=swap" rel="stylesheet" />
         <meta name="application-name" content="MyHomeDoctorApp" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -46,7 +49,7 @@ export default function RootLayout({
         <link href="https://placehold.co/2048x2732.png" media="(device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" rel="apple-touch-startup-image" />
         <link href="https://placehold.co/2732x2048.png" media="(device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)" rel="apple-touch-startup-image" />
       </head>
-      <body className="font-body antialiased">
+      <body className={`${ptSans.variable} font-body antialiased`}>
         {children}
         <Toaster />
       </body>
