@@ -17,6 +17,7 @@ import { useToast } from "@/hooks/use-toast";
 import { UserContext } from '@/context/user-context';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
+import { Timestamp } from "firebase/firestore"; // Import Timestamp
 
 
 type DialogMode = 'add' | 'edit';
@@ -35,6 +36,8 @@ export function MedicationReminders() {
     const [administrationPeriod, setAdministrationPeriod] = useState('Permanente');
     const [timeInputs, setTimeInputs] = useState<string[]>(['09:00']);
     const [active, setActive] = useState(true);
+    const [startTime, setStartTime] = useState<Date | undefined>(undefined); // Added state for startTime
+    const [endTime, setEndTime] = useState<Date | undefined>(undefined); // Added state for endTime
 
     const { toast } = useToast();
 
@@ -68,6 +71,8 @@ export function MedicationReminders() {
         setAdministrationPeriod('Permanente');
         setTimeInputs(['09:00']);
         setActive(true);
+        setStartTime(undefined); // Reset startTime
+        setEndTime(undefined); // Reset endTime
     };
 
     const handleOpenDialog = (mode: DialogMode, medication?: Medication) => {
@@ -80,6 +85,8 @@ export function MedicationReminders() {
             setAdministrationPeriod(medication.administrationPeriod);
             setTimeInputs(medication.time);
             setActive(medication.active);
+            setStartTime(medication.startTime instanceof Timestamp ? medication.startTime.toDate() : undefined); // Set startTime from fetched data
+            setEndTime(medication.endTime instanceof Timestamp ? medication.endTime.toDate() : undefined); // Set endTime from fetched data
         } else {
             setSelectedMed(null);
             resetForm();
@@ -104,7 +111,15 @@ export function MedicationReminders() {
             return;
         }
         setIsSaving(true);
-        const medData = { name, dosage, frequency, administrationPeriod, time: timeInputs, active };
+
+        // Convert Date objects to Firestore Timestamps if they exist
+        const medData = {
+            name, dosage, frequency, administrationPeriod, time: timeInputs, active,
+            // Convert Date objects to Firestore Timestamps if they exist
+            // Ensure startTime and endTime are included even if null for rules validation
+            startTime: startTime ? Timestamp.fromDate(startTime) : null,
+            endTime: endTime ? Timestamp.fromDate(endTime) : null,
+        };
 
         try {
             if (dialogMode === 'add') {
@@ -262,6 +277,20 @@ export function MedicationReminders() {
                                     </div>
                                 ))}
                             </div>
+                             {/* Add UI for startTime and endTime input if needed */}
+                             {/* Example (requires a date picker component like the one for appointments): */}
+                            {/*
+                             <div className="grid gap-2">
+                                 <Label>Fecha de Inicio</Label>
+                                 { Add Date Picker for startTime state }
+                             </div>
+                             <div className="grid gap-2">
+                                 <Label>Fecha de Fin (Opcional)</Label>
+                                 { Add Date Picker for endTime state }
+                             </div>
+                             */}
+                            {/* You might want to make startTime mandatory and endTime optional */}
+
                         </div>
                         <DialogFooter>
                              <DialogClose asChild>

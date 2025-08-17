@@ -6,5 +6,5 @@ initializeApp();
 
 setGlobalOptions({
   maxInstances: 10,
-  region: "us-central1"
+  region: "europe-west1"
 });

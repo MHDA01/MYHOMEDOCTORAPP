@@ -1,4 +1,6 @@
 
+import { Timestamp } from 'firebase/firestore';
+
 export type Document = {
   id: string;
   name: string;
@@ -21,14 +23,16 @@ export type Appointment = {
 };
 
 export type Medication = {
-  id: string;
-  name: string;
-  dosage: string;
-  frequency: number; // Interval in hours, e.g., 24 for daily, 12 for twice a day
-  administrationPeriod: string; // e.g., '7 days', 'Permanent'
-  time: string[];
-  active: boolean;
-  uploadedAt: Date;
+  id: string; // Document ID in Firestore
+  name: string; // Medication name
+  dosage: string; // Dosage information (e.g., "500mg", "2 tablets")
+  frequency: number; // How often to take the medication in hours (e.g., 24 for once a day)
+  administrationPeriod?: string; // Optional: Duration of administration (e.g., "7 days", "Permanent")
+  time?: Array<Timestamp | null>; // Optional: Specific times to take the medication
+  active: boolean; // Is the medication currently active?
+  startTime: Timestamp | null; // Start time of the medication regimen
+  endTime: Timestamp | null; // End time of the medication regimen
+  uploadedAt: Timestamp; // When the medication record was uploaded
 };
 
 export type EmergencyContact = {

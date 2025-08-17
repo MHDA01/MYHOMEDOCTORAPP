@@ -9,6 +9,11 @@ export const setupNotifications = async (userId: string, toast: (options: any) =
   const supported = await isSupported();
   if (!supported) {
     console.log("Este navegador no soporta notificaciones push de Firebase.");
+    toast({ // Added toast notification for unsupported browsers
+        variant: "default", // or "info" if available
+        title: "Notificaciones no soportadas",
+        description: "Tu navegador no soporta notificaciones push. No recibirás recordatorios.",
+    });
     return;
   }
   

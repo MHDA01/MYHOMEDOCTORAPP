@@ -15,7 +15,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { format } from "date-fns";
 import { es } from 'date-fns/locale';
-import { cn } from "@/lib/utils";
+import { cn } from "@/lib/utils";import { Timestamp } from "firebase/firestore";
 import type { Appointment } from '@/lib/types';
 import { useToast } from "@/hooks/use-toast";
 import { UserContext } from '@/context/user-context';
@@ -113,7 +113,7 @@ export function Appointments() {
             doctor,
             specialty,
             date: finalDate,
-            reminder,
+            reminder: reminder === 'none' ? '' : reminder, // Store 'none' as empty string or null
             status: 'Upcoming' as 'Upcoming',
         };
         
