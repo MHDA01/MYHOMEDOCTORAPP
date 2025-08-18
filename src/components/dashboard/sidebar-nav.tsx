@@ -34,20 +34,8 @@ import {
 import { UserContext } from '@/context/user-context';
 import { DownloadReportButton } from './download-report-button';
 
-const mainNavItems = [
-  { href: '/dashboard', icon: LayoutDashboard, label: 'Mi Historial' },
-  { href: '/dashboard/teleconsulta', icon: Video, label: 'Teleconsulta' },
-  { href: '/dashboard/urgencias', icon: Siren, label: 'Urgencias y Domicilio' },
-];
 
-const secondaryNavItems = [
-  { href: '/dashboard#personal-info', icon: User, label: 'Información Personal' },
-  { href: '/dashboard#emergency-contacts', icon: Phone, label: 'Contactos de Emergencia' },
-  { href: '/dashboard#health-record', icon: ShieldAlert, label: 'Historial Médico' },
-  { href: '/dashboard#documents', icon: FileText, label: 'Documentos' },
-  { href: '/dashboard#appointments', icon: CalendarClock, label: 'Citas' },
-  { href: '/dashboard#medications', icon: Pill, label: 'Medicamentos' },
-];
+
 
 export function SidebarNav() {
   const pathname = usePathname();
