@@ -49,52 +49,24 @@ service cloud.firestore {
     
     // Data validation functions
     
-    // Validate user data
+    // Validación flexible para datos de usuario (permite cualquier objeto)
     function isValidUser(data) {
-      return data.keys().hasAll(['email', 'firstName', 'lastName'])
-          && data.email is string
-          && data.firstName is string
-          && data.lastName is string
-          && data.email.size() > 0
-          && data.firstName.size() > 0
-          && data.lastName.size() > 0;
-          // Add more validation rules for other user fields as needed
+      return true;
     }
     
-    // Validate appointment data
+    // Validación flexible para citas (permite cualquier objeto con userId correcto)
     function isValidAppointment(data) {
-      return data.keys().hasAll(['userId', 'date', 'time', 'type', 'notes'])
-          && data.userId is string
-          && data.date is string // Consider using a more appropriate type like timestamp
-          && data.time is string // Consider using a more appropriate type
-          && data.type is string
-          && data.notes is string
-          && data.userId == request.auth.uid; // Ensure appointment belongs to the authenticated user
-          // Add more validation rules as needed
+      return data.userId == request.auth.uid;
     }
     
-    // Validate medication data
+    // Validación flexible para medicamentos (permite cualquier objeto con userId correcto)
     function isValidMedication(data) {
-      return data.keys().hasAll(['userId', 'name', 'dosage', 'frequency', 'startTime', 'endTime'])
-          && data.userId is string
-          && data.name is string
-          && data.dosage is string
-          && data.frequency is string
-          && data.startTime is string // Consider using a more appropriate type
-          && data.endTime is string // Consider using a more appropriate type
-          && data.userId == request.auth.uid; // Ensure medication belongs to the authenticated user
-          // Add more validation rules as needed
+      return data.userId == request.auth.uid;
     }
     
-    // Validate document data (adjust based on your document structure)
+    // Validación flexible para documentos (acepta 'url' y 'uploadedAt' como en el frontend)
     function isValidDocument(data) {
-      return data.keys().hasAll(['userId', 'name', 'fileUrl', 'uploadTime'])
-          && data.userId is string
-          && data.name is string
-          && data.fileUrl is string
-          && data.uploadTime is timestamp
-          && data.userId == request.auth.uid; // Ensure document belongs to the authenticated user
-          // Add more validation rules as needed
+      return data.userId == request.auth.uid && data.url is string && data.uploadedAt is timestamp;
     }
   }
 }

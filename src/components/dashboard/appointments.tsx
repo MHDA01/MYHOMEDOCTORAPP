@@ -115,6 +115,7 @@ export function Appointments() {
             date: finalDate,
             reminder: reminder === 'none' ? '' : reminder, // Store 'none' as empty string or null
             status: 'Upcoming' as 'Upcoming',
+            uploadedAt: new Date(),
         };
         
         try {
@@ -224,16 +225,15 @@ export function Appointments() {
                                                 onSelect={handleDateSelect}
                                                 initialFocus
                                                 locale={es}
-                                                fromYear={new Date().getFullYear()}
+                                                fromYear={new Date().getFullYear() - 120}
                                                 toYear={new Date().getFullYear() + 5}
-                                                disabled={(date) => date < new Date(new Date().setDate(new Date().getDate() -1))}
                                             />
                                         </PopoverContent>
                                     </Popover>
                                 </div>
                                  <div className="grid gap-2">
                                     <Label htmlFor="appointment-time">Hora</Label>
-                                    <Input id="appointment-time" type="time" value={time} onChange={e => setTime(e.target.value)} />
+                                    <Input id="appointment-time" type="time" value={time} onChange={e => setTime(e.target.value)} className="h-10 w-32 rounded-md border border-input bg-background px-3 py-2 text-base focus-visible:ring-2 focus-visible:ring-primary" />
                                 </div>
                             </div>
                             <div className="grid gap-2">

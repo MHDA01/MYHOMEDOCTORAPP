@@ -273,7 +273,7 @@ export function MedicationReminders() {
                                 <Label>Horas de Recordatorio</Label>
                                 {timeInputs.map((time, index) => (
                                     <div key={index} className="flex items-center gap-2">
-                                        <Input type="time" value={time} onChange={(e) => handleTimeChange(index, e.target.value)} />
+                                        <Input type="time" value={time} onChange={(e) => handleTimeChange(index, e.target.value)} className="h-10 w-32 rounded-md border border-input bg-background px-3 py-2 text-base focus-visible:ring-2 focus-visible:ring-primary" />
                                     </div>
                                 ))}
                             </div>

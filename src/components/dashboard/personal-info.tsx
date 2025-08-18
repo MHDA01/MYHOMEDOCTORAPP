@@ -3,9 +3,13 @@
 
 import { useState, useContext, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
+import { Calendar as CalendarIcon } from "lucide-react";
+import { Calendar } from "@/components/ui/calendar";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -245,11 +249,28 @@ export function PersonalInfo() {
                     </div>
                     <div className="grid gap-2">
                         <Label>Fecha de Nacimiento</Label>
-                        <div className="flex items-center gap-2">
-                            <Input type="number" value={day} onChange={(e) => setDay(e.target.value)} placeholder="DD" aria-label="Día de nacimiento" />
-                            <Input type="number" value={month} onChange={(e) => setMonth(e.target.value)} placeholder="MM" aria-label="Mes de nacimiento" />
-                            <Input type="number" value={year} onChange={(e) => setYear(e.target.value)} placeholder="AAAA" aria-label="Año de nacimiento" />
-                        </div>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button
+                              variant="outline"
+                              className={cn("w-full justify-start text-left font-normal", !(editableInfo.dateOfBirth) && "text-muted-foreground")}
+                            >
+                              <CalendarIcon className="mr-2 h-4 w-4" />
+                              {editableInfo.dateOfBirth ? format(new Date(editableInfo.dateOfBirth), "PPP", { locale: es }) : <span>Elige una fecha</span>}
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0" align="start" portal={false}>
+                            <Calendar
+                              mode="single"
+                              selected={editableInfo.dateOfBirth ? new Date(editableInfo.dateOfBirth) : undefined}
+                              onSelect={date => setEditableInfo({ ...editableInfo, dateOfBirth: date })}
+                              initialFocus
+                              locale={es}
+                              fromYear={new Date().getFullYear() - 120}
+                              toYear={new Date().getFullYear()}
+                            />
+                          </PopoverContent>
+                        </Popover>
                     </div>
                     <div className="grid gap-2">
                         <Label>País de Residencia</Label>

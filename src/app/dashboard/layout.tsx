@@ -29,9 +29,9 @@ export default function DashboardLayout({
   
   return (
     <UserProvider>
-      <SidebarProvider>
+  <SidebarProvider defaultOpen={true} open={true}>
         <div className="flex min-h-screen">
-          <Sidebar>
+          <Sidebar collapsible="none">
             <SidebarNav />
           </Sidebar>
           <SidebarInset>

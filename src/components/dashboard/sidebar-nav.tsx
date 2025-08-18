@@ -14,9 +14,9 @@ import {
 } from '@/components/ui/sidebar';
 import { Logo } from '@/components/logo';
 import { Separator } from '@/components/ui/separator';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   LayoutDashboard,
   ShieldAlert,
@@ -25,16 +25,13 @@ import {
   Pill,
   Settings,
   LogOut,
-  User,
-  Video,
-  Siren,
-  Loader2,
   MoreVertical,
   Phone,
-  BrainCircuit,
+  Video,
+  Siren,
+  User,
 } from 'lucide-react';
 import { UserContext } from '@/context/user-context';
-import { Skeleton } from '../ui/skeleton';
 import { DownloadReportButton } from './download-report-button';
 
 const mainNavItems = [
@@ -66,42 +63,23 @@ export function SidebarNav() {
     }
   };
 
-  if (context?.loading || !context?.personalInfo) {
-    return (
-        <>
-            <SidebarHeader className="items-center">
-                <Logo />
-            </SidebarHeader>
-            <SidebarContent className="p-2 space-y-2">
-               <Skeleton className="h-8 w-full" />
-               <Skeleton className="h-8 w-full" />
-               <Skeleton className="h-8 w-full" />
-            </SidebarContent>
-            <SidebarFooter>
-                <Separator className="my-2" />
-                <div className="flex items-center gap-3 p-2">
-                    <Skeleton className="h-9 w-9 rounded-full" />
-                    <div className="space-y-2 flex-1">
-                        <Skeleton className="h-4 w-24" />
-                        <Skeleton className="h-3 w-32" />
-                    </div>
-                </div>
-            </SidebarFooter>
-        </>
-    )
-  }
-
-  const { personalInfo, user } = context;
-  const userFullName = personalInfo?.firstName && personalInfo?.lastName ? `${personalInfo.firstName} ${personalInfo.lastName}` : (user?.displayName || 'Usuario');
-  const userInitials = userFullName ? userFullName.split(' ').map(n => n[0]).join('').substring(0,2).toUpperCase() : 'U';
-  const userEmail = user?.email || "invitado@ejemplo.com"; 
+  // Usar datos genéricos si no existen
+  const personalInfo = context?.personalInfo || { firstName: 'Invitado', lastName: '' };
+  const user = context?.user || { displayName: 'Usuario', email: 'invitado@ejemplo.com' };
+  const userFullName = personalInfo.firstName && personalInfo.lastName ? `${personalInfo.firstName} ${personalInfo.lastName}` : (user.displayName || 'Usuario');
+  const userInitials = userFullName ? userFullName.split(' ').map((n: string) => n[0]).join('').substring(0,2).toUpperCase() : 'U';
+  const userEmail = user.email || "invitado@ejemplo.com";
 
   return (
     <>
-      <SidebarHeader className="items-center">
-        <Logo />
+  <SidebarHeader className="items-center pt-5 pb-4 px-4">
+        <img
+          src="https://i.postimg.cc/SsRdwdzD/LOGO-1-transparent.png"
+          alt="Logo"
+          className="h-48 w-auto mx-auto"
+        />
       </SidebarHeader>
-      <SidebarContent className="p-2">
+  <SidebarContent className="pt-2 pb-2 px-2">
         <SidebarMenu>
           {mainNavItems.map((item) => (
             <SidebarMenuItem key={item.label}>

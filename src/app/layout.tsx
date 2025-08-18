@@ -30,10 +30,8 @@ export default function RootLayout({
         <meta name="format-detection" content="telephone=no" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="theme-color" content="#478CFF" />
-        
         {/* --- Iconos para iOS --- */}
         <link rel="apple-touch-icon" href="/icons/icon-192x192.png" />
-        
         {/* --- Imágenes de Arranque (Splash Screens) para iOS --- */}
         {/* iPhone SE, 6, 7, 8 */}
         <link href="https://placehold.co/750x1334.png" media="(device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2)" rel="apple-touch-startup-image" />

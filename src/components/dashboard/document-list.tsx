@@ -348,9 +348,9 @@ export function DocumentList() {
                   <Label>Fecha del Estudio</Label>
                   <Popover open={isDatePopoverOpen} onOpenChange={setIsDatePopoverOpen}>
                     <PopoverTrigger asChild>
-                      <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !studyDate && "text-muted-foreground")}>
+                      <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !studyDate && "text-muted-foreground")}> 
                         <CalendarIcon className="mr-2 h-4 w-4" />
-                        {studyDate ? format(studyDate, "PPP", { locale: es }) : <span>Elige fecha</span>}
+                        {studyDate ? format(studyDate, "PPP", { locale: es }) : <span>Elige una fecha</span>}
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0" align="start" portal={false}>
@@ -360,9 +360,7 @@ export function DocumentList() {
                         onSelect={(d) => { setStudyDate(d); setIsDatePopoverOpen(false); }}
                         initialFocus
                         locale={es}
-                        toDate={new Date()}
-                        captionLayout="dropdown-buttons"
-                        fromYear={1950}
+                        fromYear={new Date().getFullYear() - 120}
                         toYear={new Date().getFullYear()}
                       />
                     </PopoverContent>

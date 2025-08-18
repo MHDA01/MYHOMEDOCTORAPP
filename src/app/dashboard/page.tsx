@@ -1,5 +1,4 @@
 
-import { fetchDataFromFirebase } from '@/lib/firebase/queries'; // Assuming this function exists
 
 import { DashboardHeader } from "@/components/dashboard/header";
 import { PersonalInfo } from "@/components/dashboard/personal-info";
@@ -11,9 +10,6 @@ import { Appointments } from "@/components/dashboard/appointments";
 import { MedicationReminders } from "@/components/dashboard/medication-reminders";
 
 export default function DashboardPage() {
-  return (
-export default async function DashboardPage() {
-  const data = await fetchDataFromFirebase();
   return (
     <div className="flex flex-col h-full">
       <DashboardHeader />
@@ -37,9 +33,7 @@ export default async function DashboardPage() {
             <div id="medications" className="scroll-mt-20">
                 <MedicationReminders />
             </div>
-            {data.map((item: any) => (
-                <p key={item.id}>{item.name}</p>
-            ))}
+            {/* Aquí puedes renderizar datos cuando estén disponibles */}
         </div>
       </main>
     </div>
