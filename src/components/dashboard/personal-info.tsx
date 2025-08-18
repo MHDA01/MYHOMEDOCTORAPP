@@ -263,7 +263,7 @@ export function PersonalInfo() {
                             <Calendar
                               mode="single"
                               selected={editableInfo.dateOfBirth ? new Date(editableInfo.dateOfBirth) : undefined}
-                              onSelect={date => setEditableInfo({ ...editableInfo, dateOfBirth: date })}
+                              onSelect={date => date && setEditableInfo({ ...editableInfo, dateOfBirth: date })}
                               initialFocus
                               locale={es}
                               fromYear={new Date().getFullYear() - 120}

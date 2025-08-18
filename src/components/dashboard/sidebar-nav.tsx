@@ -1,7 +1,6 @@
-
 'use client'
 
-import { useContext } from 'react';
+import { useContext, type ElementType } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
@@ -12,7 +11,6 @@ import {
   SidebarMenuButton,
   SidebarFooter,
 } from '@/components/ui/sidebar';
-import { Logo } from '@/components/logo';
 import { Separator } from '@/components/ui/separator';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
@@ -34,8 +32,26 @@ import {
 import { UserContext } from '@/context/user-context';
 import { DownloadReportButton } from './download-report-button';
 
+type NavItem = {
+  href: string;
+  label: string;
+  icon: ElementType;
+};
 
+const mainNavItems: NavItem[] = [
+  { href: '/dashboard', icon: LayoutDashboard, label: 'Mi Historial' },
+  { href: '/dashboard/teleconsulta', icon: Video, label: 'Teleconsulta' },
+  { href: '/dashboard/urgencias', icon: Siren, label: 'Urgencias y Domicilio' },
+];
 
+const secondaryNavItems: NavItem[] = [
+  { href: '/dashboard#personal-info', icon: User, label: 'Información Personal' },
+  { href: '/dashboard#emergency-contacts', icon: Phone, label: 'Contactos de Emergencia' },
+  { href: '/dashboard#health-record', icon: ShieldAlert, label: 'Historial Médico' },
+  { href: '/dashboard#documents', icon: FileText, label: 'Documentos' },
+  { href: '/dashboard#appointments', icon: CalendarClock, label: 'Citas' },
+  { href: '/dashboard#medications', icon: Pill, label: 'Medicamentos' },
+];
 
 export function SidebarNav() {
   const pathname = usePathname();
@@ -60,14 +76,14 @@ export function SidebarNav() {
 
   return (
     <>
-  <SidebarHeader className="items-center pt-5 pb-4 px-4">
+      <SidebarHeader className="items-center pt-5 pb-4 px-4">
         <img
           src="https://i.postimg.cc/SsRdwdzD/LOGO-1-transparent.png"
           alt="Logo"
           className="h-48 w-auto mx-auto"
         />
       </SidebarHeader>
-  <SidebarContent className="pt-2 pb-2 px-2">
+      <SidebarContent className="pt-2 pb-2 px-2">
         <SidebarMenu>
           {mainNavItems.map((item) => (
             <SidebarMenuItem key={item.label}>

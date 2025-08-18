@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { Pill, PlusCircle, BellRing, MoreVertical, FilePenLine, Trash2, Loader2, AlertTriangle, Info } from "lucide-react";
+import { Pill, PlusCircle, BellRing, MoreVertical, FilePenLine, Trash2, Loader2 } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -16,11 +16,24 @@ import type { Medication } from '@/lib/types';
 import { useToast } from "@/hooks/use-toast";
 import { UserContext } from '@/context/user-context';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
-import { Timestamp } from "firebase/firestore"; // Import Timestamp
+import { Timestamp } from "firebase/firestore";
 
 
 type DialogMode = 'add' | 'edit';
+
+// Helper to format Timestamp to HH:mm string
+const formatTimestampToTimeString = (ts: Timestamp | null): string => {
+    if (!ts) return '';
+    return ts.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+};
+
+// Helper to convert HH:mm string to a new Timestamp for today
+const formatTimeStringtoTimestamp = (time: string): Timestamp => {
+    const [hour, minute] = time.split(':');
+    const date = new Date();
+    date.setHours(parseInt(hour, 10), parseInt(minute, 10), 0, 0);
+    return Timestamp.fromDate(date);
+}
 
 export function MedicationReminders() {
     const context = useContext(UserContext);
@@ -36,8 +49,8 @@ export function MedicationReminders() {
     const [administrationPeriod, setAdministrationPeriod] = useState('Permanente');
     const [timeInputs, setTimeInputs] = useState<string[]>(['09:00']);
     const [active, setActive] = useState(true);
-    const [startTime, setStartTime] = useState<Date | undefined>(undefined); // Added state for startTime
-    const [endTime, setEndTime] = useState<Date | undefined>(undefined); // Added state for endTime
+    const [startTime, setStartTime] = useState<Date | undefined>(undefined);
+    const [endTime, setEndTime] = useState<Date | undefined>(undefined);
 
     const { toast } = useToast();
 
@@ -48,7 +61,7 @@ export function MedicationReminders() {
         if (!isDialogOpen) return;
 
         if (dialogMode === 'edit' && selectedMed && selectedMed.frequency === frequency) {
-            setTimeInputs(selectedMed.time);
+            setTimeInputs(selectedMed.time?.map(formatTimestampToTimeString) || []);
             return;
         }
 
@@ -61,7 +74,7 @@ export function MedicationReminders() {
 
         setTimeInputs(newTimes);
 
-    }, [frequency, isDialogOpen, dialogMode, selectedMed?.frequency, selectedMed?.time]);
+    }, [frequency, isDialogOpen, dialogMode, selectedMed]);
 
 
     const resetForm = () => {
@@ -71,22 +84,22 @@ export function MedicationReminders() {
         setAdministrationPeriod('Permanente');
         setTimeInputs(['09:00']);
         setActive(true);
-        setStartTime(undefined); // Reset startTime
-        setEndTime(undefined); // Reset endTime
+        setStartTime(undefined);
+        setEndTime(undefined);
     };
 
     const handleOpenDialog = (mode: DialogMode, medication?: Medication) => {
         setDialogMode(mode);
         if (mode === 'edit' && medication) {
             setSelectedMed(medication);
-            setName(medication.name);
-            setDosage(medication.dosage);
-            setFrequency(medication.frequency);
-            setAdministrationPeriod(medication.administrationPeriod);
-            setTimeInputs(medication.time);
-            setActive(medication.active);
-            setStartTime(medication.startTime instanceof Timestamp ? medication.startTime.toDate() : undefined); // Set startTime from fetched data
-            setEndTime(medication.endTime instanceof Timestamp ? medication.endTime.toDate() : undefined); // Set endTime from fetched data
+            setName(medication.name || '');
+            setDosage(medication.dosage || '');
+            setFrequency(medication.frequency || 24);
+            setAdministrationPeriod(medication.administrationPeriod || 'Permanente');
+            setTimeInputs(medication.time?.map(formatTimestampToTimeString) || []);
+            setActive(medication.active ?? true);
+            setStartTime(medication.startTime instanceof Timestamp ? medication.startTime.toDate() : undefined);
+            setEndTime(medication.endTime instanceof Timestamp ? medication.endTime.toDate() : undefined);
         } else {
             setSelectedMed(null);
             resetForm();
@@ -112,21 +125,29 @@ export function MedicationReminders() {
         }
         setIsSaving(true);
 
-        // Convert Date objects to Firestore Timestamps if they exist
-        const medData = {
-            name, dosage, frequency, administrationPeriod, time: timeInputs, active,
-            // Convert Date objects to Firestore Timestamps if they exist
-            // Ensure startTime and endTime are included even if null for rules validation
+        const medDataToAdd: Omit<Medication, "id"> = {
+            name, dosage, frequency, administrationPeriod, 
+            time: timeInputs.map(formatTimeStringtoTimestamp),
+            active,
+            startTime: startTime ? Timestamp.fromDate(startTime) : null,
+            endTime: endTime ? Timestamp.fromDate(endTime) : null,
+            uploadedAt: Timestamp.now(),
+        };
+        
+        const medDataToUpdate: Partial<Medication> = {
+            name, dosage, frequency, administrationPeriod, 
+            time: timeInputs.map(formatTimeStringtoTimestamp),
+            active,
             startTime: startTime ? Timestamp.fromDate(startTime) : null,
             endTime: endTime ? Timestamp.fromDate(endTime) : null,
         };
 
         try {
             if (dialogMode === 'add') {
-                await addMedication(medData);
+                await addMedication(medDataToAdd);
                 toast({ title: 'Recordatorio añadido' });
             } else if (selectedMed) {
-                await updateMedication(selectedMed.id, medData);
+                await updateMedication(selectedMed.id, medDataToUpdate);
                 toast({ title: 'Recordatorio actualizado' });
             }
         } catch (error) {
@@ -194,7 +215,7 @@ export function MedicationReminders() {
                             <p className="font-semibold">{med.name} <span className="text-sm font-normal text-muted-foreground">{med.dosage}</span></p>
                             <p className="text-sm text-muted-foreground">{formatFrequencyLabel(med.frequency)} - {med.administrationPeriod}</p>
                             <div className="flex items-center gap-2 mt-1 flex-wrap">
-                                {med.time.map(t => <Badge key={t} variant="outline">{formatTime12h(t)}</Badge>)}
+                                {(med.time || []).map((t, i) => <Badge key={t ? t.toMillis() : i} variant="outline">{formatTime12h(formatTimestampToTimeString(t))}</Badge>)}
                             </div>
                         </div>
                         <div className="flex items-center gap-2 flex-shrink-0">
@@ -273,23 +294,11 @@ export function MedicationReminders() {
                                 <Label>Horas de Recordatorio</Label>
                                 {timeInputs.map((time, index) => (
                                     <div key={index} className="flex items-center gap-2">
-                                        <Input type="time" value={time} onChange={(e) => handleTimeChange(index, e.target.value)} className="h-10 w-32 rounded-md border border-input bg-background px-3 py-2 text-base focus-visible:ring-2 focus-visible:ring-primary" />
+                                        <Input type="time" value={time} onChange={(e) => handleTimeChange(index, e.target.value)} />
                                     </div>
                                 ))}
                             </div>
                              {/* Add UI for startTime and endTime input if needed */}
-                             {/* Example (requires a date picker component like the one for appointments): */}
-                            {/*
-                             <div className="grid gap-2">
-                                 <Label>Fecha de Inicio</Label>
-                                 { Add Date Picker for startTime state }
-                             </div>
-                             <div className="grid gap-2">
-                                 <Label>Fecha de Fin (Opcional)</Label>
-                                 { Add Date Picker for endTime state }
-                             </div>
-                             */}
-                            {/* You might want to make startTime mandatory and endTime optional */}
 
                         </div>
                         <DialogFooter>
