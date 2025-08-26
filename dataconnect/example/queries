@@ -1,0 +1,51 @@
+query ListAllUsers @auth(level: USER) {
+  users {
+    id
+    firstName
+    lastName
+    email
+    userType
+  }
+}
+
+query GetUserById($id: UUID!) @auth(level: USER) {
+  user(id: $id) {
+    id
+    firstName
+    lastName
+    email
+    userType
+    address
+    phoneNumber
+    dateOfBirth
+    profilePictureUrl
+  }
+}
+
+mutation CreateNewAppointment(
+  $patientId: UUID!
+  $providerId: UUID!
+  $appointmentDate: Date!
+  $appointmentTime: String!
+  $reason: String!
+  $status: String!
+  $location: String
+  $notes: String
+) @auth(level: USER) {
+  appointment_insert(
+    data: {
+      patientId: $patientId
+      providerId: $providerId
+      appointmentDate: $appointmentDate
+      appointmentTime: $appointmentTime
+      reason: $reason
+      status: $status
+      location: $location
+      notes: $notes
+    }
+  )
+}
+
+mutation UpdateAppointmentStatus($id: UUID!, $status: String!) @auth(level: USER) {
+  appointment_update(id: $id, data: { status: $status })
+}

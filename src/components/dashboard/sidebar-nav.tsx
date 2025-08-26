@@ -78,7 +78,7 @@ export function SidebarNav() {
     <>
       <SidebarHeader className="items-center pt-5 pb-4 px-4">
         <img
-          src="https://i.postimg.cc/SsRdwdzD/LOGO-1-transparent.png"
+          src="https://res.cloudinary.com/dm9gwvsmq/image/upload/v1755545822/LOGO_1_transparent_wsag9b.png"
           alt="Logo"
           className="h-48 w-auto mx-auto"
         />
@@ -124,7 +124,7 @@ export function SidebarNav() {
             <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="flex h-auto w-full justify-start items-center gap-3 p-2">
                     <Avatar className="h-9 w-9">
-                        <AvatarImage src="https://i.postimg.cc/J7N5r89y/LOGO-1.png" alt="@user" data-ai-hint="user avatar" />
+                        <AvatarImage src="https://res.cloudinary.com/dm9gwvsmq/image/upload/v1755545822/LOGO_1_transparent_wsag9b.png" alt="@user" data-ai-hint="user avatar" />
                         <AvatarFallback>{userInitials}</AvatarFallback>
                     </Avatar>
                     <div className="text-left flex-1 overflow-hidden">

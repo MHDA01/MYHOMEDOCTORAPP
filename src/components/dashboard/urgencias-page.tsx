@@ -5,7 +5,7 @@ import { Siren, Phone, Home, Star } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogClose, DialogFooter } from "@/components/ui/dialog";
 
 const homeCareProviders = [
-    { name: 'familymed', phone: '221234567', logo: 'https://i.postimg.cc/SsRdwdzD/LOGO-1-transparent.png', rating: 4.5, reviews: 120 },
+    { name: 'familymed', phone: '221234567', logo: 'https://res.cloudinary.com/dm9gwvsmq/image/upload/v1755545822/LOGO_1_transparent_wsag9b.png', rating: 4.5, reviews: 120 },
     { name: 'Red de Salud UC CHRISTUS', phone: '226767000' },
     { name: 'Help Asistencia', phone: '6006004444' },
     { name: 'Clínica Alemana', phone: '229101111' },

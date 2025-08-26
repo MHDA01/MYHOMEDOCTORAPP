@@ -5,24 +5,23 @@ import Image from 'next/image';
 
 export default function HeroSection() {
   return (
-    <section id="hero-section" className="bg-background pt-12 pb-12 text-center overflow-hidden w-full">
-      {/* Container for the image */}
-      <div className="relative w-full max-w-xl mx-auto aspect-[4/3] mb-8">
-        <Image
-          src="https://i.postimg.cc/SsRdwdzD/LOGO-1-transparent.png"
-          alt="MyHomeDoctorApp Logo"
-          fill
-          className="object-contain"
-          // The "sizes" prop is added here to improve performance
-          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-          data-ai-hint="app logo"
-          priority
-        />
+    <section id="hero-section" className="bg-background pt-8 pb-12 text-center overflow-hidden w-full">
+      {/* Logo con proporciones naturales y tamaño optimizado (40% más grande) */}
+      <div className="flex justify-center items-center py-3 mt-2">
+        <div className="relative" style={{ width: '840px', height: '588px' }}>
+          <img
+            src="https://res.cloudinary.com/dm9gwvsmq/image/upload/v1755545822/LOGO_1_transparent_wsag9b.png"
+            alt="MyHomeDoctorApp Logo"
+            className="w-full h-full object-contain"
+            style={{ objectFit: 'contain', transform: 'scaleX(1.1)' }}
+            data-ai-hint="app logo"
+          />
+        </div>
       </div>
 
       {/* Container for the text content and button */}
-      <div className="px-6">
-        <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold text-slate-800 leading-tight mb-6">
+      <div className="px-6 -mt-6">
+        <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold text-slate-800 leading-tight mb-4">
           Tu Salud, Organizada y a tu Alcance.
         </h1>
         <p className="text-lg md:text-xl text-slate-600 mb-10 max-w-3xl mx-auto">

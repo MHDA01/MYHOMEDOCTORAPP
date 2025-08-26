@@ -1,0 +1,57 @@
+type User @table {
+  email: String!
+  passwordHash: String!
+  userType: String!
+  createdAt: Timestamp!
+  firstName: String
+  lastName: String
+  dateOfBirth: Date
+  phoneNumber: String
+  address: String
+  profilePictureUrl: String
+}
+
+type MedicalRecord @table {
+  patient: User
+  recordDate: Date!
+  recordType: String!
+  description: String!
+  createdAt: Timestamp!
+  diagnosisCode: String
+  providerNotes: String
+}
+
+type Appointment @table {
+  patient: User
+  provider: User
+  appointmentDate: Date!
+  appointmentTime: String!
+  status: String!
+  reason: String!
+  createdAt: Timestamp!
+  location: String
+  notes: String
+}
+
+type Prescription @table {
+  patient: User
+  provider: User
+  medicationName: String!
+  dosage: String!
+  frequency: String!
+  startDate: Date!
+  createdAt: Timestamp!
+  endDate: Date
+  instructions: String
+  refillsRemaining: Int
+}
+
+type Message @table {
+  sender: User
+  receiver: User
+  messageContent: String!
+  sentAt: Timestamp!
+  isRead: Boolean!
+  subject: String
+  attachmentUrl: String
+}

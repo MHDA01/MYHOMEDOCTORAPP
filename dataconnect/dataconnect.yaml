@@ -1,0 +1,12 @@
+specVersion: "v1"
+serviceId: "myhomedoctorapp"
+location: "southamerica-east1"
+schema:
+  source: "./schema"
+  datasource:
+    postgresql:
+      database: "fdcdb"
+      cloudSql:
+        instanceId: "alexa-fdc"
+      # schemaValidation: "COMPATIBLE"
+connectorDirs: ["./example"]
