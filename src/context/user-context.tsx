@@ -280,13 +280,14 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         const downloadURL = await getDownloadURL(snapshot.ref);
         console.log("addDocument: URL de descarga obtenida.");
 
-        const dataToSave: Omit<SerializableDocument, 'id'> = {
-            name: docData.name,
-            category: docData.category,
-            uploadedAt: Timestamp.now(),
-            studyDate: docData.studyDate ? Timestamp.fromDate(docData.studyDate) : Timestamp.now(),
-            url: downloadURL,
-        };
+    const dataToSave = {
+      name: docData.name,
+      category: docData.category,
+      uploadedAt: Timestamp.now(),
+      studyDate: docData.studyDate ? Timestamp.fromDate(docData.studyDate) : Timestamp.now(),
+      url: downloadURL,
+      userId: user.uid,
+    };
         
         console.log("addDocument: Guardando documento en Firestore...");
         await setDoc(docRef, dataToSave);
