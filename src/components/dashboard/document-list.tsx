@@ -5,6 +5,7 @@ import { useState, useContext, useRef, useEffect } from 'react';
 import { 
   Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter 
 } from "@/components/ui/card";
+import { uploadDocument } from '@/lib/uploadDocument';
 import { Button } from "@/components/ui/button";
 import { 
   FileText, PlusCircle, MoreVertical, FilePenLine, Trash2, Loader2, 
@@ -36,7 +37,7 @@ export function DocumentList() {
   const context = useContext(UserContext);
   if (!context) throw new Error("DocumentList must be used within a UserProvider");
 
-  const { documents, addDocument, updateDocument, deleteDocument, loading } = context;
+  const { documents, addDocument, updateDocument, deleteDocument, loading, user } = context;
   const { toast } = useToast();
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -178,14 +179,20 @@ export function DocumentList() {
 
   const handleSubmit = async () => {
     if (dialogMode === 'add') {
-      if (!name || !category || !studyDate || !selectedFile) {
+      if (!name || !category || !studyDate || !selectedFile || !user) {
         toast({ variant: 'destructive', title: "Formulario incompleto", description: "Completa todos los campos y toma una foto." });
         return;
       }
 
       setIsSaving(true);
       try {
-        await addDocument({ name, category, studyDate, uploadedAt: new Date(), file: selectedFile });
+        await uploadDocument(user, { 
+          name, 
+          category, 
+          studyDate, 
+          uploadedAt: new Date(), 
+          file: selectedFile 
+        });
         toast({ title: "Documento guardado con éxito." });
         resetForm();
         setIsDialogOpen(false);

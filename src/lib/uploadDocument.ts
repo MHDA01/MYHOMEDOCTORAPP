@@ -1,5 +1,14 @@
-// Función simplificada para subir documentos
-const addDocument = async (docData: Omit<DocumentType, 'id'>) => {
+import { User } from 'firebase/auth';
+import { doc, collection, setDoc, Timestamp } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { db, storage } from './firebase';
+import { Document as DocumentType } from './types';
+
+interface UploadDocumentData extends Omit<DocumentType, 'id'> {
+  file: File;
+}
+
+export const uploadDocument = async (user: User, docData: UploadDocumentData) => {
   if (!user || !docData.file) throw new Error("Usuario no autenticado o archivo no proporcionado.");
   
   try {
@@ -21,6 +30,8 @@ const addDocument = async (docData: Omit<DocumentType, 'id'>) => {
       url,
       userId: user.uid
     });
+
+    return { url, docId: docRef.id };
   } catch (error) {
     console.error("Error al subir documento:", error);
     throw new Error("No se pudo subir el documento. Por favor, inténtalo de nuevo.");
