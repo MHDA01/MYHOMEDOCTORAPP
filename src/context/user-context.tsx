@@ -260,43 +260,30 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   };
   
   const addDocument = async (docData: Omit<DocumentType, 'id'>) => {
-    if (!user || !docData.file) {
-      throw new Error("Usuario no autenticado o archivo no proporcionado.");
-    }
+    if (!user || !docData.file) throw new Error("Usuario no autenticado o archivo no proporcionado.");
     
-    // This is a robust, sequential flow to ensure reliability.
     try {
-        console.log("addDocument: Iniciando subida...");
-        const docRef = doc(collection(db, 'users', user.uid, 'documents'));
-        const docId = docRef.id;
-
-        const filePath = `users/${user.uid}/documents/${docId}-${docData.file.name}`;
-        const storageRef = ref(storage, filePath);
-        
-        console.log(`addDocument: Subiendo a la ruta: ${filePath}`);
-        const snapshot = await uploadBytes(storageRef, docData.file);
-        console.log("addDocument: Subida a Storage completada.");
-        
-        const downloadURL = await getDownloadURL(snapshot.ref);
-        console.log("addDocument: URL de descarga obtenida.");
-
-    const dataToSave = {
-      name: docData.name,
-      category: docData.category,
-      uploadedAt: Timestamp.now(),
-      studyDate: docData.studyDate ? Timestamp.fromDate(docData.studyDate) : Timestamp.now(),
-      url: downloadURL,
-      userId: user.uid,
-    };
-        
-        console.log("addDocument: Guardando documento en Firestore...");
-        await setDoc(docRef, dataToSave);
-        console.log("addDocument: Documento guardado en Firestore exitosamente.");
-
+      // 1. Crear referencia en Firestore
+      const docRef = doc(collection(db, 'users', user.uid, 'documents'));
+      
+      // 2. Subir archivo a Storage con timestamp para evitar conflictos
+      const fileName = `${Date.now()}-${docData.file.name}`;
+      const storageRef = ref(storage, `users/${user.uid}/documents/${fileName}`);
+      const snapshot = await uploadBytes(storageRef, docData.file);
+      const url = await getDownloadURL(snapshot.ref);
+      
+      // 3. Guardar documento en Firestore con userId
+      await setDoc(docRef, {
+        name: docData.name,
+        category: docData.category,
+        uploadedAt: Timestamp.now(),
+        studyDate: docData.studyDate ? Timestamp.fromDate(docData.studyDate) : Timestamp.now(),
+        url,
+        userId: user.uid
+      });
     } catch (error) {
-        console.error("addDocument: Error en el proceso de subida:", error);
-        // Re-throw the error so the calling component can handle it and show a toast.
-        throw new Error("No se pudo subir el documento. Inténtalo de nuevo.");
+      console.error("Error al subir documento:", error);
+      throw new Error("No se pudo subir el documento. Por favor, inténtalo de nuevo.");
     }
   };
 
