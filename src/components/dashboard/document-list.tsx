@@ -103,6 +103,8 @@ export function DocumentList() {
     setSelectedFile(null);
     setCapturedImage(null);
     setIsCameraOpen(false);
+    setIsSaving(false);
+    stopCameraStream();
   };
 
   const getCategoryLabel = (category: DocumentType['category']) => {
@@ -185,8 +187,10 @@ export function DocumentList() {
       try {
         await addDocument({ name, category, studyDate, uploadedAt: new Date(), file: selectedFile });
         toast({ title: "Documento guardado con éxito." });
+        resetForm();
         setIsDialogOpen(false);
       } catch (error) {
+        console.error('Error al guardar:', error);
         toast({ variant: 'destructive', title: "Error al guardar el documento.", description: (error as Error).message });
       } finally {
         setIsSaving(false);
@@ -409,9 +413,14 @@ export function DocumentList() {
               )}
             </div>
             <DialogFooter>
-              <DialogClose asChild>
-                <Button variant="outline" disabled={isSaving}>Cancelar</Button>
-              </DialogClose>
+              <Button variant="outline" onClick={() => {
+                if (!isSaving) {
+                  resetForm();
+                  setIsDialogOpen(false);
+                }
+              }} disabled={isSaving}>
+                Cancelar
+              </Button>
               <Button type="submit" onClick={handleSubmit} disabled={isSaving || (dialogMode === 'add' && !selectedFile)}>
                 {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 {dialogMode === 'add' ? 'Guardar Documento' : 'Guardar Cambios'}
