@@ -178,30 +178,11 @@ export function DocumentList() {
   };
 
   const handleSubmit = async () => {
-    if (dialogMode === 'add') {
-      if (!name || !category || !studyDate || !selectedFile || !user) {
-        toast({ variant: 'destructive', title: "Formulario incompleto", description: "Completa todos los campos y toma una foto." });
-        return;
-      }
-
-      setIsSaving(true);
-      try {
-        await uploadDocument(user, { 
-          name, 
-          category, 
-          studyDate, 
-          uploadedAt: new Date(), 
-          file: selectedFile 
-        });
-        toast({ title: "Documento guardado con éxito." });
-        resetForm();
-        setIsDialogOpen(false);
-      } catch (error) {
-        console.error('Error al guardar:', error);
-        toast({ variant: 'destructive', title: "Error al guardar el documento.", description: (error as Error).message });
-      } finally {
-        setIsSaving(false);
-      }
+    toast({ 
+      variant: 'destructive', 
+      title: "Función Deshabilitada", 
+      description: "La subida de documentos está temporalmente deshabilitada por mantenimiento." 
+    });
     } else if (dialogMode === 'edit' && selectedDoc) {
       if (!name || !category || !studyDate) {
         toast({ variant: 'destructive', title: "Formulario incompleto", description: "Completa todos los campos." });
