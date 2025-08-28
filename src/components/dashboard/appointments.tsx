@@ -218,7 +218,7 @@ export function Appointments() {
                                             {date ? format(date, "PPP", { locale: es }) : <span>Elige una fecha</span>}
                                             </Button>
                                         </PopoverTrigger>
-                                        <PopoverContent className="w-auto p-0" align="start" portal={false}>
+                                        <PopoverContent className="w-auto p-0" align="start">
                                             <Calendar
                                                 mode="single"
                                                 selected={date}

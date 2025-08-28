@@ -4,9 +4,8 @@
 import { useState, useContext, useRef, useEffect } from 'react';
 import { 
   Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter 
-} from "@/components/ui/card";
-import { uploadDocument } from '@/lib/uploadDocument';
-import { Button } from "@/components/ui/button";
+} from "../ui/card";
+import { Button } from "../ui/button";
 import { 
   FileText, PlusCircle, MoreVertical, FilePenLine, Trash2, Loader2, 
   X, Eye, Download, Camera 
@@ -14,37 +13,34 @@ import {
 import { 
   Dialog, DialogContent, DialogHeader, DialogTitle, 
   DialogTrigger, DialogFooter, DialogClose, DialogDescription 
-} from "@/components/ui/dialog";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+} from "../ui/dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../ui/dropdown-menu";
+import { Input } from "../ui/input";
+import { Label } from "../ui/label";
+import { Calendar } from "../ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { format } from "date-fns";
 import { es } from 'date-fns/locale';
-import { cn } from "@/lib/utils";
-import type { Document as DocumentType } from '@/lib/types';
-import { useToast } from "@/hooks/use-toast";
-import { UserContext } from '@/context/user-context';
-import { Skeleton } from '@/components/ui/skeleton';
+import { cn } from "../../lib/utils";
+import type { MedicalDocument } from '../../context/medical-documents-context';
+import { useToast } from "../../hooks/use-toast";
+import { useMedicalDocuments } from '../../context/medical-documents-context';
+import { Skeleton } from '../ui/skeleton';
 import { Calendar as CalendarIcon } from 'lucide-react';
 
 type DialogMode = 'add' | 'edit';
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
 export function DocumentList() {
-  const context = useContext(UserContext);
-  if (!context) throw new Error("DocumentList must be used within a UserProvider");
-
-  const { documents, addDocument, updateDocument, deleteDocument, loading, user } = context;
+  const { documents, addDocument, updateDocument, deleteDocument, loading, user } = useMedicalDocuments();
   const { toast } = useToast();
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [dialogMode, setDialogMode] = useState<DialogMode>('add');
-  const [selectedDoc, setSelectedDoc] = useState<DocumentType | null>(null);
-  const [viewingDoc, setViewingDoc] = useState<DocumentType | null>(null);
+  const [selectedDoc, setSelectedDoc] = useState<MedicalDocument | null>(null);
+  const [viewingDoc, setViewingDoc] = useState<MedicalDocument | null>(null);
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
 
   // Cámara
@@ -57,7 +53,7 @@ export function DocumentList() {
 
   // Form state
   const [name, setName] = useState('');
-  const [category, setCategory] = useState<DocumentType['category']>('Lab Result');
+  const [category, setCategory] = useState<MedicalDocument['category']>('Lab Result');
   const [studyDate, setStudyDate] = useState<Date | undefined>(new Date());
   const [isDatePopoverOpen, setIsDatePopoverOpen] = useState(false);
 
@@ -108,8 +104,8 @@ export function DocumentList() {
     stopCameraStream();
   };
 
-  const getCategoryLabel = (category: DocumentType['category']) => {
-    const labels: Record<DocumentType['category'], string> = {
+  const getCategoryLabel = (category: MedicalDocument['category']) => {
+    const labels: Record<MedicalDocument['category'], string> = {
       'Lab Result': 'Resultado de Laboratorio',
       'Imaging Report': 'Informe de Imagen',
       'Prescription': 'Receta',
@@ -119,7 +115,7 @@ export function DocumentList() {
   };
 
   // --- Main handlers ---
-  const handleOpenDialog = (mode: DialogMode, doc?: DocumentType) => {
+  const handleOpenDialog = (mode: DialogMode, doc?: MedicalDocument) => {
     setDialogMode(mode);
     resetForm();
     if (mode === 'edit' && doc) {
@@ -129,12 +125,11 @@ export function DocumentList() {
       setStudyDate(doc.studyDate || doc.uploadedAt);
     } else {
       setSelectedDoc(null);
-      setStudyDate(new Date());
+      setIsDialogOpen(true);
     }
-    setIsDialogOpen(true);
   };
 
-  const handleViewDialog = (doc: DocumentType) => {
+  const handleViewDialog = (doc: MedicalDocument) => {
     setViewingDoc(doc);
     setIsViewDialogOpen(true);
   };
@@ -178,11 +173,29 @@ export function DocumentList() {
   };
 
   const handleSubmit = async () => {
-    toast({ 
-      variant: 'destructive', 
-      title: "Función Deshabilitada", 
-      description: "La subida de documentos está temporalmente deshabilitada por mantenimiento." 
-    });
+    if (dialogMode === 'add') {
+      if (!name || !category || !studyDate || !selectedFile) {
+        toast({ variant: 'destructive', title: "Formulario incompleto", description: "Completa todos los campos y toma una foto." });
+        return;
+      }
+
+      setIsSaving(true);
+      try {
+        await addDocument({
+          name,
+          category,
+          studyDate,
+          file: selectedFile,
+        });
+        toast({ title: "Documento subido con éxito." });
+        resetForm();
+        setIsDialogOpen(false);
+      } catch (error) {
+        console.error('Error al guardar:', error);
+        toast({ variant: 'destructive', title: "Error al subir el documento.", description: (error as Error).message });
+      } finally {
+        setIsSaving(false);
+      }
     } else if (dialogMode === 'edit' && selectedDoc) {
       if (!name || !category || !studyDate) {
         toast({ variant: 'destructive', title: "Formulario incompleto", description: "Completa todos los campos." });
@@ -191,7 +204,7 @@ export function DocumentList() {
 
       setIsSaving(true);
       try {
-        const updatedData: Partial<DocumentType> = { name, category, studyDate };
+        const updatedData: Partial<Omit<MedicalDocument, 'id' | 'url'>> = { name, category, studyDate };
         await updateDocument(selectedDoc.id, updatedData);
         toast({ title: "Documento actualizado con éxito." });
         setIsDialogOpen(false);
@@ -204,12 +217,12 @@ export function DocumentList() {
   };
 
   // --- Agrupación por año ---
-  const groupedDocuments = documents.reduce((acc, doc) => {
+  const groupedDocuments: Record<string, MedicalDocument[]> = documents.reduce((acc, doc) => {
     const year = format(doc.studyDate || doc.uploadedAt, 'yyyy');
     if (!acc[year]) acc[year] = [];
     acc[year].push(doc);
     return acc;
-  }, {} as Record<string, DocumentType[]>);
+  }, {} as Record<string, MedicalDocument[]>);
   const sortedYears = Object.keys(groupedDocuments).sort((a, b) => b.localeCompare(a));
 
   // --- Loading state ---
@@ -324,7 +337,7 @@ export function DocumentList() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="grid gap-2">
                   <Label htmlFor="category">Categoría</Label>
-                  <Select value={category} onValueChange={(v: DocumentType['category']) => setCategory(v)}>
+                  <Select value={category} onValueChange={(v: MedicalDocument['category']) => setCategory(v)}>
                     <SelectTrigger id="category">
                       <SelectValue placeholder="Selecciona" />
                     </SelectTrigger>
@@ -345,7 +358,7 @@ export function DocumentList() {
                         {studyDate ? format(studyDate, "PPP", { locale: es }) : <span>Elige una fecha</span>}
                       </Button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start" portal={false}>
+                    <PopoverContent className="w-auto p-0" align="start">
                       <Calendar
                         mode="single"
                         selected={studyDate}

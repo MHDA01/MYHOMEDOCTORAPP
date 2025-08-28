@@ -8,8 +8,10 @@ import { es } from 'date-fns/locale';
 import { UserContext } from '@/context/user-context';
 import { Button } from '@/components/ui/button';
 import { FileDown, Loader2 } from 'lucide-react';
-import type { Document as DocumentType } from '@/lib/types';
 
+import type { MedicalDocument } from '../../context/medical-documents-context';
+
+import { useMedicalDocuments } from '../../context/medical-documents-context';
 
 const calculateAge = (dob: Date | undefined): string => {
     if (!dob || !isValid(dob)) return 'N/A';
@@ -21,7 +23,7 @@ const formatDate = (date: Date | undefined): string => {
     return format(date, "d 'de' MMMM 'de' yyyy", { locale: es });
 }
 
-const getCategoryLabel = (category: DocumentType['category']) => {
+const getCategoryLabel = (category: MedicalDocument['category']) => {
     switch (category) {
         case 'Lab Result': return 'Resultado de Laboratorio';
         case 'Imaging Report': return 'Informe de Imagen';
@@ -39,13 +41,14 @@ const countryHealthData: { [key: string]: { label: string } } = {
 
 export function DownloadReportButton() {
     const context = useContext(UserContext);
+    const { documents } = useMedicalDocuments();
     const [isGenerating, setIsGenerating] = React.useState(false);
 
     const generatePdf = async () => {
         if (!context || !context.personalInfo || !context.healthInfo) return;
         setIsGenerating(true);
 
-        const { personalInfo, healthInfo, appointments, documents, medications } = context;
+    const { personalInfo, healthInfo, appointments, medications } = context;
         
         const doc = new jsPDF('p', 'pt', 'letter');
         const primaryColor = '#1F4E79'; 
@@ -165,7 +168,7 @@ export function DownloadReportButton() {
             drawSectionHeader('5. Medicamentos Activos');
             activeMedications.forEach(m => {
                 checkPageBreak(y, 22);
-                doc.text(`${m.name} ${m.dosage} - Cada ${m.frequency} hrs (${m.time.join(', ')})`, pageMargin, y);
+                doc.text(`${m.name} ${m.dosage} - Cada ${m.frequency} hrs${m.time && m.time.length > 0 ? ` (${m.time.map(t => t ? format(t.toDate(), 'HH:mm') : '').join(', ')})` : ''}`, pageMargin, y);
                 y += 22;
             });
         }
@@ -183,7 +186,7 @@ export function DownloadReportButton() {
                 doc.text(formatDate(docItem.studyDate || docItem.uploadedAt), pageWidth - pageMargin, y, { align: 'right' });
                 y += 18;
 
-                if (docItem.labResults && docItem.labResults.length > 0) {
+                {/* if (docItem.labResults && docItem.labResults.length > 0) {
                     checkPageBreak(y, 30); // space for table header
                     // Draw table header
                     doc.setFontSize(9);
@@ -207,7 +210,7 @@ export function DownloadReportButton() {
                          y += 18;
                     });
                      doc.setTextColor(textColor);
-                }
+                } */}
                 y += 15;
             });
         }

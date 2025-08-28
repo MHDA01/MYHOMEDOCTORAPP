@@ -1,15 +1,13 @@
-
-import { Timestamp } from 'firebase/firestore';
-
-export type Document = {
+export type MedicalDocument = {
   id: string;
   name: string;
-  category: 'Lab Result' | 'Prescription' | 'Imaging Report' | 'Other';
+  category: 'Lab Result' | 'Imaging Report' | 'Prescription' | 'Other';
+  studyDate: Date;
   uploadedAt: Date;
-  file?: File; // Only for frontend state during upload
-  url?: string; // URL to file in Cloud Storage
-  studyDate?: Date;
+  url?: string;
 };
+
+import { Timestamp } from 'firebase/firestore';
 
 export type Appointment = {
   id: string;

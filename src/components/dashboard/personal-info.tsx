@@ -259,7 +259,7 @@ export function PersonalInfo() {
                               {editableInfo.dateOfBirth ? format(new Date(editableInfo.dateOfBirth), "PPP", { locale: es }) : <span>Elige una fecha</span>}
                             </Button>
                           </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0" align="start" portal={false}>
+                          <PopoverContent className="w-auto p-0" align="start">
                             <Calendar
                               mode="single"
                               selected={editableInfo.dateOfBirth ? new Date(editableInfo.dateOfBirth) : undefined}

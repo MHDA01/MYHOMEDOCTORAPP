@@ -2,7 +2,7 @@
 'use client';
 
 import { createContext, useState, useEffect, ReactNode, useCallback } from 'react';
-import type { PersonalInfo, HealthInfo, Appointment, Document as DocumentType, Medication } from '@/lib/types';
+import type { PersonalInfo, HealthInfo, Appointment, Medication } from '@/lib/types';
 import { auth, db, storage } from '@/lib/firebase';
 import { onAuthStateChanged, User, signOut, updateProfile } from 'firebase/auth';
 import { doc, getDoc, setDoc, Timestamp, collection, addDoc, updateDoc, deleteDoc, query, orderBy, onSnapshot } from 'firebase/firestore';
@@ -15,11 +15,6 @@ type SerializablePersonalInfo = Omit<PersonalInfo, 'dateOfBirth'> & {
 
 type SerializableAppointment = Omit<Appointment, 'date'> & {
     date: Timestamp;
-};
-
-type SerializableDocument = Omit<DocumentType, 'uploadedAt' | 'studyDate' | 'file'> & {
-    uploadedAt: Timestamp;
-    studyDate?: Timestamp;
 };
 
 type UserDocumentData = {
@@ -72,16 +67,12 @@ interface UserContextType {
   personalInfo: PersonalInfo | null;
   healthInfo: HealthInfo | null;
   appointments: Appointment[];
-  documents: DocumentType[];
   medications: Medication[];
   updatePersonalInfo: (info: PersonalInfo) => Promise<void>;
   updateHealthInfo: (info: HealthInfo) => Promise<void>;
   addAppointment: (appointment: Omit<Appointment, 'id' | 'notified'>) => Promise<void>;
   updateAppointment: (id: string, appointment: Partial<Omit<Appointment, 'id'>>) => Promise<void>;
   deleteAppointment: (id: string) => Promise<void>;
-  addDocument: (doc: Omit<DocumentType, 'id'>) => Promise<void>;
-  updateDocument: (id: string, doc: Partial<Omit<DocumentType, 'id' | 'file'>>) => Promise<void>;
-  deleteDocument: (id: string) => Promise<void>;
   addMedication: (med: Omit<Medication, 'id'>) => Promise<void>;
   updateMedication: (id: string, med: Partial<Medication>) => Promise<void>;
   deleteMedication: (id: string) => Promise<void>;
@@ -115,7 +106,6 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   const [personalInfo, setPersonalInfo] = useState<PersonalInfo | null>(null);
   const [healthInfo, setHealthInfo] = useState<HealthInfo | null>(null);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
-  const [documents, setDocuments] = useState<DocumentType[]>([]);
   const [medications, setMedications] = useState<Medication[]>([]);
   const [loading, setLoading] = useState(true);
   
@@ -170,7 +160,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         await loadInitialData(currentUser);
 
         // Set up real-time listeners for subcollections
-        const collectionsToSync = ['appointments', 'documents', 'medications'];
+        const collectionsToSync = ['appointments', 'medications'];
         collectionsToSync.forEach(collName => {
             const q = query(collection(db, 'users', currentUser.uid, collName), orderBy('uploadedAt', 'desc'));
             const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -187,7 +177,6 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
                 });
                 
                 if (collName === 'appointments') setAppointments(data as Appointment[]);
-                if (collName === 'documents') setDocuments(data as DocumentType[]);
                 if (collName === 'medications') setMedications(data as Medication[]);
 
             }, (error) => {
@@ -199,7 +188,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
 
       } else {
         setUser(null); setPersonalInfo(null); setHealthInfo(null);
-        setAppointments([]); setDocuments([]); setMedications([]);
+        setAppointments([]); setMedications([]);
         setLoading(false);
       }
     });
@@ -259,29 +248,6 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       await deleteDoc(doc(db, 'users', user.uid, 'appointments', id));
   };
   
-  const addDocument = async (docData: Omit<DocumentType, 'id'>) => {
-    throw new Error("Funcionalidad temporalmente deshabilitada");
-  };
-
-  const updateDocument = async (id: string, docData: Partial<Omit<DocumentType, 'id' | 'file'>>) => {
-    if (!user) return;
-    const docRef = doc(db, 'users', user.uid, 'documents', id);
-    const dataToUpdate: { [key: string]: any } = { ...docData };
-    
-    if (docData.studyDate) {
-      dataToUpdate.studyDate = Timestamp.fromDate(new Date(docData.studyDate));
-    }
-    
-    await updateDoc(docRef, dataToUpdate);
-  };
-
-  const deleteDocument = async (id: string) => {
-      if (!user) return;
-      // Note: This does not delete the file from Storage to prevent accidental data loss.
-      // A cleanup function could be implemented for this.
-      await deleteDoc(doc(db, 'users', user.uid, 'documents', id));
-  };
-
   const addMedication = async (med: Omit<Medication, 'id'>) => {
       if (!user) return;
       const dataWithTimestamp = { ...med, uploadedAt: Timestamp.now() };
@@ -300,10 +266,9 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
 
   return (
     <UserContext.Provider value={{
-        user, loading, personalInfo, healthInfo, appointments, documents, medications,
+        user, loading, personalInfo, healthInfo, appointments, medications,
         signOutUser, updatePersonalInfo, updateHealthInfo, addAppointment, updateAppointment,
-        deleteAppointment, addDocument, updateDocument, deleteDocument, addMedication,
-        updateMedication, deleteMedication,
+        deleteAppointment, addMedication, updateMedication, deleteMedication,
     }}>
       {children}
     </UserContext.Provider>
