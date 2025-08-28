@@ -1,7 +1,5 @@
-# Framework para Cloud Functions
-functions-framework==3.*
-
-# Librerías de Google Cloud
-google-cloud-storage==2.*
-google-cloud-aiplatform==1.*
-google-cloud-firestore==2.*
+functions-framework>=3.0.0
+google-cloud-storage>=2.0.0
+google-cloud-firestore>=2.0.0
+google-cloud-vision>=3.0.0
+vertexai>=1.0.0

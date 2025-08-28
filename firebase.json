@@ -1,7 +1,4 @@
 {
-  "functions": {
-    "source": "mhda"
-  },
   "hosting": {
     "source": ".",
     "ignore": [
