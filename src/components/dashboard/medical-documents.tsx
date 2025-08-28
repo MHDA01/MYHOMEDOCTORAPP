@@ -1,3 +1,4 @@
+"use client";
 import { useState, useEffect } from "react";
 import { getStorage, ref, uploadBytesResumable } from "firebase/storage";
 import { getFirestore, collection, query, onSnapshot, updateDoc, doc as docRef } from "firebase/firestore";

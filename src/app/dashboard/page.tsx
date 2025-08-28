@@ -5,7 +5,7 @@ import { PersonalInfo } from "@/components/dashboard/personal-info";
 import { EmergencyContactsCard } from "@/components/dashboard/emergency-card";
 import { HealthRecordCard } from "@/components/dashboard/health-record-card";
 
-import { MedicalDocuments } from "@/components/dashboard/medical-documents";
+import { DocumentList } from "@/components/dashboard/document-list";
 import { MedicalDocumentsProvider } from "../../context/medical-documents-context";
 import { Appointments } from "@/components/dashboard/appointments";
 import { MedicationReminders } from "@/components/dashboard/medication-reminders";
@@ -27,7 +27,7 @@ export default function DashboardPage() {
                   <HealthRecordCard />
               </div>
         <div id="medical-documents" className="scroll-mt-20">
-          <MedicalDocuments />
+          <DocumentList />
         </div>
         <div id="appointments" className="scroll-mt-20">
           <Appointments />

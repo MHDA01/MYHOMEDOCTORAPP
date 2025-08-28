@@ -15,6 +15,7 @@
     "node": "18"
   },
   "dependencies": {
+    "@google-cloud/vision": "^5.3.3",
     "busboy": "^1.6.0",
     "cors": "^2.8.5",
     "firebase-admin": "^12.0.0",
@@ -25,9 +26,11 @@
   "devDependencies": {
     "@types/busboy": "^1.5.3",
     "@types/cors": "^2.8.17",
+    "@types/glob": "^7.2.0",
     "@types/mime-types": "^2.1.4",
+    "@types/minimatch": "^3.0.4",
     "@types/uuid": "^9.0.8",
-    "minimatch": "^10.0.3",
+    "minimatch": "^3.0.4",
     "typescript": "^5.4.5"
   },
   "private": true

@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useContext, useRef, useEffect } from 'react';
@@ -10,6 +9,9 @@ import {
   FileText, PlusCircle, MoreVertical, FilePenLine, Trash2, Loader2, 
   X, Eye, Download, Camera 
 } from "lucide-react";
+import { 
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow 
+} from '../ui/table';
 import { 
   Dialog, DialogContent, DialogHeader, DialogTitle, 
   DialogTrigger, DialogFooter, DialogClose, DialogDescription 
@@ -125,8 +127,8 @@ export function DocumentList() {
       setStudyDate(doc.studyDate || doc.uploadedAt);
     } else {
       setSelectedDoc(null);
-      setIsDialogOpen(true);
     }
+    setIsDialogOpen(true);
   };
 
   const handleViewDialog = (doc: MedicalDocument) => {
@@ -216,14 +218,11 @@ export function DocumentList() {
     }
   };
 
-  // --- Agrupación por año ---
-  const groupedDocuments: Record<string, MedicalDocument[]> = documents.reduce((acc, doc) => {
-    const year = format(doc.studyDate || doc.uploadedAt, 'yyyy');
-    if (!acc[year]) acc[year] = [];
-    acc[year].push(doc);
-    return acc;
-  }, {} as Record<string, MedicalDocument[]>);
-  const sortedYears = Object.keys(groupedDocuments).sort((a, b) => b.localeCompare(a));
+  const sortedDocuments = [...documents].sort((a, b) => {
+    const dateA = a.studyDate || a.uploadedAt;
+    const dateB = b.studyDate || b.uploadedAt;
+    return new Date(dateB).getTime() - new Date(dateA).getTime();
+  });
 
   // --- Loading state ---
   if (loading) {
@@ -237,92 +236,91 @@ export function DocumentList() {
           <Skeleton className="h-16 w-full" />
           <Skeleton className="h-16 w-full" />
         </CardContent>
-        <CardFooter>
-          <Skeleton className="h-10 w-40" />
-        </CardFooter>
       </Card>
     );
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center gap-3">
-          <FileText className="h-6 w-6 text-primary" />
-          <CardTitle className="font-headline text-xl">Documentos Médicos</CardTitle>
-        </div>
-        <CardDescription>Añade y gestiona tus exámenes, recetas e informes tomando una foto.</CardDescription>
-      </CardHeader>
-      <CardContent>
-        {documents.length === 0 ? (
-          <div className="text-center py-10 border-2 border-dashed rounded-lg">
-            <Camera className="mx-auto h-12 w-12 text-muted-foreground" />
-            <h3 className="mt-2 text-sm font-semibold text-gray-900">No hay documentos</h3>
-            <p className="mt-1 text-sm text-gray-500">Empieza tomando una foto de tu primer documento.</p>
-            <div className="mt-6">
-              <Button onClick={() => handleOpenDialog('add')}>
-                <PlusCircle className="mr-2" /> Añadir con Foto
-              </Button>
+    <>
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+            <div className="space-y-1">
+                <CardTitle className="font-headline text-xl">Documentos Médicos</CardTitle>
+                <CardDescription>Añade y gestiona tus exámenes, recetas e informes.</CardDescription>
             </div>
-          </div>
-        ) : (
-          <div className="space-y-6">
-            {sortedYears.map(year => (
-              <div key={year}>
-                <h3 className="text-lg font-semibold mb-3">{year}</h3>
-                <div className="space-y-3">
-                  {groupedDocuments[year].map(doc => (
-                    <div key={doc.id} className="flex items-start justify-between rounded-lg border p-3 pl-4 hover:bg-muted/50 transition-colors">
-                      <button className="flex-1 text-left" onClick={() => handleViewDialog(doc)}>
-                        <p className="font-semibold">{doc.name}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {getCategoryLabel(doc.category)} - {format(doc.studyDate || doc.uploadedAt, "d 'de' MMMM", { locale: es })}
-                        </p>
-                      </button>
-                      <div className="flex items-center">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon">
-                              <MoreVertical className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => handleViewDialog(doc)}>
-                              <Eye className="mr-2 h-4 w-4" /> Ver Detalles
-                            </DropdownMenuItem>
-                            {doc.url && 
-                              <a href={doc.url} target="_blank" rel="noopener noreferrer" download>
-                                <DropdownMenuItem>
-                                  <Download className="mr-2 h-4 w-4" /> Descargar
-                                </DropdownMenuItem>
-                              </a>
-                            }
-                            <DropdownMenuItem onClick={() => handleOpenDialog('edit', doc)}>
-                              <FilePenLine className="mr-2 h-4 w-4" /> Editar
-                            </DropdownMenuItem>
-                            <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(doc.id)}>
-                              <Trash2 className="mr-2 h-4 w-4" /> Eliminar
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </CardContent>
-      <CardFooter>
-        {/* Dialog Nuevo / Editar */}
-        <Dialog open={isDialogOpen} onOpenChange={(open) => { if (!isSaving) { setIsDialogOpen(open); if (!open) stopCameraStream(); }}}>
-          <DialogTrigger asChild>
-            <Button onClick={() => handleOpenDialog('add')}>
-              <PlusCircle className="mr-2" /> Añadir con Foto
-            </Button>
-          </DialogTrigger>
-          <DialogContent modal className="sm:max-w-md">
+            <DialogTrigger asChild>
+                <Button onClick={() => handleOpenDialog('add')}>
+                    <PlusCircle className="mr-2 h-4 w-4" /> Añadir con Foto
+                </Button>
+            </DialogTrigger>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Nombre</TableHead>
+                <TableHead>Categoría</TableHead>
+                <TableHead>Fecha</TableHead>
+                <TableHead className="text-right">Acciones</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {sortedDocuments.length > 0 ? (
+                sortedDocuments.map(doc => (
+                  <TableRow key={doc.id}>
+                    <TableCell className="font-medium">{doc.name}</TableCell>
+                    <TableCell>{getCategoryLabel(doc.category)}</TableCell>
+                    <TableCell>{format(doc.studyDate || doc.uploadedAt, "d MMM yyyy", { locale: es })}</TableCell>
+                    <TableCell className="text-right">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon">
+                            <MoreVertical className="h-4 w-4" />
+                            <span className="sr-only">Más acciones</span>
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => handleViewDialog(doc)}>
+                            <Eye className="mr-2 h-4 w-4" /> Ver Detalles
+                          </DropdownMenuItem>
+                          {doc.url && 
+                            <a href={doc.url} target="_blank" rel="noopener noreferrer" download>
+                              <DropdownMenuItem>
+                                <Download className="mr-2 h-4 w-4" /> Descargar
+                              </DropdownMenuItem>
+                            </a>
+                          }
+                          <DropdownMenuItem onClick={() => handleOpenDialog('edit', doc)}>
+                            <FilePenLine className="mr-2 h-4 w-4" /> Editar
+                          </DropdownMenuItem>
+                          <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => handleDelete(doc.id)}>
+                            <Trash2 className="mr-2 h-4 w-4" /> Eliminar
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={4} className="h-48 text-center">
+                    <Camera className="mx-auto h-12 w-12 text-muted-foreground" />
+                    <h3 className="mt-4 text-lg font-semibold text-foreground">No hay documentos</h3>
+                    <p className="mt-1 text-sm text-muted-foreground">Empieza tomando una foto de tu primer documento.</p>
+                    <Button className="mt-6" onClick={() => handleOpenDialog('add')}>
+                        <PlusCircle className="mr-2 h-4 w-4" /> Añadir con Foto
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
+      {/* Dialogs remain here to be triggered */}
+      <Dialog open={isDialogOpen} onOpenChange={(open) => { if (!isSaving) { setIsDialogOpen(open); if (!open) stopCameraStream(); }}}>
+        <DialogContent className="sm:max-w-md">
             <DialogHeader>
               <DialogTitle>{dialogMode === 'add' ? 'Añadir Nuevo Documento' : 'Editar Documento'}</DialogTitle>
               <DialogDescription>
@@ -428,42 +426,40 @@ export function DocumentList() {
               </Button>
             </DialogFooter>
           </DialogContent>
-        </Dialog>
+      </Dialog>
 
-        {/* Dialog Ver Detalles */}
-        {viewingDoc && (
-          <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
-            <DialogContent className="sm:max-w-2xl">
-              <DialogHeader>
-                <DialogTitle>{viewingDoc.name}</DialogTitle>
-                <DialogDescription>
-                  {getCategoryLabel(viewingDoc.category)} • Fecha: {format(viewingDoc.studyDate || viewingDoc.uploadedAt, "d 'de' MMMM, yyyy", { locale: es })}
-                </DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4 py-4 max-h-[70vh] overflow-y-auto pr-4">
-                <h3 className="font-semibold text-lg">Imagen del Documento</h3>
-                <div className="space-y-2">
-                  {viewingDoc.url ? (
-                    <a href={viewingDoc.url} target="_blank" rel="noopener noreferrer" className="block border rounded-lg overflow-hidden hover:opacity-80 transition-opacity">
-                      <img src={viewingDoc.url} alt={`Imagen de ${viewingDoc.name}`} className="w-full h-auto object-contain"/>
-                    </a>
-                  ) : (
-                    <div className="flex items-center justify-center p-8 border-2 border-dashed rounded-lg">
-                      <Loader2 className="h-8 w-8 text-muted-foreground animate-spin"/>
-                      <p className="ml-4 text-muted-foreground">Cargando imagen...</p>
-                    </div>
-                  )}
-                </div>
+      {viewingDoc && (
+        <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
+          <DialogContent className="sm:max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>{viewingDoc.name}</DialogTitle>
+              <DialogDescription>
+                {getCategoryLabel(viewingDoc.category)} • Fecha: {format(viewingDoc.studyDate || viewingDoc.uploadedAt, "d 'de' MMMM, yyyy", { locale: es })}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4 max-h-[70vh] overflow-y-auto pr-4">
+              <h3 className="font-semibold text-lg">Imagen del Documento</h3>
+              <div className="space-y-2">
+                {viewingDoc.url ? (
+                  <a href={viewingDoc.url} target="_blank" rel="noopener noreferrer" className="block border rounded-lg overflow-hidden hover:opacity-80 transition-opacity">
+                    <img src={viewingDoc.url} alt={`Imagen de ${viewingDoc.name}`} className="w-full h-auto object-contain"/>
+                  </a>
+                ) : (
+                  <div className="flex items-center justify-center p-8 border-2 border-dashed rounded-lg">
+                    <Loader2 className="h-8 w-8 text-muted-foreground animate-spin"/>
+                    <p className="ml-4 text-muted-foreground">Cargando imagen...</p>
+                  </div>
+                )}
               </div>
-              <DialogFooter>
-                <DialogClose asChild>
-                  <Button variant="outline">Cerrar</Button>
-                </DialogClose>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-        )}
-      </CardFooter>
-    </Card>
+            </div>
+            <DialogFooter>
+              <DialogClose asChild>
+                <Button variant="outline">Cerrar</Button>
+              </DialogClose>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
+    </>
   );
 }
