@@ -64,8 +64,8 @@ export default function SolutionSection() {
           My Home Doctor App te devuelve el poder sobre tu información de salud, de forma simple, segura e intuitiva.
         </p>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 text-left">
-          {features.map((feature, index) => (
-            <FeatureCard key={index} {...feature} />
+          {features.map((feature) => (
+            <FeatureCard key={feature.title} {...feature} />
           ))}
         </div>
       </div>

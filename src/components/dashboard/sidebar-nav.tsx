@@ -2,6 +2,7 @@
 
 import { useContext, type ElementType } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import {
   SidebarContent,
@@ -76,10 +77,12 @@ export function SidebarNav() {
   return (
     <>
       <SidebarHeader className="items-center pt-5 pb-4 px-4">
-        <img
+        <Image
           src="https://res.cloudinary.com/dm9gwvsmq/image/upload/v1755545822/LOGO_1_transparent_wsag9b.png"
           alt="Logo"
-          className="h-48 w-auto mx-auto"
+          width={256}
+          height={192}
+          className="mx-auto"
         />
       </SidebarHeader>
       <SidebarContent className="pt-2 pb-2 px-2">

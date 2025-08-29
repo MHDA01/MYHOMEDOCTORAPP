@@ -1,9 +1,9 @@
-
 "use client";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
@@ -56,7 +56,7 @@ export function LoginForm() {
     <div className="w-full max-w-md mx-auto bg-white rounded-xl shadow p-8 space-y-6">
       <div className="flex flex-col items-center">
         <div className="mb-4">
-          <img src="https://res.cloudinary.com/dm9gwvsmq/image/upload/v1755545822/LOGO_1_transparent_wsag9b.png" alt="Logo" className="h-80 mx-auto mb-[-16px]" />
+          <Image src="https://res.cloudinary.com/dm9gwvsmq/image/upload/v1755545822/LOGO_1_transparent_wsag9b.png" alt="Logo" width={427} height={320} className="mx-auto mb-[-16px]" />
         </div>
         <h2 className="text-2xl font-bold mb-2">Bienvenido</h2>
         <p className="text-gray-500 text-center mb-4 text-sm">

@@ -7,16 +7,14 @@ export default function HeroSection() {
   return (
     <section id="hero-section" className="bg-background pt-8 pb-12 text-center overflow-hidden w-full">
       {/* Logo con proporciones naturales y tamaño optimizado (40% más grande) */}
-      <div className="flex justify-center items-center py-3 mt-2">
-        <div className="relative" style={{ width: '840px', height: '588px' }}>
-          <img
-            src="https://res.cloudinary.com/dm9gwvsmq/image/upload/v1755545822/LOGO_1_transparent_wsag9b.png"
-            alt="MyHomeDoctorApp Logo"
-            className="w-full h-full object-contain"
-            style={{ objectFit: 'contain', transform: 'scaleX(1.1)' }}
-            data-ai-hint="app logo"
-          />
-        </div>
+      <div className="relative w-full max-w-xl mx-auto aspect-[4/3]">
+        <Image
+          src="https://res.cloudinary.com/dm9gwvsmq/image/upload/v1755545822/LOGO_1_transparent_wsag9b.png"
+          alt="MyHomeDoctorApp Logo"
+          fill
+          className="object-contain"
+          priority
+        />
       </div>
 
       {/* Container for the text content and button */}

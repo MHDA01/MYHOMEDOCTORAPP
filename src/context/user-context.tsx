@@ -280,25 +280,29 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const addDocument = async ({ name, category, studyDate, file }: { name: string; category: MedicalDocument['category']; studyDate: Date; file: File }) => {
-    if (!user) throw new Error('No user authenticated');
+    if (!user || !file) {
+      throw new Error("Usuario no autenticado o archivo no proporcionado.");
+    }
     
-    const newDocRef = doc(collection(db, 'users', user.uid, 'documents'));
-    const documentId = newDocRef.id;
+    const docRef = doc(collection(db, 'users', user.uid, 'documents'));
+    const docId = docRef.id;
 
-    const storagePath = `users/${user.uid}/documents/${documentId}/${file.name}`;
+    const storagePath = `users/${user.uid}/documents/${docId}-${file.name}`;
     const storageRef = ref(storage, storagePath);
     
     await uploadBytes(storageRef, file);
-    const url = await getDownloadURL(storageRef);
+    const downloadURL = await getDownloadURL(storageRef);
 
-    await setDoc(newDocRef, {
-      name,
-      category,
-      studyDate: Timestamp.fromDate(studyDate), // Convert to Timestamp
-      uploadedAt: Timestamp.now(), // Convert to Timestamp
-      url,
-      storagePath: storagePath 
-    });
+    const dataToSave = {
+        name: name,
+        category: category,
+        uploadedAt: Timestamp.now(),
+        studyDate: studyDate ? Timestamp.fromDate(studyDate) : Timestamp.now(),
+        url: downloadURL,
+        storagePath: storagePath,
+    };
+    
+    await setDoc(docRef, dataToSave);
   };
 
   const updateDocument = async (id: string, data: Partial<Omit<MedicalDocument, 'id' | 'url' | 'storagePath'>>) => {
