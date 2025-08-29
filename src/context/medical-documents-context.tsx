@@ -1,9 +1,8 @@
 "use client";
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { getFirestore, collection, query, onSnapshot, addDoc, updateDoc, deleteDoc, doc as docRef } from 'firebase/firestore';
-import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { getFirestore, collection, query, onSnapshot, updateDoc, deleteDoc, doc as docRef, getDoc, setDoc } from 'firebase/firestore';
+import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { useToast } from '@/hooks/use-toast';
-import { v4 as uuidv4 } from 'uuid';
 import { UserContext } from '@/context/user-context';
 
 export type MedicalDocument = {
@@ -13,12 +12,13 @@ export type MedicalDocument = {
   studyDate: Date;
   uploadedAt: Date;
   url?: string;
+  storagePath?: string;
 };
 
 type MedicalDocumentsContextType = {
   documents: MedicalDocument[];
   addDocument: (doc: { name: string; category: MedicalDocument['category']; studyDate: Date; file: File }) => Promise<void>;
-  updateDocument: (id: string, data: Partial<Omit<MedicalDocument, 'id' | 'url'>>) => Promise<void>;
+  updateDocument: (id: string, data: Partial<Omit<MedicalDocument, 'id' | 'url' | 'storagePath'>>) => Promise<void>;
   deleteDocument: (id: string) => Promise<void>;
   loading: boolean;
   user: any;
@@ -33,7 +33,11 @@ export function MedicalDocumentsProvider({ children }: { children: ReactNode }) 
   const { toast } = useToast();
 
   useEffect(() => {
-    if (!user) return;
+    if (!user) {
+      setDocuments([]);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     const q = query(collection(getFirestore(), 'medicalDocuments', user.uid, 'items'));
     const unsub = onSnapshot(q, (snap) => {
@@ -47,37 +51,79 @@ export function MedicalDocumentsProvider({ children }: { children: ReactNode }) 
             studyDate: data.studyDate?.toDate ? data.studyDate.toDate() : new Date(),
             uploadedAt: data.uploadedAt?.toDate ? data.uploadedAt.toDate() : new Date(),
             url: data.url || undefined,
+            storagePath: data.storagePath || undefined,
           };
         })
       );
       setLoading(false);
+    }, (error) => {
+        console.error("Error fetching documents:", error);
+        toast({ variant: "destructive", title: "Error al cargar documentos" });
+        setLoading(false);
     });
     return () => unsub();
-  }, [user]);
+  }, [user, toast]);
 
   const addDocument = async ({ name, category, studyDate, file }: { name: string; category: MedicalDocument['category']; studyDate: Date; file: File }) => {
-    if (!user) throw new Error('No user');
-    const documentId = uuidv4();
-    const storageRef = ref(getStorage(), `medical-documents/${user.uid}/${documentId}/${file.name}`);
+    if (!user) throw new Error('No user authenticated');
+    
+    const newDocRef = docRef(collection(getFirestore(), 'medicalDocuments', user.uid, 'items'));
+    const documentId = newDocRef.id;
+
+    const storagePath = `medical-documents/${user.uid}/${documentId}/${file.name}`;
+    const storageRef = ref(getStorage(), storagePath);
+    
     await uploadBytes(storageRef, file);
     const url = await getDownloadURL(storageRef);
-    await addDoc(collection(getFirestore(), 'medicalDocuments', user.uid, 'items'), {
+
+    await setDoc(newDocRef, {
       name,
       category,
       studyDate,
       uploadedAt: new Date(),
       url,
+      storagePath: storagePath 
     });
   };
 
-  const updateDocument = async (id: string, data: Partial<Omit<MedicalDocument, 'id' | 'url'>>) => {
-    if (!user) throw new Error('No user');
+  const updateDocument = async (id: string, data: Partial<Omit<MedicalDocument, 'id' | 'url' | 'storagePath'>>) => {
+    if (!user) throw new Error('No user authenticated');
     await updateDoc(docRef(getFirestore(), 'medicalDocuments', user.uid, 'items', id), data);
   };
 
   const deleteDocument = async (id: string) => {
-    if (!user) throw new Error('No user');
-    await deleteDoc(docRef(getFirestore(), 'medicalDocuments', user.uid, 'items', id));
+    if (!user) throw new Error('No user authenticated');
+    const docToDeleteRef = docRef(getFirestore(), 'medicalDocuments', user.uid, 'items', id);
+    
+    try {
+      const docSnap = await getDoc(docToDeleteRef);
+      if (docSnap.exists()) {
+        const docData = docSnap.data();
+        
+        if (docData.storagePath) {
+          const storage = getStorage();
+          const fileRef = ref(storage, docData.storagePath);
+          await deleteObject(fileRef);
+        } else if (docData.url) { 
+          const storage = getStorage();
+          const fileRef = ref(storage, docData.url);
+          await deleteObject(fileRef).catch((err) => {
+            console.warn("Could not delete file from URL, maybe it's an old format:", err);
+          });
+        }
+      }
+      
+      await deleteDoc(docToDeleteRef);
+
+    } catch (error) {
+      console.error("Error deleting document and file: ", error);
+      toast({
+        variant: "destructive",
+        title: "Error al eliminar",
+        description: "No se pudo eliminar el documento y su archivo asociado.",
+      });
+      throw error;
+    }
   };
 
   return (

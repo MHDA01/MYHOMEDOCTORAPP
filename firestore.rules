@@ -3,73 +3,34 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-  
+
+    // Rule for the medical documents collection
+    match /medicalDocuments/{userId}/items/{itemId} {
+      allow read, write, delete: if request.auth != null && request.auth.uid == userId;
+    }
+
     // Allow users to read and write their own profile data
     match /users/{userId} {
-      allow read: if request.auth.uid == userId;
-      // Allow creating a new user document only if the ID matches the auth UID
-      allow create: if request.auth.uid == userId;
-      // Allow updating a user document only if the ID matches the auth UID and data is valid
-      allow update: if request.auth.uid == userId && isValidUser(request.resource.data);
-      
+      allow read, write, delete: if request.auth.uid == userId;
+
       // Allow users to manage their own subcollections
       match /appointments/{appointmentId} {
-        allow read: if request.auth.uid == userId;
-        allow create: if request.auth.uid == userId && isValidAppointment(request.resource.data);
-        allow update: if request.auth.uid == userId && isValidAppointment(request.resource.data);
-        allow delete: if request.auth.uid == userId;
+        allow read, write, delete: if request.auth.uid == userId;
       }
-      
+
       match /medications/{medicationId} {
-        allow read: if request.auth.uid == userId;
-        allow create: if request.auth.uid == userId && isValidMedication(request.resource.data);
-        allow update: if request.auth.uid == userId && isValidMedication(request.resource.data);
-        allow delete: if request.auth.uid == userId;
+        allow read, write, delete: if request.auth.uid == userId;
       }
-      
+
       match /documents/{documentId} {
-        allow read: if request.auth.uid == userId;
-        allow create: if request.auth.uid == userId && isValidDocument(request.resource.data);
-        allow update: if request.auth.uid == userId && isValidDocument(request.resource.data);
-        allow delete: if request.auth.uid == userId;
+        allow read, write, delete: if request.auth.uid == userId;
       }
     }
-    
-    // Alarms can be created by authenticated users for themselves
-    // and can be read/deleted by the system (via Cloud Functions)
-    // Added validation for alarm data
+
     match /alarms/{alarmId} {
       allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
-      // Cloud Functions (service account) bypass these rules.
-      // No explicit read/delete for clients is needed as Functions handle it.
-      // Allowing read and delete only if the authenticated user is the owner of the alarm
       allow read: if request.auth.uid == resource.data.userId;
       allow delete: if request.auth.uid == resource.data.userId;
-    }
-    
-    // Data validation functions
-    
-    // Validación flexible para datos de usuario (permite cualquier objeto)
-    function isValidUser(data) {
-      return true;
-    }
-    
-    // Validación flexible para citas (permite cualquier objeto con userId correcto)
-    function isValidAppointment(data) {
-      return data.userId == request.auth.uid;
-    }
-    
-    // Validación flexible para medicamentos (permite cualquier objeto con userId correcto)
-    function isValidMedication(data) {
-      return data.userId == request.auth.uid;
-    }
-    
-    // Validación flexible para documentos (acepta 'url' y 'uploadedAt' como en el frontend)
-    function isValidDocument(data) {
-      return data.userId == request.auth.uid && data.url is string && data.uploadedAt is timestamp;
-    }
-  }
-}
     }
   }
 }
