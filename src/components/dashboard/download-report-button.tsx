@@ -9,9 +9,7 @@ import { UserContext } from '@/context/user-context';
 import { Button } from '@/components/ui/button';
 import { FileDown, Loader2 } from 'lucide-react';
 
-import type { MedicalDocument } from '../../context/medical-documents-context';
-
-import { useMedicalDocuments } from '../../context/medical-documents-context';
+import type { MedicalDocument } from '../../context/user-context';
 
 const calculateAge = (dob: Date | undefined): string => {
     if (!dob || !isValid(dob)) return 'N/A';
@@ -41,7 +39,12 @@ const countryHealthData: { [key: string]: { label: string } } = {
 
 export function DownloadReportButton() {
     const context = useContext(UserContext);
-    const { documents } = useMedicalDocuments();
+
+    if (!context) {
+        throw new Error('DownloadReportButton must be used within a UserProvider');
+    }
+
+    const { documents } = context;
     const [isGenerating, setIsGenerating] = React.useState(false);
 
     const generatePdf = async () => {

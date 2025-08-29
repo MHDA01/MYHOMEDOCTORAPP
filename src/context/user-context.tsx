@@ -1,4 +1,3 @@
-
 'use client';
 
 import { createContext, useState, useEffect, ReactNode, useCallback } from 'react';
@@ -6,8 +5,20 @@ import type { PersonalInfo, HealthInfo, Appointment, Medication } from '@/lib/ty
 import { auth, db, storage } from '@/lib/firebase';
 import { onAuthStateChanged, User, signOut, updateProfile } from 'firebase/auth';
 import { doc, getDoc, setDoc, Timestamp, collection, addDoc, updateDoc, deleteDoc, query, orderBy, onSnapshot } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 import { useToast } from '@/hooks/use-toast';
+
+export const UserContext = createContext<UserContextType | undefined>(undefined);
+
+export type MedicalDocument = {
+  id: string;
+  name: string;
+  category: 'Lab Result' | 'Imaging Report' | 'Prescription' | 'Other';
+  studyDate: Date;
+  uploadedAt: Date;
+  url?: string;
+  storagePath?: string;
+};
 
 type SerializablePersonalInfo = Omit<PersonalInfo, 'dateOfBirth'> & {
   dateOfBirth: Timestamp;
@@ -68,6 +79,7 @@ interface UserContextType {
   healthInfo: HealthInfo | null;
   appointments: Appointment[];
   medications: Medication[];
+  documents: MedicalDocument[];
   updatePersonalInfo: (info: PersonalInfo) => Promise<void>;
   updateHealthInfo: (info: HealthInfo) => Promise<void>;
   addAppointment: (appointment: Omit<Appointment, 'id' | 'notified'>) => Promise<void>;
@@ -76,12 +88,13 @@ interface UserContextType {
   addMedication: (med: Omit<Medication, 'id'>) => Promise<void>;
   updateMedication: (id: string, med: Partial<Medication>) => Promise<void>;
   deleteMedication: (id: string) => Promise<void>;
+  addDocument: (doc: { name: string; category: MedicalDocument['category']; studyDate: Date; file: File }) => Promise<void>;
+  updateDocument: (id: string, data: Partial<Omit<MedicalDocument, 'id' | 'url' | 'storagePath'>>) => Promise<void>;
+  deleteDocument: (id: string) => Promise<void>;
   loading: boolean;
   user: User | null;
   signOutUser: () => Promise<void>;
 }
-
-export const UserContext = createContext<UserContextType | undefined>(undefined);
 
 const initialAnonymousPersonalInfo: PersonalInfo = {
   firstName: 'Invitado',
@@ -107,6 +120,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   const [healthInfo, setHealthInfo] = useState<HealthInfo | null>(null);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [medications, setMedications] = useState<Medication[]>([]);
+  const [documents, setDocuments] = useState<MedicalDocument[]>([]);
   const [loading, setLoading] = useState(true);
   
   const { toast } = useToast();
@@ -160,7 +174,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         await loadInitialData(currentUser);
 
         // Set up real-time listeners for subcollections
-        const collectionsToSync = ['appointments', 'medications'];
+        const collectionsToSync = ['appointments', 'medications', 'documents'];
         collectionsToSync.forEach(collName => {
             const q = query(collection(db, 'users', currentUser.uid, collName), orderBy('uploadedAt', 'desc'));
             const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -175,9 +189,10 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
                     });
                     return { id, ...docData };
                 });
-                
+
                 if (collName === 'appointments') setAppointments(data as Appointment[]);
                 if (collName === 'medications') setMedications(data as Medication[]);
+                if (collName === 'documents') setDocuments(data as MedicalDocument[]);
 
             }, (error) => {
                 console.error(`Error listening to ${collName}:`, error);
@@ -264,11 +279,78 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       await deleteDoc(doc(db, 'users', user.uid, 'medications', id));
   };
 
+  const addDocument = async ({ name, category, studyDate, file }: { name: string; category: MedicalDocument['category']; studyDate: Date; file: File }) => {
+    if (!user) throw new Error('No user authenticated');
+    
+    const newDocRef = doc(collection(db, 'users', user.uid, 'documents'));
+    const documentId = newDocRef.id;
+
+    const storagePath = `users/${user.uid}/documents/${documentId}/${file.name}`;
+    const storageRef = ref(storage, storagePath);
+    
+    await uploadBytes(storageRef, file);
+    const url = await getDownloadURL(storageRef);
+
+    await setDoc(newDocRef, {
+      name,
+      category,
+      studyDate: Timestamp.fromDate(studyDate), // Convert to Timestamp
+      uploadedAt: Timestamp.now(), // Convert to Timestamp
+      url,
+      storagePath: storagePath 
+    });
+  };
+
+  const updateDocument = async (id: string, data: Partial<Omit<MedicalDocument, 'id' | 'url' | 'storagePath'>>) => {
+    if (!user) throw new Error('No user authenticated');
+    const docToUpdateRef = doc(db, 'users', user.uid, 'documents', id);
+    const serializableData: Partial<any> = { ...data };
+    if (data.studyDate) {
+      serializableData.studyDate = Timestamp.fromDate(data.studyDate);
+    }
+    await updateDoc(docToUpdateRef, serializableData);
+  };
+
+  const deleteDocument = async (id: string) => {
+    if (!user) throw new Error('No user authenticated');
+    const docToDeleteRef = doc(db, 'users', user.uid, 'documents', id);
+    
+    try {
+      const docSnap = await getDoc(docToDeleteRef);
+      if (docSnap.exists()) {
+        const docData = docSnap.data() as MedicalDocument;
+        
+        if (docData.storagePath) {
+          const fileRef = ref(storage, docData.storagePath);
+          await deleteObject(fileRef);
+        } else if (docData.url) { 
+          // Fallback for old format if storagePath is not present
+          const fileRef = ref(storage, docData.url);
+          await deleteObject(fileRef).catch((err) => {
+            console.warn("Could not delete file from URL, maybe it's an old format:", err);
+          });
+        }
+      }
+      
+      await deleteDoc(docToDeleteRef);
+
+    } catch (error) {
+      console.error("Error deleting document and file: ", error);
+      toast({
+        variant: "destructive",
+        title: "Error al eliminar",
+        description: "No se pudo eliminar el documento y su archivo asociado.",
+      });
+      throw error;
+    }
+  };
+
   return (
     <UserContext.Provider value={{
-        user, loading, personalInfo, healthInfo, appointments, medications,
+        user, loading, personalInfo, healthInfo, appointments, medications, documents,
         signOutUser, updatePersonalInfo, updateHealthInfo, addAppointment, updateAppointment,
         deleteAppointment, addMedication, updateMedication, deleteMedication,
+        addDocument, updateDocument, deleteDocument,
     }}>
       {children}
     </UserContext.Provider>

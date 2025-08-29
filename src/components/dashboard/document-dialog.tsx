@@ -12,9 +12,10 @@ import { Loader2, X, Eye, Camera, Calendar as CalendarIcon } from "lucide-react"
 import { format } from "date-fns";
 import { es } from 'date-fns/locale';
 import { cn } from "../../lib/utils";
-import type { MedicalDocument } from '../../context/medical-documents-context';
+import type { MedicalDocument } from '../../context/user-context';
 import { useToast } from "../../hooks/use-toast";
-import { useMedicalDocuments } from '../../context/medical-documents-context';
+import { UserContext } from '../../context/user-context';
+import { useContext } from 'react';
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
@@ -28,7 +29,13 @@ interface DocumentDialogProps {
 }
 
 export function DocumentDialog({ mode, isOpen, onOpenChange, docToEdit }: DocumentDialogProps) {
-  const { addDocument, updateDocument } = useMedicalDocuments();
+  const context = useContext(UserContext);
+
+  if (!context) {
+    throw new Error('DocumentDialog must be used within a UserProvider');
+  }
+
+  const { addDocument, updateDocument } = context;
   const { toast } = useToast();
 
   const [isSaving, setIsSaving] = useState(false);
@@ -139,13 +146,19 @@ export function DocumentDialog({ mode, isOpen, onOpenChange, docToEdit }: Docume
   };
 
   const handleSubmit = async () => {
+    console.time("handleSubmit_execution"); // Inicia el temporizador
+    console.log("handleSubmit: Se inició el guardado. Modo:", mode);
+
     if (mode === 'add') {
       if (!name || !category || !studyDate || !selectedFile) {
         toast({ variant: 'destructive', title: "Formulario incompleto", description: "Completa todos los campos y toma una foto." });
+        console.warn("handleSubmit: Formulario incompleto, guardado cancelado.");
+        console.timeEnd("handleSubmit_execution"); // Termina el temporizador
         return;
       }
 
       setIsSaving(true);
+      console.log("handleSubmit: Estado 'isSaving' puesto a true.");
       try {
         await addDocument({
           name,
@@ -156,27 +169,35 @@ export function DocumentDialog({ mode, isOpen, onOpenChange, docToEdit }: Docume
         toast({ title: "Documento subido con éxito." });
         onOpenChange(false);
       } catch (error) {
-        console.error('Error al guardar:', error);
+        console.error('handleSubmit: Error al guardar:', error);
         toast({ variant: 'destructive', title: "Error al subir el documento.", description: (error as Error).message });
       } finally {
         setIsSaving(false);
+        console.log("handleSubmit: Estado 'isSaving' puesto a false en el bloque finally.");
+        console.timeEnd("handleSubmit_execution"); // Termina el temporizador
       }
     } else if (mode === 'edit' && docToEdit) {
       if (!name || !category || !studyDate) {
         toast({ variant: 'destructive', title: "Formulario incompleto", description: "Completa todos los campos." });
+        console.warn("handleSubmit: Formulario incompleto (edición), guardado cancelado.");
+        console.timeEnd("handleSubmit_execution"); // Termina el temporizador
         return;
       }
 
       setIsSaving(true);
+      console.log("handleSubmit: Estado 'isSaving' puesto a true (edición).");
       try {
         const updatedData: Partial<Omit<MedicalDocument, 'id' | 'url' | 'storagePath'>> = { name, category, studyDate };
         await updateDocument(docToEdit.id, updatedData);
         toast({ title: "Documento actualizado con éxito." });
         onOpenChange(false);
       } catch (error) {
+        console.error('handleSubmit: Error al actualizar:', error);
         toast({ variant: 'destructive', title: "Error al actualizar el documento.", description: (error as Error).message });
       } finally {
         setIsSaving(false);
+        console.log("handleSubmit: Estado 'isSaving' puesto a false en el bloque finally (edición).");
+        console.timeEnd("handleSubmit_execution"); // Termina el temporizador
       }
     }
   };

@@ -2,7 +2,6 @@
 import { SidebarProvider, Sidebar, SidebarInset } from "@/components/ui/sidebar";
 import { SidebarNav } from "@/components/dashboard/sidebar-nav";
 import { UserProvider } from "@/context/user-context";
-import { MedicalDocumentsProvider } from "@/context/medical-documents-context";
 import { useToast } from "@/hooks/use-toast";
 
 export default function DashboardLayout({
@@ -16,7 +15,6 @@ export default function DashboardLayout({
   
   return (
     <UserProvider>
-      <MedicalDocumentsProvider>
         <SidebarProvider defaultOpen={true} open={true}>
           <div className="flex min-h-screen">
             <Sidebar collapsible="none">
@@ -27,7 +25,6 @@ export default function DashboardLayout({
             </SidebarInset>
           </div>
         </SidebarProvider>
-      </MedicalDocumentsProvider>
     </UserProvider>
   );
 }

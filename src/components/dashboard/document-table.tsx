@@ -6,7 +6,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { MoreVertical, Eye, Download, FilePenLine, Trash2, Camera, PlusCircle } from "lucide-react";
 import { format } from "date-fns";
 import { es } from 'date-fns/locale';
-import type { MedicalDocument } from '../../context/medical-documents-context';
+import type { MedicalDocument } from '../../context/user-context';
 
 const getCategoryLabel = (category: MedicalDocument['category']) => {
     const labels: Record<MedicalDocument['category'], string> = {

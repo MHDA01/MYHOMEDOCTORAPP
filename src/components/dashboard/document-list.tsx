@@ -1,21 +1,26 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useContext } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
 import { Button } from "../ui/button";
-import { PlusCircle } from "lucide-react";
-import type { MedicalDocument } from '../../context/medical-documents-context';
+import { PlusCircle, FileText } from "lucide-react";
 import { useToast } from "../../hooks/use-toast";
-import { useMedicalDocuments } from '../../context/medical-documents-context';
 import { Skeleton } from '../ui/skeleton';
 import { DocumentTable } from './document-table';
 import { DocumentDialog } from './document-dialog';
 import { ViewDocumentDialog } from './view-document-dialog';
+import { UserContext, MedicalDocument } from '@/context/user-context';
 
 type DialogMode = 'add' | 'edit';
 
 export function DocumentList() {
-  const { documents, deleteDocument, loading } = useMedicalDocuments();
+  const context = useContext(UserContext);
+
+  if (!context) {
+    throw new Error('DocumentList must be used within a UserProvider');
+  }
+
+  const { documents, deleteDocument, loading, addDocument, updateDocument } = context;
   const { toast } = useToast();
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -70,13 +75,18 @@ export function DocumentList() {
     <>
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
-            <div className="space-y-1">
-                <CardTitle className="font-headline text-xl">Documentos Médicos</CardTitle>
-                <CardDescription>Añade y gestiona tus exámenes, recetas e informes.</CardDescription>
+          <div className="flex items-center gap-3">
+            <div className="rounded-full bg-primary/10 p-2">
+              <FileText className="h-7 w-7 text-primary" />
             </div>
-            <Button onClick={handleOpenAddDialog}>
-                <PlusCircle className="mr-2 h-4 w-4" /> Añadir con Foto
-            </Button>
+            <div>
+              <CardTitle className="font-headline text-xl">Documentos Médicos</CardTitle>
+              <CardDescription>Añade y gestiona tus exámenes, recetas e informes tomando una foto.</CardDescription>
+            </div>
+          </div>
+          <Button onClick={handleOpenAddDialog}>
+            <PlusCircle className="mr-2 h-4 w-4" /> Añadir con Foto
+          </Button>
         </CardHeader>
         <CardContent>
           <DocumentTable 

@@ -32,7 +32,7 @@ export function DatabaseStructure() {
                     <div className="pl-8 space-y-2 text-xs">
                         <p><strong className="text-primary-foreground/80">personalInfo:</strong> &#123; firstName, lastName, ... &#125;</p>
                         <p><strong className="text-primary-foreground/80">healthInfo:</strong> &#123; allergies, surgicalHistory, ... &#125;</p>
-                        <p><strong className="text-primary-foreground/80">fcmToken:</strong> "token_del_dispositivo_xyz..."</p>
+                        <p><strong className="text-primary-foreground/80">fcmToken:</strong> &quot;token_del_dispositivo_xyz...&quot;</p>
                     </div>
 
                     {/* Sub-collections */}

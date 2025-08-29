@@ -20,7 +20,9 @@ exports.onUserCreate = functions.auth.user().onCreate(async (user) => {
     email,
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
     personalInfo: {},
-    healthInfo: {},
+    healthInfo: {
+      Allergies: "", // O un valor inicial por defecto
+    },
   }, { merge: true });
 
   // 2. Crear carpeta en Cloud Storage (opcional, GCS es flat, pero se puede crear un objeto vacío)

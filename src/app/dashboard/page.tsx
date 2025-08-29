@@ -6,14 +6,12 @@ import { EmergencyContactsCard } from "@/components/dashboard/emergency-card";
 import { HealthRecordCard } from "@/components/dashboard/health-record-card";
 
 import { DocumentList } from "@/components/dashboard/document-list";
-import { MedicalDocumentsProvider } from "../../context/medical-documents-context";
 import { Appointments } from "@/components/dashboard/appointments";
 import { MedicationReminders } from "@/components/dashboard/medication-reminders";
 
 export default function DashboardPage() {
   return (
-    <MedicalDocumentsProvider>
-      <div className="flex flex-col h-full">
+        <div className="flex flex-col h-full">
         <DashboardHeader />
         <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 flex flex-col items-center">
           <div className="mx-auto max-w-4xl w-full space-y-8">
@@ -39,6 +37,5 @@ export default function DashboardPage() {
           </div>
         </main>
       </div>
-    </MedicalDocumentsProvider>
   );
 }
