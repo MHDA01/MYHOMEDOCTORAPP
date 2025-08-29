@@ -80,8 +80,12 @@ export function DocumentDialog({ mode, isOpen, onOpenChange, docToEdit }: Docume
             setCategory(docToEdit.category);
             setStudyDate(docToEdit.studyDate || docToEdit.uploadedAt);
         } else {
+            // Only reset form when opening for 'add' mode
             resetForm();
         }
+    } else {
+        // Reset form when dialog closes
+        resetForm();
     }
   }, [isOpen, mode, docToEdit]);
 
