@@ -8,7 +8,7 @@ import { getStorage } from "firebase/storage";
 const firebaseConfig = {
   "projectId": "myhomedoctorapp",
   "appId": "1:138646987953:web:f0f8ee1d83efc34e4dae90",
-  "storageBucket": "myhomedoctorapp.appspot.com",
+  "storageBucket": "myhomedoctorapp.firebasestorage.app",
   "apiKey": "AIzaSyAp65amh6olkSyo94sYxaBD9E2frbkws44",
   "authDomain": "myhomedoctorapp.firebaseapp.com",
   "messagingSenderId": "138646987953"
