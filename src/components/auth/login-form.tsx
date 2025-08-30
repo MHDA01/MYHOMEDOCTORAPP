@@ -56,7 +56,7 @@ export function LoginForm() {
     <div className="w-full max-w-md mx-auto bg-white rounded-xl shadow p-8 space-y-6">
       <div className="flex flex-col items-center">
         <div className="mb-4">
-          <Image src="https://res.cloudinary.com/dm9gwvsmq/image/upload/v1755545822/LOGO_1_transparent_wsag9b.png" alt="Logo" width={427} height={320} className="mx-auto mb-[-16px]" />
+          <Image src="https://i.postimg.cc/SsRdwdzD/LOGO-1-transparent.png" alt="Logo" width={427} height={320} className="mx-auto mb-[-16px]" />
         </div>
         <h2 className="text-2xl font-bold mb-2">Bienvenido</h2>
         <p className="text-gray-500 text-center mb-4 text-sm">

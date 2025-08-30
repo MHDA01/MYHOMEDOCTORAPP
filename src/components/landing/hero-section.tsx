@@ -9,7 +9,7 @@ export default function HeroSection() {
       {/* Logo con proporciones naturales y tamaño optimizado (40% más grande) */}
       <div className="relative w-full max-w-xl mx-auto aspect-[4/3]">
         <Image
-          src="https://res.cloudinary.com/dm9gwvsmq/image/upload/v1755545822/LOGO_1_transparent_wsag9b.png"
+                        src="https://i.postimg.cc/SsRdwdzD/LOGO-1-transparent.png"
           alt="MyHomeDoctorApp Logo"
           fill
           className="object-contain"
