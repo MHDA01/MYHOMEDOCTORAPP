@@ -77,8 +77,17 @@ export function SidebarNav() {
   return (
     <>
       <SidebarHeader className="items-center pt-5 pb-4 px-4">
-                                 <Image 
-                           src="https://i.postimg.cc/SsRdwdzD/LOGO-1-transparent.png"
+        <Link href="/" className="flex items-center gap-2 font-semibold">
+          <div className="relative w-10 h-10">
+            <Image 
+              src="https://i.postimg.cc/SsRdwdzD/LOGO-1-transparent.png"
+              alt="Logo"
+              fill 
+              style={{ objectFit: 'contain' }}
+            />
+          </div>
+          <span className="">MyHomeDoctor</span>
+        </Link>
       </SidebarHeader>
       <SidebarContent className="pt-2 pb-2 px-2">
         <SidebarMenu>
