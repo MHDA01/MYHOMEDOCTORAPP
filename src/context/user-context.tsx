@@ -1,7 +1,7 @@
 'use client';
 
 import { createContext, useState, useEffect, ReactNode, useCallback } from 'react';
-import type { PersonalInfo, HealthInfo, Appointment, Medication } from '@/lib/types';
+import type { PersonalInfo, HealthInfo, Appointment, Medication, Document } from '@/lib/types';
 import { auth, db, storage } from '@/lib/firebase';
 import { onAuthStateChanged, User, signOut, updateProfile } from 'firebase/auth';
 import { doc, getDoc, setDoc, Timestamp, collection, addDoc, updateDoc, deleteDoc, query, orderBy, onSnapshot } from 'firebase/firestore';
@@ -9,16 +9,6 @@ import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage
 import { useToast } from '@/hooks/use-toast';
 
 export const UserContext = createContext<UserContextType | undefined>(undefined);
-
-export type MedicalDocument = {
-  id: string;
-  name: string;
-  category: 'Lab Result' | 'Imaging Report' | 'Prescription' | 'Other';
-  studyDate: Date;
-  uploadedAt: Date;
-  url?: string;
-  storagePath?: string;
-};
 
 type SerializablePersonalInfo = Omit<PersonalInfo, 'dateOfBirth'> & {
   dateOfBirth: Timestamp;
@@ -79,7 +69,7 @@ interface UserContextType {
   healthInfo: HealthInfo | null;
   appointments: Appointment[];
   medications: Medication[];
-  documents: MedicalDocument[];
+  documents: Document[];
   updatePersonalInfo: (info: PersonalInfo) => Promise<void>;
   updateHealthInfo: (info: HealthInfo) => Promise<void>;
   addAppointment: (appointment: Omit<Appointment, 'id' | 'notified'>) => Promise<void>;
@@ -88,8 +78,8 @@ interface UserContextType {
   addMedication: (med: Omit<Medication, 'id'>) => Promise<void>;
   updateMedication: (id: string, med: Partial<Medication>) => Promise<void>;
   deleteMedication: (id: string) => Promise<void>;
-  addDocument: (doc: { name: string; category: MedicalDocument['category']; studyDate: Date; file: File }) => Promise<void>;
-  updateDocument: (id: string, data: Partial<Omit<MedicalDocument, 'id' | 'url' | 'storagePath'>>) => Promise<void>;
+  addDocument: (docData: Omit<Document, 'id' | 'url' | 'filePath'> & { file: File }) => Promise<void>;
+  updateDocument: (id: string, data: Partial<Omit<Document, 'id' | 'url' | 'filePath' | 'file'>>) => Promise<void>;
   deleteDocument: (id: string) => Promise<void>;
   loading: boolean;
   user: User | null;
@@ -120,7 +110,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   const [healthInfo, setHealthInfo] = useState<HealthInfo | null>(null);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [medications, setMedications] = useState<Medication[]>([]);
-  const [documents, setDocuments] = useState<MedicalDocument[]>([]);
+  const [documents, setDocuments] = useState<Document[]>([]);
   const [loading, setLoading] = useState(true);
   
   const { toast } = useToast();
@@ -192,7 +182,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
 
                 if (collName === 'appointments') setAppointments(data as Appointment[]);
                 if (collName === 'medications') setMedications(data as Medication[]);
-                if (collName === 'documents') setDocuments(data as MedicalDocument[]);
+                if (collName === 'documents') setDocuments(data as Document[]);
 
             }, (error) => {
                 console.error(`Error listening to ${collName}:`, error);
@@ -279,33 +269,33 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       await deleteDoc(doc(db, 'users', user.uid, 'medications', id));
   };
 
-  const addDocument = async ({ name, category, studyDate, file }: { name: string; category: MedicalDocument['category']; studyDate: Date; file: File }) => {
-    if (!user || !file) {
-      throw new Error("Usuario no autenticado o archivo no proporcionado.");
+  const addDocument = async (docData: Omit<Document, 'id' | 'url' | 'filePath'> & { file: File }) => {
+    if (!user) {
+      throw new Error("Usuario no autenticado.");
     }
     
     const docRef = doc(collection(db, 'users', user.uid, 'documents'));
     const docId = docRef.id;
 
-    const storagePath = `users/${user.uid}/documents/${docId}-${file.name}`;
-    const storageRef = ref(storage, storagePath);
+    const filePath = `users/${user.uid}/documents/${docId}-${docData.file.name}`;
+    const storageRef = ref(storage, filePath);
     
-    await uploadBytes(storageRef, file);
+    await uploadBytes(storageRef, docData.file);
     const downloadURL = await getDownloadURL(storageRef);
 
     const dataToSave = {
-        name: name,
-        category: category,
-        uploadedAt: Timestamp.now(),
-        studyDate: studyDate ? Timestamp.fromDate(studyDate) : Timestamp.now(),
-        url: downloadURL,
-        storagePath: storagePath,
+      name: docData.name,
+      category: docData.category,
+      uploadedAt: Timestamp.now(),
+      studyDate: docData.studyDate ? Timestamp.fromDate(docData.studyDate) : Timestamp.now(),
+      url: downloadURL,
+      filePath: filePath,
     };
     
     await setDoc(docRef, dataToSave);
   };
 
-  const updateDocument = async (id: string, data: Partial<Omit<MedicalDocument, 'id' | 'url' | 'storagePath'>>) => {
+  const updateDocument = async (id: string, data: Partial<Omit<Document, 'id' | 'url' | 'filePath' | 'file'>>) => {
     if (!user) throw new Error('No user authenticated');
     const docToUpdateRef = doc(db, 'users', user.uid, 'documents', id);
     const serializableData: Partial<any> = { ...data };
@@ -322,17 +312,11 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     try {
       const docSnap = await getDoc(docToDeleteRef);
       if (docSnap.exists()) {
-        const docData = docSnap.data() as MedicalDocument;
+        const docData = docSnap.data() as Document;
         
-        if (docData.storagePath) {
-          const fileRef = ref(storage, docData.storagePath);
+        if (docData.filePath) {
+          const fileRef = ref(storage, docData.filePath);
           await deleteObject(fileRef);
-        } else if (docData.url) { 
-          // Fallback for old format if storagePath is not present
-          const fileRef = ref(storage, docData.url);
-          await deleteObject(fileRef).catch((err) => {
-            console.warn("Could not delete file from URL, maybe it's an old format:", err);
-          });
         }
       }
       

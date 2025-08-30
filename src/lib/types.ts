@@ -1,13 +1,15 @@
-export type MedicalDocument = {
+import { Timestamp } from 'firebase/firestore';
+
+export interface Document {
   id: string;
   name: string;
   category: 'Lab Result' | 'Imaging Report' | 'Prescription' | 'Other';
-  studyDate: Date;
   uploadedAt: Date;
-  url?: string;
-};
-
-import { Timestamp } from 'firebase/firestore';
+  studyDate?: Date;
+  url: string; // URL de descarga de Firebase Storage
+  filePath?: string; // Ruta del archivo en Storage para poder borrarlo
+  file?: File; // Se usa solo en el cliente para la subida, no se guarda en DB
+}
 
 export type Appointment = {
   id: string;
