@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MyHomeDoctorApp - Gestión Médica Profesional</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Google Fonts: Merriweather (Serif) + Inter (Sans) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Merriweather:wght@400;700;900&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        * { font-family: 'Inter', sans-serif; }
+        
+        .title-serif {
+            font-family: 'Merriweather', serif;
+            font-weight: 900;
+        }
+        
+        .bg-light-medical {
+            background: linear-gradient(135deg, #d0e8eb 0%, #e8f4f6 100%);
+        }
+        
+        .gradient-medical {
+            background: linear-gradient(135deg, #0f766e 0%, #0d9488 100%);
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(16, 185, 129, 0.3);
+        }
+        
+        .btn-secondary {
+            border: 2px solid #001f47;
+            color: #001f47;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-secondary:hover {
+            background-color: rgba(0, 31, 71, 0.05);
+            transform: translateY(-2px);
+        }
+        
+        .hero-image {
+            border-radius: 16px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.15);
+            transition: transform 0.3s ease;
+        }
+        
+        .hero-image:hover {
+            transform: translateY(-5px);
+        }
+        
+        .navbar-brand {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 700;
+            color: #001f47;
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body class="bg-white">
+    
+    <!-- NAVBAR -->
+    <nav class="fixed top-0 w-full bg-white/95 backdrop-blur-md border-b border-gray-100 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <!-- Logo -->
+                <a href="index.html" class="navbar-brand">
+                    <i class="fas fa-stethoscope text-emerald-600 text-2xl"></i>
+                    <span>MyHomeDoctorApp</span>
+                </a>
+                
+                <!-- Actions -->
+                <div class="hidden md:flex gap-3">
+                    <a href="login.html" class="py-3 px-6 gradient-medical text-white rounded-lg font-semibold hover:opacity-90 transition">
+                        Accede a MyHomeDoctorApp
+                    </a>
+                </div>
+                
+                <!-- Mobile Menu -->
+                <div class="md:hidden">
+                    <a href="login.html" class="py-3 px-4 gradient-medical text-white rounded-lg text-sm font-semibold hover:opacity-90 transition">
+                        Acceder
+                    </a>
+                </div>
+            </div>
+        </div>
+    </nav>
+    
+    <!-- LOGO BANNER SECTION -->
+    <section class="pt-20 pb-8 px-4 sm:px-6 lg:px-8 bg-white">
+        <div class="max-w-7xl mx-auto flex justify-center">
+            <img 
+                src="https://i.postimg.cc/SsRdwdzD/LOGO-1-transparent.png" 
+                alt="MyHomeDoctorApp Logo"
+                class="w-64 h-64 sm:w-80 sm:h-80 lg:w-96 lg:h-96 object-contain drop-shadow-lg"
+            >
+        </div>
+    </section>
+    
+    <!-- HERO SECTION -->
+    <section class="pt-4 pb-20 px-4 sm:px-6 lg:px-8 bg-white">
+        <div class="max-w-7xl mx-auto">
+            <!-- Contenedor de texto - full width -->
+            <div>
+                
+                <!-- COLUMNA IZQUIERDA: Texto -->
+                <div class="flex flex-col justify-center">
+                    
+                    <!-- Título Principal -->
+                    <h1 class="title-serif text-5xl lg:text-6xl text-blue-950 mb-6" style="line-height: 1.3;">
+                        Tu Familia protegida por Medicos Expertos e Inteligencia Artificial.
+                    </h1>
+                    
+                    <!-- Subtítulo -->
+                    <p class="text-xl text-gray-600 mb-8 leading-relaxed font-light">
+                        Deja de adivinar con Google. MyHomeDoctorApp te ofrece orientación médica basada en evidencia científica actualizada y auditada por medicos expertos para gestionar la salud de tu núcleo familiar. Creada por médicos, diseñada para tu hogar.
+                    </p>
+                    
+                    <!-- Botones -->
+                    <div class="flex flex-col sm:flex-row gap-4">
+                        <a href="login.html" class="py-3 px-8 gradient-medical text-white rounded-lg text-center text-lg font-semibold hover:opacity-90 transition">
+                            Accede a MyHomeDoctorApp
+                        </a>
+                    </div>
+                    
+                    <!-- Trust Indicators -->
+                    <div class="mt-6 pt-4 border-t border-gray-200 flex gap-8 flex-wrap">
+                        <div>
+                            <div class="text-3xl font-bold text-emerald-600">100%</div>
+                            <p class="text-gray-600 text-sm">Seguridad Encriptada</p>
+                        </div>
+                        <div>
+                            <div class="text-3xl font-bold text-blue-950">Real</div>
+                            <p class="text-gray-600 text-sm">Expertise Médico</p>
+                        </div>
+                        <div>
+                            <div class="text-3xl font-bold text-emerald-600">24/7</div>
+                            <p class="text-gray-600 text-sm">Disponibilidad</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <!-- CARACTERÍSTICAS SECTION -->
+    <section class="py-20 px-4 sm:px-6 lg:px-8 bg-light-medical">
+        <div class="max-w-7xl mx-auto">
+            <h2 class="title-serif text-4xl text-center text-blue-950 mb-16">
+                ¿Por Qué Confiar en MyHomeDoctorApp?
+            </h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                
+                <!-- Card 1: Triaje Inteligente -->
+                <div class="bg-white p-8 rounded-xl shadow-md hover:shadow-lg transition">
+                    <div class="w-14 h-14 bg-gradient-to-br from-teal-400 to-teal-600 rounded-lg flex items-center justify-center mb-4">
+                        <i class="fas fa-brain text-white text-2xl"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-blue-950 mb-3">Triaje Inteligente con IA</h3>
+                    <p class="text-gray-600">
+                        Análisis de síntomas basado en medicina basada en la evidencia. Te orienta sobre cuándo ir a urgencias, cuándo llamar al médico y cuándo esperar. Sin pánico, sin Google.
+                    </p>
+                </div>
+                
+                <!-- Card 2: Perfil Familiar -->
+                <div class="bg-white p-8 rounded-xl shadow-md hover:shadow-lg transition">
+                    <div class="w-14 h-14 bg-gradient-to-br from-teal-400 to-teal-600 rounded-lg flex items-center justify-center mb-4">
+                        <i class="fas fa-heart text-white text-2xl"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-blue-950 mb-3">Perfil Familiar Unificado</h3>
+                    <p class="text-gray-600">
+                        Un espacio seguro para registrar la salud de toda tu familia: hijos, pareja, mayores. Historial completo en un lugar.
+                    </p>
+                </div>
+                
+                <!-- Card 3: Historial Seguro -->
+                <div class="bg-white p-8 rounded-xl shadow-md hover:shadow-lg transition">
+                    <div class="w-14 h-14 bg-gradient-to-br from-teal-400 to-teal-600 rounded-lg flex items-center justify-center mb-4">
+                        <i class="fas fa-lock text-white text-2xl"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-blue-950 mb-3">Historial de Salud Seguro</h3>
+                    <p class="text-gray-600">
+                        Encriptación de grado médico. Tus datos y los de tu familia están protegidos bajo los más altos estándares.
+                    </p>
+                </div>
+                
+            </div>
+        </div>
+    </section>
+    
+    <!-- CTA SECTION -->
+    <section class="py-20 px-4 sm:px-6 lg:px-8 bg-white">
+        <div class="max-w-4xl mx-auto text-center">
+            <h2 class="title-serif text-4xl text-blue-950 mb-4">
+                ¿Listo para cuidar a tu familia con confianza?
+            </h2>
+            <p class="text-xl text-gray-600 mb-8">
+                Miles de familias ya usan MyHomeDoctorApp para tomar mejores decisiones sobre la salud de sus hijos y seres queridos.
+            </p>
+            <a href="login.html" class="py-3 px-10 gradient-medical text-white rounded-lg text-lg font-semibold hover:opacity-90 transition inline-block">
+                Accede a MyHomeDoctorApp
+            </a>
+        </div>
+    </section>
+    
+    <!-- FOOTER -->
+    <footer class="bg-blue-950 text-white py-12 px-4 sm:px-6 lg:px-8">
+        <div class="max-w-7xl mx-auto">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
+                <div>
+                    <div class="flex items-center gap-2 mb-4">
+                        <i class="fas fa-stethoscope text-emerald-400 text-2xl"></i>
+                        <span class="font-bold text-lg">MyHomeDoctorApp</span>
+                    </div>
+                    <p class="text-gray-300">
+                        Gestión médica inteligente, creada por un médico, para el bienestar de tu familia.
+                    </p>
+                </div>
+                
+                <div>
+                    <h4 class="font-bold mb-4">Producto</h4>
+                    <ul class="space-y-2 text-gray-300">
+                        <li><a href="#" class="hover:text-emerald-400 transition">Características</a></li>
+                        <li><a href="#" class="hover:text-emerald-400 transition">Precios</a></li>
+                        <li><a href="#" class="hover:text-emerald-400 transition">Seguridad</a></li>
+                    </ul>
+                </div>
+                
+                <div>
+                    <h4 class="font-bold mb-4">Legal</h4>
+                    <ul class="space-y-2 text-gray-300">
+                        <li><a href="#" class="hover:text-emerald-400 transition">Privacidad</a></li>
+                        <li><a href="#" class="hover:text-emerald-400 transition">Términos</a></li>
+                        <li><a href="#" class="hover:text-emerald-400 transition">Cookies</a></li>
+                    </ul>
+                </div>
+                
+                <div>
+                    <h4 class="font-bold mb-4">Contacto</h4>
+                    <p class="text-gray-300 mb-2">
+                        <i class="fas fa-envelope mr-2"></i> info@myhomedoctorapp.com
+                    </p>
+                    <p class="text-gray-300">
+                        <i class="fas fa-phone mr-2"></i> +1 (555) 123-4567
+                    </p>
+                </div>
+            </div>
+            
+            <div class="border-t border-blue-800 pt-8 text-center text-gray-400">
+                <p>&copy; 2026 MyHomeDoctorApp. Todos los derechos reservados.</p>
+            </div>
+        </div>
+    </footer>
+    
+    <!-- Firebase Config para auto-redirect si ya está autenticado -->
+    <script type="module">
+        import { auth } from './firebase-config.js';
+        
+        // Si ya está autenticado, redirigir directamente al app
+        // Si NO está autenticado, se queda en landing
+        auth.onAuthStateChanged((user) => {
+            if (user) {
+                console.log('👤 Usuario autenticado en landing, redirigiendo a app...');
+                window.location.href = 'family-health.html';
+            } else {
+                console.log('👤 Usuario no autenticado, mostrando landing');
+            }
+        });
+    </script>
+    
+</body>
+</html>

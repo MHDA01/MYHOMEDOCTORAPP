@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MyHomeDoctorApp - Dashboard</title>
+    
+    <!-- Tailwind CSS via CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Google Fonts - Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        * { font-family: 'Inter', sans-serif; }
+        body { background-color: #f8fafc; }
+        
+        /* Animación de carga */
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        .animate-spin {
+            animation: spin 1s linear infinite;
+        }
+        
+        /* Gradiente médico */
+        .gradient-medical {
+            background: linear-gradient(135deg, #0f766e 0%, #0d9488 100%);
+        }
+        
+        /* Sidebar suave */
+        .sidebar {
+            background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
+            box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+        }
+        
+        /* Cards elegantes */
+        .card-hover {
+            transition: all 0.3s ease;
+        }
+        .card-hover:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+        }
+    </style>
+</head>
+<body class="bg-slate-50">
+    <!-- Contenedor Principal -->
+    <div class="flex h-screen">
+        
+        <!-- ================================ SIDEBAR ================================ -->
+        <aside class="sidebar w-64 flex-shrink-0 hidden md:flex flex-col">
+            <!-- Logo -->
+            <div class="p-6 border-b border-slate-700">
+                <a href="index.html" class="flex items-center gap-3 hover:opacity-80 transition">
+                    <div class="w-10 h-10 gradient-medical rounded-lg flex items-center justify-center">
+                        <i class="fas fa-stethoscope text-white text-lg"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-white font-bold text-sm">MyHome</h1>
+                        <p class="text-slate-400 text-xs">DoctorApp</p>
+                    </div>
+                </a>
+            </div>
+            
+            <!-- Navegación -->
+            <nav class="flex-1 px-4 py-6 space-y-2">
+                <a href="#" class="nav-item flex items-center gap-3 px-4 py-3 rounded-lg text-slate-100 hover:bg-slate-700 transition font-medium active">
+                    <i class="fas fa-users text-teal-400"></i>
+                    <span>Pacientes</span>
+                </a>
+                <a href="#" class="nav-item flex items-center gap-3 px-4 py-3 rounded-lg text-slate-300 hover:bg-slate-700 transition">
+                    <i class="fas fa-plus-circle text-blue-400"></i>
+                    <span>Nueva Consulta</span>
+                </a>
+                <a href="#" class="nav-item flex items-center gap-3 px-4 py-3 rounded-lg text-slate-300 hover:bg-slate-700 transition">
+                    <i class="fas fa-cog text-slate-400"></i>
+                    <span>Ajustes</span>
+                </a>
+            </nav>
+            
+            <!-- Usuario y Logout -->
+            <div class="p-4 border-t border-slate-700">
+                <button id="logoutBtn" class="w-full flex items-center gap-2 px-4 py-3 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 transition">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span>Cerrar Sesión</span>
+                </button>
+            </div>
+        </aside>
+        
+        <!-- ================================ MAIN CONTENT ================================ -->
+        <main class="flex-1 flex flex-col overflow-hidden">
+            
+            <!-- Cabecera -->
+            <header class="bg-white border-b border-slate-200 px-6 py-4 flex justify-between items-center">
+                <div>
+                    <h2 class="text-2xl font-bold text-slate-900">Bienvenido, <span id="doctorName">Dr. García</span></h2>
+                    <p class="text-slate-500 text-sm mt-1" id="dateDisplay"></p>
+                </div>
+                <div class="flex items-center gap-4">
+                    <a href="index.html" class="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg transition text-sm">
+                        <i class="fas fa-home mr-1"></i> Inicio
+                    </a>
+                    <button id="logoutBtnMobile" class="md:hidden p-2 hover:bg-slate-100 rounded-lg text-slate-600">
+                        <i class="fas fa-sign-out-alt text-lg"></i>
+                    </button>
+                </div>
+            </header>
+            
+            <!-- Contenido Scrolleable -->
+            <div class="flex-1 overflow-y-auto">
+                <div class="p-6 space-y-6">
+                    
+                    <!-- ========== TARJETAS DE RESUMEN ========== -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <!-- Total Pacientes -->
+                        <div class="card-hover bg-white rounded-xl p-6 border border-slate-200">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-slate-600 text-sm font-medium">Total de Pacientes</p>
+                                    <p class="text-3xl font-bold text-slate-900 mt-2" id="totalPacientes">0</p>
+                                </div>
+                                <div class="w-12 h-12 gradient-medical rounded-lg flex items-center justify-center">
+                                    <i class="fas fa-users text-white text-xl"></i>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Consultas de Hoy -->
+                        <div class="card-hover bg-white rounded-xl p-6 border border-slate-200">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-slate-600 text-sm font-medium">Consultas de Hoy</p>
+                                    <p class="text-3xl font-bold text-slate-900 mt-2" id="consultasHoy">0</p>
+                                </div>
+                                <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                                    <i class="fas fa-calendar-check text-blue-600 text-xl"></i>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Pendientes -->
+                        <div class="card-hover bg-white rounded-xl p-6 border border-slate-200">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-slate-600 text-sm font-medium">Casos Pendientes</p>
+                                    <p class="text-3xl font-bold text-slate-900 mt-2" id="casosPendientes">0</p>
+                                </div>
+                                <div class="w-12 h-12 bg-amber-100 rounded-lg flex items-center justify-center">
+                                    <i class="fas fa-exclamation-circle text-amber-600 text-xl"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- ========== ASISTENTE MÉDICO IA ========== -->
+                    <div class="bg-white rounded-xl border border-slate-200 p-6">
+                        <div class="flex items-center gap-2 mb-4">
+                            <i class="fas fa-wand-magic-sparkles text-purple-500 text-lg"></i>
+                            <h3 class="text-lg font-bold text-slate-900">Asistente Médico IA</h3>
+                        </div>
+                        
+                        <p class="text-slate-600 text-sm mb-4">Ingresa o copia la nota clínica del paciente. Nuestro IA analizará el caso automáticamente.</p>
+                        
+                        <form id="aiForm" class="space-y-4">
+                            <!-- Textarea -->
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-2">Nota Clínica</label>
+                                <textarea 
+                                    id="medicalNoteInput"
+                                    placeholder="Ej: Paciente con dolor de cabeza hace 3 días, sensible a luz, mareos ocasionales. Medicamentos actuales: Paracetamol..."
+                                    class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none"
+                                    rows="6"
+                                ></textarea>
+                            </div>
+                            
+                            <!-- Botón Analizar -->
+                            <button 
+                                type="submit"
+                                id="analyzeBtn"
+                                class="w-full md:w-auto bg-gradient-to-r from-purple-600 to-pink-600 text-white px-6 py-3 rounded-lg font-semibold hover:from-purple-700 hover:to-pink-700 transition flex items-center justify-center gap-2"
+                            >
+                                <i class="fas fa-wand-magic-sparkles"></i>
+                                <span>✨ Analizar Caso</span>
+                            </button>
+                        </form>
+                        
+                        <!-- Resultado IA -->
+                        <div id="aiResult" class="hidden mt-6 pt-6 border-t border-slate-200">
+                            <h4 class="font-semibold text-slate-900 mb-4">Análisis del Caso:</h4>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div class="bg-slate-50 rounded-lg p-4">
+                                    <p class="text-xs font-semibold text-slate-500 uppercase">Motivo Consulta</p>
+                                    <p id="aiMotivo" class="text-slate-900 font-medium mt-2">-</p>
+                                </div>
+                                <div class="bg-slate-50 rounded-lg p-4">
+                                    <p class="text-xs font-semibold text-slate-500 uppercase">Diagnóstico Sugerido</p>
+                                    <p id="aiDiagnostico" class="text-slate-900 font-medium mt-2">-</p>
+                                </div>
+                                <div class="bg-slate-50 rounded-lg p-4">
+                                    <p class="text-xs font-semibold text-slate-500 uppercase">Síntomas</p>
+                                    <ul id="aiSintomas" class="list-disc list-inside text-slate-900 text-sm mt-2">
+                                        <li>-</li>
+                                    </ul>
+                                </div>
+                                <div class="bg-slate-50 rounded-lg p-4">
+                                    <p class="text-xs font-semibold text-slate-500 uppercase">Plan de Acción</p>
+                                    <ul id="aiPlan" class="list-decimal list-inside text-slate-900 text-sm mt-2">
+                                        <li>-</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Loading -->
+                        <div id="aiLoading" class="hidden mt-6 pt-6 border-t border-slate-200 flex items-center gap-2 text-purple-600">
+                            <i class="fas fa-spinner animate-spin"></i>
+                            <span>Analizando caso con IA...</span>
+                        </div>
+                    </div>
+                    
+                    <!-- ========== LISTA DE PACIENTES ========== -->
+                    <div class="bg-white rounded-xl border border-slate-200 p-6">
+                        <h3 class="text-lg font-bold text-slate-900 mb-4">Mis Pacientes</h3>
+                        
+                        <!-- Tabla responsiva -->
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-sm">
+                                <thead>
+                                    <tr class="border-b border-slate-200">
+                                        <th class="text-left py-3 px-4 font-semibold text-slate-700">Nombre</th>
+                                        <th class="text-left py-3 px-4 font-semibold text-slate-700 hidden sm:table-cell">Edad</th>
+                                        <th class="text-left py-3 px-4 font-semibold text-slate-700 hidden md:table-cell">Diagnóstico</th>
+                                        <th class="text-left py-3 px-4 font-semibold text-slate-700">Última Consulta</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="patientsTable">
+                                    <tr class="border-b border-slate-200 hover:bg-slate-50">
+                                        <td colspan="4" class="py-8 px-4 text-center text-slate-500">
+                                            <i class="fas fa-users text-2xl mb-2 block opacity-30"></i>
+                                            Cargando pacientes...
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <!-- Firebase Scripts -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-functions-compat.js"></script>
+    
+    <!-- Configuración Firebase -->
+    <script src="firebase-config.js"></script>
+    
+    <!-- Lógica de la App -->
+    <script src="patient-app.js"></script>
+    
+</body>
+</html>

@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MyHomeDoctorApp - Iniciar Sesión</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Google Fonts: Merriweather (Serif) + Inter (Sans) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Merriweather:wght@400;700;900&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        * { font-family: 'Inter', sans-serif; }
+        
+        .title-serif {
+            font-family: 'Merriweather', serif;
+            font-weight: 900;
+        }
+        
+        .bg-light-medical {
+            background: linear-gradient(135deg, #d0e8eb 0%, #e8f4f6 100%);
+        }
+        
+        .gradient-medical {
+            background: linear-gradient(135deg, #0f766e 0%, #0d9488 100%);
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(16, 185, 129, 0.3);
+        }
+        
+        .navbar-brand {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 700;
+            color: #001f47;
+            text-decoration: none;
+        }
+        
+        .input-primary {
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+        }
+        
+        .input-primary:focus {
+            outline: none;
+            border-color: #059669;
+            box-shadow: 0 4px 12px rgba(5, 150, 105, 0.15);
+        }
+    </style>
+</head>
+<body class="bg-white">
+    
+    <!-- NAVBAR -->
+    <nav class="fixed top-0 w-full bg-white/95 backdrop-blur-md border-b border-gray-100 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <!-- Logo -->
+                <a href="index.html" class="navbar-brand">
+                    <i class="fas fa-stethoscope text-emerald-600 text-2xl"></i>
+                    <span>MyHomeDoctorApp</span>
+                </a>
+                
+                <!-- Actions -->
+                <div class="hidden md:flex gap-3">
+                    <a href="index.html" class="py-3 px-6 text-blue-950 font-semibold hover:opacity-70 transition">
+                        Volver al Inicio
+                    </a>
+                </div>
+                
+                <!-- Mobile Menu -->
+                <div class="md:hidden">
+                    <a href="index.html" class="py-3 px-4 text-blue-950 font-semibold hover:opacity-70 transition text-sm">
+                        Atrás
+                    </a>
+                </div>
+            </div>
+        </div>
+    </nav>
+    
+    <!-- MAIN SECTION -->
+    <section class="pt-32 pb-20 px-4 sm:px-6 lg:px-8 bg-white">
+        <div class="max-w-2xl mx-auto">
+            
+            <!-- Logo Section -->
+            <div class="text-center mb-12">
+                <img 
+                    src="https://i.postimg.cc/SsRdwdzD/LOGO-1-transparent.png" 
+                    alt="MyHomeDoctorApp Logo"
+                    class="w-40 h-40 sm:w-48 sm:h-48 lg:w-56 lg:h-56 mx-auto"
+                >
+            </div>
+            
+            <!-- Title -->
+            <h1 class="title-serif text-4xl lg:text-5xl text-blue-950 mb-6 text-center" style="line-height: 1.3;">
+                Accede a tu Cuenta
+            </h1>
+            
+            <!-- Subtitle -->
+            <p class="text-lg text-gray-600 mb-12 text-center font-light">
+                Inicia sesión para acceder a tu panel y gestionar la salud de tu familia.
+            </p>
+            
+            <!-- Form Container -->
+            <div class="bg-white rounded-lg border border-gray-200 p-8 lg:p-12 shadow-sm">
+                
+                <!-- Formulario -->
+                <form id="loginForm" class="space-y-6">
+                    <!-- Email -->
+                    <div>
+                        <label class="block text-sm font-semibold text-blue-950 mb-3">Correo Electrónico</label>
+                        <input 
+                            type="email"
+                            id="email"
+                            placeholder="tu@email.com"
+                            required
+                            class="input-primary w-full px-4 py-3 text-blue-950 placeholder-gray-400"
+                        >
+                    </div>
+                    
+                    <!-- Contraseña -->
+                    <div>
+                        <label class="block text-sm font-semibold text-blue-950 mb-3">Contraseña</label>
+                        <input 
+                            type="password"
+                            id="password"
+                            placeholder="••••••••"
+                            required
+                            class="input-primary w-full px-4 py-3 text-blue-950 placeholder-gray-400"
+                        >
+                    </div>
+                    
+                    <!-- Botón Primary -->
+                    <button 
+                        type="submit"
+                        class="btn-primary w-full py-3 px-8 rounded-lg text-center text-lg font-semibold"
+                    >
+                        Iniciar Sesión
+                    </button>
+                </form>
+                
+                <!-- Separador -->
+                <div class="my-8 border-t border-gray-200"></div>
+                
+                <!-- Links -->
+                <div class="space-y-4">
+                    <p class="text-center text-gray-600">
+                        ¿No tienes cuenta? 
+                        <a href="register.html" class="font-semibold text-emerald-600 hover:text-emerald-700 transition">Regístrate aquí</a>
+                    </p>
+                    <p class="text-center text-gray-600">
+                        <a href="#" class="font-semibold text-emerald-600 hover:text-emerald-700 transition">¿Olvidaste tu contraseña?</a>
+                    </p>
+                </div>
+                
+                <!-- Estado -->
+                <div id="loginStatus" class="mt-8"></div>
+            </div>
+            
+            <!-- Trust Indicators -->
+            <div class="mt-12 pt-8 border-t border-gray-200 flex gap-8 flex-wrap justify-center">
+                <div class="text-center">
+                    <div class="text-3xl font-bold text-emerald-600 mb-2">100%</div>
+                    <p class="text-gray-600 text-sm">Seguridad Encriptada</p>
+                </div>
+                <div class="text-center">
+                    <div class="text-3xl font-bold text-blue-950 mb-2">Real</div>
+                    <p class="text-gray-600 text-sm">Expertise Médico</p>
+                </div>
+                <div class="text-center">
+                    <div class="text-3xl font-bold text-emerald-600 mb-2">24/7</div>
+                    <p class="text-gray-600 text-sm">Disponibilidad</p>
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <!-- FOOTER -->
+    <footer class="bg-blue-950 text-white py-12 px-4 sm:px-6 lg:px-8">
+        <div class="max-w-7xl mx-auto">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
+                <div>
+                    <div class="flex items-center gap-2 mb-4">
+                        <i class="fas fa-stethoscope text-emerald-400 text-2xl"></i>
+                        <span class="font-bold text-lg">MyHomeDoctorApp</span>
+                    </div>
+                    <p class="text-gray-300">
+                        Gestión médica inteligente, creada por un médico, para el bienestar de tu familia.
+                    </p>
+                </div>
+                
+                <div>
+                    <h4 class="font-bold mb-4">Producto</h4>
+                    <ul class="space-y-2 text-gray-300">
+                        <li><a href="#" class="hover:text-emerald-400 transition">Características</a></li>
+                        <li><a href="#" class="hover:text-emerald-400 transition">Precios</a></li>
+                        <li><a href="#" class="hover:text-emerald-400 transition">Seguridad</a></li>
+                    </ul>
+                </div>
+                
+                <div>
+                    <h4 class="font-bold mb-4">Legal</h4>
+                    <ul class="space-y-2 text-gray-300">
+                        <li><a href="#" class="hover:text-emerald-400 transition">Privacidad</a></li>
+                        <li><a href="#" class="hover:text-emerald-400 transition">Términos</a></li>
+                        <li><a href="#" class="hover:text-emerald-400 transition">Cookies</a></li>
+                    </ul>
+                </div>
+                
+                <div>
+                    <h4 class="font-bold mb-4">Contacto</h4>
+                    <p class="text-gray-300 mb-2">
+                        <i class="fas fa-envelope mr-2"></i> info@myhomedoctorapp.com
+                    </p>
+                    <p class="text-gray-300">
+                        <i class="fas fa-phone mr-2"></i> +1 (555) 123-4567
+                    </p>
+                </div>
+            </div>
+            
+            <div class="border-t border-blue-800 pt-8 text-center text-gray-400">
+                <p>&copy; 2026 MyHomeDoctorApp. Todos los derechos reservados.</p>
+            </div>
+        </div>
+    </footer>
+    
+    
+    <!-- Firebase Config (Modular) -->
+    <script type="module" src="firebase-config.js"></script>
+    <script type="module" src="user-setup.js"></script>
+    
+    <script type="module">
+        import { auth } from './firebase-config.js';
+        import { setupUserDocument } from './user-setup.js';
+        
+        const form = document.getElementById('loginForm');
+        const statusDiv = document.getElementById('loginStatus');
+        
+        // Redirigir al app después de login
+        async function redirectToApp(user) {
+            await setupUserDocument(user, 'patient');
+            window.location.href = 'family-health.html';
+        }
+        
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            
+            try {
+                const result = await auth.signInWithEmailAndPassword(email, password);
+                
+                // Asegurar que el documento de usuario existe
+                await setupUserDocument(result.user, 'patient');
+                
+                statusDiv.innerHTML = '<div class="p-4 bg-emerald-100 text-emerald-800 rounded-lg border border-emerald-300">✅ Iniciando sesión...</div>';
+                setTimeout(() => {
+                    redirectToApp(result.user);
+                }, 1000);
+            } catch (error) {
+                statusDiv.innerHTML = `<div class="p-4 bg-red-100 text-red-800 rounded-lg border border-red-300">❌ ${error.message}</div>`;
+            }
+        });
+    </script>
+    
+</body>
+</html>
