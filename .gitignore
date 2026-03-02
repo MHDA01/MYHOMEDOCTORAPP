@@ -43,3 +43,11 @@ next-env.d.ts
 # firebase
 firebase-debug.log
 firestore-debug.log
+
+# ⚠️ CREDENCIALES SENSIBLES - NUNCA SUBIR
+serviceAcountkey.json
+serviceAccountKey.json
+*-service-account*.json
+*-adminsdk-*.json
+*.pem
+.firebase/
