@@ -1,9 +1,14 @@
 /**
  * MyHomeDoctorApp - Triage Chat System
  * Sistema de triaje inteligente con IA médica
+ * Nueva estructura: Cuentas_Tutor/{userId}/Integrantes
  */
 
 import { auth, db } from './firebase-config.js';
+
+// Constantes de colecciones
+const COLECCION_TUTOR = 'Cuentas_Tutor';
+const SUBCOLECCION_INTEGRANTES = 'Integrantes';
 
 // ============================================================================
 // SYSTEM PROMPT DEL DR. GARCIA
@@ -245,7 +250,14 @@ class TriageChat {
 
         // Fallback: buscar en Firestore
         console.log('🔄 Buscando perfil en Firestore...');
-        this.db.collection('app_families').doc(profileId).get().then(doc => {
+        // Nueva estructura: Cuentas_Tutor/{userId}/Integrantes/{profileId}
+        this.db
+            .collection(COLECCION_TUTOR)
+            .doc(this.currentUser.uid)
+            .collection(SUBCOLECCION_INTEGRANTES)
+            .doc(profileId)
+            .get()
+            .then(doc => {
             if (doc.exists) {
                 this.selectedProfile = { id: doc.id, ...doc.data() };
                 console.log('✅ Perfil encontrado en Firestore:', this.selectedProfile.fullName);
