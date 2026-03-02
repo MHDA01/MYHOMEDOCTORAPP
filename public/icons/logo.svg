@@ -1,0 +1,26 @@
+<svg viewBox="0 0 400 500" xmlns="http://www.w3.org/2000/svg">
+  <!-- House Shape Background -->
+  <path d="M 80 250 L 200 100 L 320 250 L 320 380 Q 320 400 300 400 L 100 400 Q 80 400 80 380 Z" fill="#1e5a8e" stroke="none"/>
+  
+  <!-- Light Blue Inner Section -->
+  <path d="M 100 250 L 200 130 L 300 250 L 300 380 L 100 380 Z" fill="#87ceeb" stroke="none"/>
+  
+  <!-- Doctor Woman Avatar -->
+  <circle cx="200" cy="180" r="45" fill="#f4a460"/>
+  <path d="M 165 220 Q 165 200 200 200 Q 235 200 235 220 L 235 280 Q 235 290 225 295 L 175 295 Q 165 290 165 280 Z" fill="#ffffff"/>
+  <path d="M 155 280 L 155 320 L 245 320 L 245 280" fill="#e8f4f8"/>
+  
+  <!-- Stethoscope in coat -->
+  <circle cx="200" cy="265" r="8" fill="#1e5a8e"/>
+  
+  <!-- Green Plus Symbol (Medical) -->
+  <g transform="translate(280, 140)">
+    <rect x="-30" y="-8" width="60" height="16" fill="#10b981" rx="4"/>
+    <rect x="-8" y="-30" width="16" height="60" fill="#10b981" rx="4"/>
+  </g>
+  
+  <!-- Smile expression on face -->
+  <path d="M 190 175 Q 200 182 210 175" stroke="#333" stroke-width="2" fill="none" stroke-linecap="round"/>
+  <circle cx="190" cy="170" r="2" fill="#333"/>
+  <circle cx="210" cy="170" r="2" fill="#333"/>
+</svg>

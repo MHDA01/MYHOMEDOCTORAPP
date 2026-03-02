@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MyHomeDoctorApp - Gestión de Salud Familiar</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Google Fonts: Merriweather + Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Merriweather:wght@400;700;900&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        * { font-family: 'Inter', sans-serif; }
+
+        .title-serif {
+            font-family: 'Merriweather', serif;
+            font-weight: 900;
+        }
+
+        .gradient-medical {
+            background: linear-gradient(135deg, #0f766e 0%, #0d9488 100%);
+        }
+
+        .bg-light-medical {
+            background: linear-gradient(135deg, #d0e8eb 0%, #e8f4f6 100%);
+        }
+
+        .input-primary {
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+        }
+
+        .input-primary:focus {
+            outline: none;
+            border-color: #059669;
+            box-shadow: 0 4px 12px rgba(5, 150, 105, 0.15);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .animate-fade-in {
+            animation: fadeIn 0.3s ease;
+        }
+
+        .modal-overlay {
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(4px);
+        }
+    </style>
+</head>
+<body class="bg-white">
+
+    <!-- NAVBAR -->
+    <nav class="fixed top-0 w-full bg-white/95 backdrop-blur-md border-b border-gray-100 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <a href="index.html" class="flex items-center gap-2">
+                    <i class="fas fa-stethoscope text-emerald-600 text-2xl"></i>
+                    <span class="font-bold text-blue-950">MyHomeDoctorApp</span>
+                </a>
+
+                <button id="logoutBtn" class="flex items-center gap-2 px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg transition">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span class="text-sm font-medium">Cerrar Sesión</span>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- MAIN CONTENT -->
+    <div class="pt-20 pb-12 px-4 sm:px-6 lg:px-8">
+        <div class="max-w-6xl mx-auto">
+
+            <!-- Tabs Navigation -->
+            <div class="flex gap-4 mb-8 border-b border-gray-200">
+                <button class="tab-btn active pb-4 px-4 font-semibold text-blue-950 border-b-2 border-emerald-600 transition" data-tab="profiles">
+                    <i class="fas fa-heart mr-2"></i> Mi Familia
+                </button>
+                <button class="tab-btn pb-4 px-4 font-semibold text-gray-600 hover:text-blue-950 transition" data-tab="triage">
+                    <i class="fas fa-brain mr-2"></i> Triaje Inteligente
+                </button>
+            </div>
+
+            <!-- ========== TAB 1: PROFILES ========== -->
+            <div id="profiles-tab" class="tab-content animate-fade-in">
+
+                <!-- Header -->
+                <div class="mb-8">
+                    <h2 class="title-serif text-3xl text-blue-950 mb-2">Perfiles Familiares</h2>
+                    <p class="text-gray-600">Gestiona los perfiles médicos de tu familia</p>
+                </div>
+
+                <!-- Botón Agregar -->
+                <div class="mb-6">
+                    <button id="addProfileBtn" class="bg-gradient-to-r from-emerald-600 to-teal-600 text-white px-6 py-3 rounded-lg font-semibold hover:shadow-lg transition flex items-center gap-2">
+                        <i class="fas fa-user-plus"></i>
+                        <span>Agregar Familiar</span>
+                    </button>
+                </div>
+
+                <!-- Lista de Perfiles -->
+                <div id="profilesList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div class="text-center py-12 col-span-full">
+                        <i class="fas fa-spinner animate-spin text-3xl text-emerald-600 mb-2 block"></i>
+                        <p class="text-gray-600">Cargando perfiles...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ========== TAB 2: TRIAGE ========== -->
+            <div id="triage-tab" class="tab-content hidden">
+
+                <!-- Header -->
+                <div class="mb-8">
+                    <h2 class="title-serif text-3xl text-blue-950 mb-2">Triaje Inteligente <span id="triageProfileName" class="text-emerald-600"></span></h2>
+                    <p class="text-gray-600">Chat con IA médica para evaluar síntomas</p>
+                </div>
+
+                <!-- Selector de Perfil -->
+                <div class="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <label class="block text-sm font-semibold text-blue-950 mb-2">
+                        <i class="fas fa-user mr-2"></i> Selecciona un familiar:
+                    </label>
+                    <select id="profileSelect" class="input-primary w-full px-4 py-2">
+                        <option value="">-- Cargando perfiles --</option>
+                    </select>
+                </div>
+
+                <!-- Chat Container -->
+                <div class="bg-white border border-gray-200 rounded-lg overflow-hidden shadow-lg">
+
+                    <!-- Messages -->
+                    <div id="triageMessages" class="h-96 overflow-y-auto bg-gray-50 p-6 space-y-4">
+                        <div class="text-center text-gray-500 text-sm">
+                            <p>Selecciona un familiar para comenzar</p>
+                        </div>
+                    </div>
+
+                    <!-- Input Area -->
+                    <div class="border-t border-gray-200 bg-white p-4">
+                        <form id="triageForm" class="flex gap-2">
+                            <input
+                                type="text"
+                                id="triageMessageInput"
+                                placeholder="Describe los síntomas..."
+                                class="input-primary flex-1 px-4 py-3"
+                            >
+                            <button
+                                type="submit"
+                                id="sendTriageBtn"
+                                class="gradient-medical text-white px-6 py-3 rounded-lg font-semibold hover:shadow-lg transition"
+                            >
+                                <i class="fas fa-paper-plane"></i>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== MODAL: AGREGAR PERFIL ========== -->
+    <div id="profileModal" class="hidden modal-overlay fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto animate-fade-in">
+
+            <!-- Header Modal -->
+            <div class="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center">
+                <h3 class="title-serif text-2xl text-blue-950">Agregar Nuevo Familiar</h3>
+                <button id="closeProfileModal" class="text-gray-500 hover:text-gray-700 text-2xl">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+
+            <!-- Formulario -->
+            <form id="profileForm" class="p-6 space-y-6">
+
+                <!-- Nombre Completo -->
+                <div>
+                    <label class="block text-sm font-semibold text-blue-950 mb-2">
+                        <i class="fas fa-user mr-2 text-emerald-600"></i> Nombre Completo
+                    </label>
+                    <input
+                        type="text"
+                        id="profileFullName"
+                        placeholder="Ej: Juan García López"
+                        class="input-primary w-full px-4 py-3"
+                        required
+                    >
+                </div>
+
+                <!-- Fecha de Nacimiento y Sexo -->
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-semibold text-blue-950 mb-2">
+                            <i class="fas fa-calendar mr-2 text-emerald-600"></i> Fecha de Nacimiento
+                        </label>
+                        <input
+                            type="date"
+                            id="profileDOB"
+                            class="input-primary w-full px-4 py-3"
+                            required
+                        >
+                        <p id="ageDisplay" class="text-xs text-gray-600 mt-2">Edad: -</p>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-semibold text-blue-950 mb-2">
+                            <i class="fas fa-venus-mars mr-2 text-emerald-600"></i> Sexo Biológico
+                        </label>
+                        <select id="profileSex" class="input-primary w-full px-4 py-3" required>
+                            <option value="">-- Selecciona --</option>
+                            <option value="M">Masculino</option>
+                            <option value="F">Femenino</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Peso -->
+                <div>
+                    <label class="block text-sm font-semibold text-blue-950 mb-2">
+                        <i class="fas fa-weight mr-2 text-emerald-600"></i> Peso (kg)
+                    </label>
+                    <input
+                        type="number"
+                        id="profileWeight"
+                        placeholder="Ej: 65"
+                        step="0.1"
+                        min="1"
+                        class="input-primary w-full px-4 py-3"
+                        required
+                    >
+                </div>
+
+                <!-- Parentesco -->
+                <div>
+                    <label class="block text-sm font-semibold text-blue-950 mb-2">
+                        <i class="fas fa-sitemap mr-2 text-emerald-600"></i> Parentesco
+                    </label>
+                    <select id="profileRelationship" class="input-primary w-full px-4 py-3" required>
+                        <option value="">-- Selecciona el parentesco --</option>
+                        <option value="Padre">Padre</option>
+                        <option value="Madre">Madre</option>
+                        <option value="Hijo">Hijo</option>
+                        <option value="Hija">Hija</option>
+                        <option value="Esposo">Esposo</option>
+                        <option value="Esposa">Esposa</option>
+                        <option value="Abuelo">Abuelo</option>
+                        <option value="Abuela">Abuela</option>
+                        <option value="Hermano">Hermano</option>
+                        <option value="Hermana">Hermana</option>
+                        <option value="Tío">Tío</option>
+                        <option value="Tía">Tía</option>
+                        <option value="Primo">Primo</option>
+                        <option value="Prima">Prima</option>
+                        <option value="Suegro">Suegro</option>
+                        <option value="Suegra">Suegra</option>
+                        <option value="Yerno">Yerno</option>
+                        <option value="Nuera">Nuera</option>
+                        <option value="Otro">Otro</option>
+                    </select>
+                </div>
+
+                <!-- Antecedentes -->
+                <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <h4 class="font-semibold text-blue-950 mb-4">
+                        <i class="fas fa-history mr-2 text-emerald-600"></i> Antecedentes Médicos
+                    </h4>
+
+                    <!-- Patológicos -->
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-blue-950 mb-2">
+                            Patológicos (enfermedades previas)
+                        </label>
+                        <textarea
+                            id="profilePathological"
+                            placeholder="Ej: Asma, Diabetes tipo 2, Hipertensión"
+                            class="input-primary w-full px-4 py-2 resize-none"
+                            rows="2"
+                        ></textarea>
+                    </div>
+
+                    <!-- Quirúrgicos -->
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-blue-950 mb-2">
+                            Quirúrgicos (operaciones)
+                        </label>
+                        <textarea
+                            id="profileSurgical"
+                            placeholder="Ej: Apendicectomía (2010), Cesárea (2015)"
+                            class="input-primary w-full px-4 py-2 resize-none"
+                            rows="2"
+                        ></textarea>
+                    </div>
+
+                    <!-- Alérgicos -->
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-blue-950 mb-2">
+                            Alérgicos (alergias)
+                        </label>
+                        <textarea
+                            id="profileAllergic"
+                            placeholder="Ej: Penicilina, Mariscos, Polen"
+                            class="input-primary w-full px-4 py-2 resize-none"
+                            rows="2"
+                        ></textarea>
+                    </div>
+
+                    <!-- Medicamentos -->
+                    <div>
+                        <label class="block text-sm font-medium text-blue-950 mb-2">
+                            Medicamentos actuales
+                        </label>
+                        <textarea
+                            id="profileMedications"
+                            placeholder="Ej: Metformina 500mg c/12h, Omeprazol 20mg diarios"
+                            class="input-primary w-full px-4 py-2 resize-none"
+                            rows="2"
+                        ></textarea>
+                    </div>
+                </div>
+
+                <!-- Botones -->
+                <div class="flex gap-3 pt-4">
+                    <button
+                        type="submit"
+                        class="flex-1 bg-gradient-to-r from-emerald-600 to-teal-600 text-white px-6 py-3 rounded-lg font-semibold hover:shadow-lg transition"
+                    >
+                        <i class="fas fa-save mr-2"></i> Guardar Perfil
+                    </button>
+                    <button
+                        type="button"
+                        id="cancelProfileBtn"
+                        class="flex-1 border border-gray-300 text-gray-700 px-6 py-3 rounded-lg font-semibold hover:bg-gray-50 transition"
+                    >
+                        Cancelar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Firebase Config (Modular) -->
+    <script type="module" src="firebase-config.js"></script>
+
+    <!-- Módulos de la App -->
+    <script type="module" src="family-profiles.js"></script>
+    <script type="module" src="triage-chat.js"></script>
+    <script type="module" src="user-setup.js"></script>
+
+    <!-- Lógica de Tabs -->
+    <script type="module">
+        import { auth } from './firebase-config.js';
+        
+        // ✅ PROTECCIÓN: Si no hay usuario, redirigir a login
+        auth.onAuthStateChanged((user) => {
+            if (!user) {
+                console.log('❌ No autenticado, redirigiendo a login...');
+                window.location.href = 'login.html';
+            } else {
+                console.log('✅ Usuario autenticado, cargando app...');
+            }
+        });
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            // Manejo de tabs
+            const tabBtns = document.querySelectorAll('.tab-btn');
+            const tabContents = document.querySelectorAll('.tab-content');
+
+            tabBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const tabName = btn.dataset.tab;
+
+                    // Remover activo de todos
+                    tabBtns.forEach(b => {
+                        b.classList.remove('active', 'border-b-2', 'border-emerald-600', 'text-blue-950');
+                        b.classList.add('text-gray-600');
+                    });
+
+                    tabContents.forEach(content => {
+                        content.classList.add('hidden');
+                    });
+
+                    // Activar seleccionado
+                    btn.classList.add('active', 'border-b-2', 'border-emerald-600', 'text-blue-950');
+                    btn.classList.remove('text-gray-600');
+
+                    const selectedTab = document.getElementById(`${tabName}-tab`);
+                    if (selectedTab) {
+                        selectedTab.classList.remove('hidden');
+                    }
+
+                    // Si es triaje, mostrar selector de perfiles
+                    if (tabName === 'triage' && familyProfilesManager) {
+                        familyProfilesManager.showProfileSelection();
+                    }
+                });
+            });
+
+            // Cerrar modal
+            const cancelBtn = document.getElementById('cancelProfileBtn');
+            if (cancelBtn) {
+                cancelBtn.addEventListener('click', () => {
+                    if (familyProfilesManager) {
+                        familyProfilesManager.closeModal();
+                    }
+                });
+            }
+
+            // Logout
+            const logoutBtn = document.getElementById('logoutBtn');
+            if (logoutBtn) {
+                logoutBtn.addEventListener('click', () => {
+                    auth.signOut().then(() => {
+                        window.location.href = 'login.html';
+                    });
+                });
+            }
+        });
+    </script>
+
+</body>
+</html>
