@@ -1,9 +1,14 @@
 /**
  * MyHomeDoctorApp - Family Profiles Management
  * Gestión de perfiles familiares con almacenamiento en Firestore
+ * Nueva estructura: Cuentas_Tutor/{userId}/Integrantes
  */
 
 import { auth, db, firebase } from './firebase-config.js';
+
+// Constantes de colecciones
+const COLECCION_TUTOR = 'Cuentas_Tutor';
+const SUBCOLECCION_INTEGRANTES = 'Integrantes';
 
 class FamilyProfilesManager {
     constructor() {
@@ -108,9 +113,11 @@ class FamilyProfilesManager {
             }
             
             // Guardar la referencia del listener para poder detenerlo después si es necesario
+            // Nueva estructura: Cuentas_Tutor/{userId}/Integrantes
             this.snapshotListener = this.db
-                .collection('app_families')
-                .where('userId', '==', this.currentUser.uid)
+                .collection(COLECCION_TUTOR)
+                .doc(this.currentUser.uid)
+                .collection(SUBCOLECCION_INTEGRANTES)
                 .onSnapshot(
                     (snapshot) => {
                         console.log('✅ Snapshot recibido con', snapshot.docs.length, 'perfiles');
@@ -167,8 +174,9 @@ class FamilyProfilesManager {
                         console.error('❌ Error en onSnapshot:', error.code, error.message);
                         console.log('🔄 Intentando con get() como alternativa...');
                         this.db
-                            .collection('app_families')
-                            .where('userId', '==', this.currentUser.uid)
+                            .collection(COLECCION_TUTOR)
+                            .doc(this.currentUser.uid)
+                            .collection(SUBCOLECCION_INTEGRANTES)
                             .get()
                             .then(snapshot => {
                                 this.profiles = [];
@@ -507,7 +515,13 @@ class FamilyProfilesManager {
                 profileData.updatedAt = firebase.firestore.FieldValue.serverTimestamp();
                 
                 try {
-                    const updatePromise = this.db.collection('app_families').doc(editingProfileId).update(profileData);
+                    // Nueva estructura: Cuentas_Tutor/{userId}/Integrantes/{profileId}
+                    const updatePromise = this.db
+                        .collection(COLECCION_TUTOR)
+                        .doc(this.currentUser.uid)
+                        .collection(SUBCOLECCION_INTEGRANTES)
+                        .doc(editingProfileId)
+                        .update(profileData);
                     await Promise.race([
                         updatePromise,
                         new Promise((_, reject) => 
@@ -539,7 +553,12 @@ class FamilyProfilesManager {
                 // El listener automáticamente recibirá los cambios
                 try {
                     console.log('🔄 Enviando perfil a Firestore (sin esperar)...');
-                    const addPromise = this.db.collection('app_families').add(profileData);
+                    // Nueva estructura: Cuentas_Tutor/{userId}/Integrantes
+                    const addPromise = this.db
+                        .collection(COLECCION_TUTOR)
+                        .doc(this.currentUser.uid)
+                        .collection(SUBCOLECCION_INTEGRANTES)
+                        .add(profileData);
                     
                     // Guardamos el ID si se resuelve rápido (máximo 1 segundo)
                     addPromise
@@ -672,7 +691,13 @@ class FamilyProfilesManager {
      */
     async deleteProfile(profileId) {
         try {
-            await this.db.collection('app_families').doc(profileId).delete();
+            // Nueva estructura: Cuentas_Tutor/{userId}/Integrantes/{profileId}
+            await this.db
+                .collection(COLECCION_TUTOR)
+                .doc(this.currentUser.uid)
+                .collection(SUBCOLECCION_INTEGRANTES)
+                .doc(profileId)
+                .delete();
 
             alert('✅ Perfil eliminado exitosamente');
 
