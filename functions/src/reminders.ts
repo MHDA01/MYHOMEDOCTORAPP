@@ -36,7 +36,8 @@ export const checkAppointmentReminders = functions
     // Vamos a enviar una notificación de prueba a un usuario específico para verificar.
     const TEST_USER_ID = "tRAKDG4GVEXebI6UCuQYMJDs3ZZ2"; 
     try {
-        const userDoc = await db.collection("users").doc(TEST_USER_ID).get();
+        // RUTA MIGRADA: Cuentas_Tutor/{uid} (antes: users/{uid})
+        const userDoc = await db.collection("Cuentas_Tutor").doc(TEST_USER_ID).get();
         const user = userDoc.data();
         const token = user?.notificationToken;
 
@@ -86,7 +87,8 @@ export const checkAppointmentReminders = functions
           console.log(`Recordatorio para cita ${doc.id} programado para envío.`);
 
           // Obtiene el token de notificación del usuario.
-          const userDoc = await db.collection("users").doc(cita.usuarioId).get();
+          // RUTA MIGRADA: Cuentas_Tutor/{uid} (antes: users/{uid})
+          const userDoc = await db.collection("Cuentas_Tutor").doc(cita.usuarioId).get();
           const user = userDoc.data();
           const token = user?.notificationToken;
 
@@ -142,7 +144,9 @@ export const checkMedicationReminders = functions
 
     try {
       // Obtiene todos los usuarios para iterar sobre sus medicamentos.
-      const usersSnapshot = await db.collection("users").get();
+        // RUTA MIGRADA: Cuentas_Tutor/{uid}/medications (antes: users/{uid}/medications)
+        // TODO: Migrar consulta de citas a collectionGroup('appointments') sobre Cuentas_Tutor
+        const usersSnapshot = await db.collection("Cuentas_Tutor").get();
       const notificationPromises: Promise<any>[] = [];
 
       for (const userDoc of usersSnapshot.docs) {
@@ -155,7 +159,7 @@ export const checkMedicationReminders = functions
         }
 
         // Obtiene la subcolección de medicamentos para el usuario actual.
-        const medicationsSnapshot = await db.collection("users").doc(userId).collection("medications").where("active", "==", true).get();
+        const medicationsSnapshot = await db.collection("Cuentas_Tutor").doc(userId).collection("medications").where("active", "==", true).get();
 
         for (const medDoc of medicationsSnapshot.docs) {
           const med = medDoc.data();

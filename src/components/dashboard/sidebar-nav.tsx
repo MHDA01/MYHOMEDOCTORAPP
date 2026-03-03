@@ -18,11 +18,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
 import {
-  LayoutDashboard,
-  ShieldAlert,
-  FileText,
-  CalendarClock,
-  Pill,
+  HeartPulse,
   Settings,
   LogOut,
   User,
@@ -30,33 +26,23 @@ import {
   Siren,
   Loader2,
   MoreVertical,
-  Phone,
+  Stethoscope,
 } from 'lucide-react';
 import { UserContext } from '@/context/user-context';
 import { Skeleton } from '../ui/skeleton';
 import { DownloadReportButton } from './download-report-button';
 
 const mainNavItems = [
-  { href: '/dashboard', icon: LayoutDashboard, label: 'Mi Historial' },
+  { href: '/dashboard', icon: HeartPulse, label: 'Mi Salud y la de mi Familia' },
+  { href: '/dashboard/triaje', icon: Stethoscope, label: 'Triaje Inteligente' },
   { href: '/dashboard/teleconsulta', icon: Video, label: 'Teleconsulta' },
   { href: '/dashboard/urgencias', icon: Siren, label: 'Urgencias y Domicilio' },
-];
-
-const secondaryNavItems = [
-  { href: '/dashboard#personal-info', icon: User, label: 'Información Personal' },
-  { href: '/dashboard#emergency-contacts', icon: Phone, label: 'Contactos de Emergencia' },
-  { href: '/dashboard#health-record', icon: ShieldAlert, label: 'Historial Médico' },
-  { href: '/dashboard#documents', icon: FileText, label: 'Documentos' },
-  { href: '/dashboard#appointments', icon: CalendarClock, label: 'Citas' },
-  { href: '/dashboard#medications', icon: Pill, label: 'Medicamentos' },
 ];
 
 export function SidebarNav() {
   const pathname = usePathname();
   const router = useRouter();
   const context = useContext(UserContext);
-
-  const isDashboardPage = pathname === '/dashboard';
 
   const handleLogout = async () => {
     if (context?.signOutUser) {
@@ -116,24 +102,6 @@ export function SidebarNav() {
              <DownloadReportButton />
            </SidebarMenuItem>
         </SidebarMenu>
-        {isDashboardPage && (
-          <>
-            <Separator className='my-4'/>
-            <p className='px-4 mb-2 text-xs text-muted-foreground'>Secciones del Historial</p>
-            <SidebarMenu>
-            {secondaryNavItems.map((item) => (
-                <SidebarMenuItem key={item.label}>
-                <SidebarMenuButton asChild>
-                    <a href={item.href}>
-                    <item.icon />
-                    <span>{item.label}</span>
-                    </a>
-                </SidebarMenuButton>
-                </SidebarMenuItem>
-            ))}
-            </SidebarMenu>
-          </>
-        )}
       </SidebarContent>
       <SidebarFooter>
         <Separator className="my-2" />
@@ -161,12 +129,10 @@ export function SidebarNav() {
                 </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <a href="#personal-info">
-                    <DropdownMenuItem>
-                        <User className="mr-2 h-4 w-4" />
-                        <span>Perfil</span>
-                    </DropdownMenuItem>
-                </a>
+                <DropdownMenuItem disabled>
+                    <User className="mr-2 h-4 w-4" />
+                    <span>Perfil</span>
+                </DropdownMenuItem>
                 <DropdownMenuItem disabled>
                     <Settings className="mr-2 h-4 w-4" />
                     <span>Configuración</span>

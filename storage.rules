@@ -1,0 +1,49 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // ─────────────────────────────────────────────────────────────
+    // ZONA TEMPORAL OCR
+    //
+    // Ruta: temp_ocr_uploads/{tutorId}/{patientId}/{filename}
+    //
+    // • El tutor SOLO puede subir/leer dentro de su propia carpeta.
+    // • El borrado está DESHABILITADO para el cliente: la Cloud
+    //   Function de OCR (Admin SDK) es la única que puede eliminar
+    //   el archivo una vez procesado.
+    // ─────────────────────────────────────────────────────────────
+    match /temp_ocr_uploads/{tutorId}/{allPaths=**} {
+      // Lectura: necesaria para que la app pueda mostrar preview antes de procesar
+      allow read: if request.auth != null && request.auth.uid == tutorId;
+
+      // Escritura: solo archivos de imagen o PDF, máx 10 MB
+      allow write: if request.auth != null
+        && request.auth.uid == tutorId
+        && request.resource.size <= 10 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*|application/pdf');
+
+      // Borrado: DENEGADO al cliente — solo la Cloud Function (Admin SDK)
+      allow delete: if false;
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // DOCUMENTOS MÉDICOS PERMANENTES (uso futuro)
+    //
+    // Una vez que la CF de OCR procese y apruebe el documento, lo
+    // puede mover aquí. El tutor tiene acceso CRUD completo a sus
+    // propios archivos.
+    // ─────────────────────────────────────────────────────────────
+    match /medical_documents/{tutorId}/{allPaths=**} {
+      allow read, write, delete: if request.auth != null
+        && request.auth.uid == tutorId;
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // DENY ALL — bloque explícito para cualquier otra ruta
+    // ─────────────────────────────────────────────────────────────
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -8,23 +8,23 @@ export function DashboardHeader() {
   const getTitle = () => {
     switch (pathname) {
       case '/dashboard':
-        return 'Mi Historial';
+        return 'Mi Salud y la de mi Familia';
       case '/dashboard/teleconsulta':
         return 'Teleconsulta';
       case '/dashboard/urgencias':
         return 'Urgencias y Domicilio';
       default:
-        return 'Mi Historial';
+        return 'Mi Salud y la de mi Familia';
     }
   }
 
   return (
-    <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-background/80 px-4 backdrop-blur-sm md:px-6">
-      <div className="md:hidden">
+    <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b border-border bg-card px-4 shadow-sm md:px-6">
+      <div className="md:hidden text-muted-foreground">
         <SidebarTrigger />
       </div>
       <div className="flex-1">
-        <h1 className="text-xl font-semibold md:text-2xl font-headline">{getTitle()}</h1>
+        <h1 className="text-xl font-semibold md:text-2xl font-headline text-foreground tracking-wide">{getTitle()}</h1>
       </div>
     </header>
   );

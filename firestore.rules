@@ -3,70 +3,92 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-  
-    // ============================================
-    // NUEVA ESTRUCTURA: Cuentas_Tutor / Integrantes
-    // ============================================
-    
-    // Cuentas de Tutor (Hub Familiar)
+
+    // ─────────────────────────────────────────────────────────
+    // HELPERS
+    // ─────────────────────────────────────────────────────────
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    // ─────────────────────────────────────────────────────────
+    // ESTRUCTURA PRINCIPAL: Cuentas_Tutor
+    // Cada tutor sólo puede leer/escribir su propio documento
+    // y TODAS sus subcolecciones (Integrantes, historial,
+    // Documentos, appointments, documents, medications).
+    // ─────────────────────────────────────────────────────────
     match /Cuentas_Tutor/{tutorId} {
-      // Solo el tutor puede leer/escribir su cuenta
-      allow read, write: if request.auth.uid == tutorId;
-      
-      // Subcolección de Integrantes (perfiles familiares)
+      allow read, write: if isOwner(tutorId);
+
+      // Subcolecciones directas del tutor
+      // (appointments, documents, medications, etc.)
+      match /{subcol}/{docId} {
+        allow read, write, delete: if isOwner(tutorId);
+      }
+
+      // Perfiles familiares
       match /Integrantes/{integranteId} {
-        // El tutor puede gestionar todos los integrantes de su familia
-        allow read, write, delete: if request.auth.uid == tutorId;
+        allow read, write, delete: if isOwner(tutorId);
+
+        // Sub-subcolecciones del integrante:
+        //   historial/registro  → historial clínico pesado (lazy load)
+        //   Documentos/{docId}  → documentos médicos por miembro
+        match /{subcol}/{docId} {
+          allow read, write, delete: if isOwner(tutorId);
+        }
       }
     }
-    
-    // ============================================
-    // COLECCIONES LEGACY (mantener por compatibilidad)
-    // ============================================
-    
-    // Usuarios (estructura antigua - solo lectura para migración)
+
+    // ─────────────────────────────────────────────────────────
+    // COLECCIONES LEGACY (solo compatibilidad transitoria)
+    // Mantener hasta que se complete la migración de datos a
+    // Cuentas_Tutor. Eliminar en la próxima versión mayor.
+    // ─────────────────────────────────────────────────────────
     match /users/{userId} {
-      allow read, write: if request.auth.uid == userId;
-      
+      allow read, write: if isOwner(userId);
+
       match /{collection}/{docId} {
-        allow read, write, delete: if request.auth.uid == userId;
+        allow read, write, delete: if isOwner(userId);
       }
     }
-    
-    // Citas médicas
-    match /appointments/{appointmentId} {
-      allow read, write, delete: if request.auth != null && 
-        (resource == null || resource.data.userId == request.auth.uid);
-      allow create: if request.auth != null && 
-        request.resource.data.userId == request.auth.uid;
-    }
-    
-    // Sesiones de triaje
+
+    // ─────────────────────────────────────────────────────────
+    // SESIONES DE TRIAJE
+    // ─────────────────────────────────────────────────────────
     match /app_triage_sessions/{sessionId} {
-      allow read, write: if request.auth != null && 
+      allow read, write, delete: if isSignedIn() &&
         (resource == null || resource.data.userId == request.auth.uid);
-      allow create: if request.auth != null && 
+      allow create: if isSignedIn() &&
         request.resource.data.userId == request.auth.uid;
     }
-    
-    // Logs de triaje (solo escritura para auditoría)
+
+    // ─────────────────────────────────────────────────────────
+    // LOGS DE TRIAJE — solo Cloud Functions vía Admin SDK
+    // ─────────────────────────────────────────────────────────
     match /triage_logs/{logId} {
-      allow create: if request.auth != null;
-      allow read: if false; // Solo accesible por Cloud Functions
+      allow create: if isSignedIn();
+      allow read, write, delete: if false;
     }
-    
-    // Análisis médicos
-    match /medicalAnalysis/{analysisId} {
-      allow read, write: if request.auth != null && 
-        (resource == null || resource.data.doctorId == request.auth.uid);
-      allow create: if request.auth != null;
-    }
-    
-    // Alarmas (para notificaciones)
+
+    // ─────────────────────────────────────────────────────────
+    // ALARMAS DE NOTIFICACIÓN — solo Cloud Functions vía Admin SDK
+    // ─────────────────────────────────────────────────────────
     match /alarms/{alarmId} {
-      allow create: if request.auth != null && 
+      allow create: if isSignedIn() &&
         request.resource.data.userId == request.auth.uid;
-      allow read, delete: if false; // Solo Cloud Functions
+      allow read, delete: if false;
+    }
+
+    // ─────────────────────────────────────────────────────────
+    // DENY ALL — bloque explícito de seguridad
+    // Cualquier ruta no listada arriba queda DENEGADA.
+    // ─────────────────────────────────────────────────────────
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }

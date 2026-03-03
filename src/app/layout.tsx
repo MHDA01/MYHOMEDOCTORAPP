@@ -36,7 +36,7 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-title" content="MiDoctorDeCasaApp" />
         <meta name="format-detection" content="telephone=no" />
         <meta name="mobile-web-app-capable" content="yes" />
-        <meta name="theme-color" content="#35577C" />
+        <meta name="theme-color" content="#2D4A3E" />
         <link rel="apple-touch-icon" href="https://i.postimg.cc/J7N5r89y/LOGO-1.png" />
       </head>
       <body className="font-body antialiased">

@@ -8,6 +8,10 @@ import { onAuthStateChanged, User, signOut, updateProfile } from 'firebase/auth'
 import { doc, getDoc, setDoc, Timestamp, collection, getDocs, addDoc, updateDoc, deleteDoc, query, orderBy } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 
+// Jerarquía Firestore canónica: Cuentas_Tutor/{uid}  →  personalInfo/healthInfo como campos del doc
+// Subcolección del Titular: Cuentas_Tutor/{uid}/appointments | documents | medications
+const COLECCION_TUTOR = 'Cuentas_Tutor';
+
 // We need a way to serialize Date objects to be stored in Firestore
 // and deserialize them back to Date objects.
 type SerializablePersonalInfo = Omit<PersonalInfo, 'dateOfBirth'> & {
@@ -37,11 +41,11 @@ type UserDocument = {
 async function getCollection<T>(userId: string, collectionName: string): Promise<T[]> {
     let q;
     if (collectionName === 'appointments') {
-        q = query(collection(db, 'users', userId, collectionName), orderBy('date', 'desc'));
+        q = query(collection(db, COLECCION_TUTOR, userId, collectionName), orderBy('date', 'desc'));
     } else if (collectionName === 'documents') {
-        q = query(collection(db, 'users', userId, collectionName), orderBy('uploadedAt', 'desc'));
+        q = query(collection(db, COLECCION_TUTOR, userId, collectionName), orderBy('uploadedAt', 'desc'));
     } else {
-        q = query(collection(db, 'users', userId, collectionName));
+        q = query(collection(db, COLECCION_TUTOR, userId, collectionName));
     }
     
     const snapshot = await getDocs(q);
@@ -50,7 +54,7 @@ async function getCollection<T>(userId: string, collectionName: string): Promise
 
 
 async function getUserDocument(userId: string): Promise<UserDocument | null> {
-    const docRef = doc(db, 'users', userId);
+    const docRef = doc(db, COLECCION_TUTOR, userId);
     const docSnap = await getDoc(docRef);
     if (docSnap.exists()) {
         const data = docSnap.data() as UserDocumentData;
@@ -70,7 +74,7 @@ async function getUserDocument(userId: string): Promise<UserDocument | null> {
 
 async function updateUserDocument(userId: string, data: Partial<UserDocument>): Promise<void> {
   try {
-    const docRef = doc(db, 'users', userId);
+    const docRef = doc(db, COLECCION_TUTOR, userId);
     
     const serializableData: Partial<any> = { ...data };
 
@@ -245,17 +249,16 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       }
   };
 
-  // Appointments CRUD
     const addAppointment = async (appointment: Omit<Appointment, 'id'>) => {
         if (!user) return;
-        const newDocRef = doc(collection(db, 'users', user.uid, 'appointments'));
+        const newDocRef = doc(collection(db, COLECCION_TUTOR, user.uid, 'appointments'));
         const newAppointment = { ...appointment, id: newDocRef.id };
         await setDoc(newDocRef, { ...appointment, date: Timestamp.fromDate(appointment.date) });
         setAppointments(prev => [...prev, newAppointment].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
     };
     const updateAppointment = async (id: string, appointment: Partial<Omit<Appointment, 'id'>>) => {
         if (!user) return;
-        const appointmentDocRef = doc(db, 'users', user.uid, 'appointments', id);
+        const appointmentDocRef = doc(db, COLECCION_TUTOR, user.uid, 'appointments', id);
         const data = appointment.date ? { ...appointment, date: Timestamp.fromDate(new Date(appointment.date)) } : appointment;
         await updateDoc(appointmentDocRef, data);
         const updatedAppointmentData = { ...appointments.find(a => a.id === id), ...appointment } as Appointment;
@@ -263,33 +266,33 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     };
     const deleteAppointment = async (id: string) => {
         if (!user) return;
-        await deleteDoc(doc(db, 'users', user.uid, 'appointments', id));
+        await deleteDoc(doc(db, COLECCION_TUTOR, user.uid, 'appointments', id));
         setAppointments(prev => prev.filter(a => a.id !== id));
     };
 
-    // Documents CRUD
+    // Documents del Titular (Cuentas_Tutor/{uid}/documents)
     const addDocument = async (docData: Omit<DocumentType, 'id'>) => {
         if (!user) return;
-        const newDocRef = doc(collection(db, 'users', user.uid, 'documents'));
+        const newDocRef = doc(collection(db, COLECCION_TUTOR, user.uid, 'documents'));
         const data = { ...docData, uploadedAt: Timestamp.fromDate(docData.uploadedAt) };
         await setDoc(newDocRef, data);
         setDocuments(prev => [{...docData, id: newDocRef.id},...prev].sort((a, b) => b.uploadedAt.getTime() - a.uploadedAt.getTime()));
     };
     const updateDocument = async (id: string, docData: Partial<DocumentType>) => {
         if (!user) return;
-        await updateDoc(doc(db, 'users', user.uid, 'documents', id), docData);
+        await updateDoc(doc(db, COLECCION_TUTOR, user.uid, 'documents', id), docData);
         setDocuments(prev => prev.map(d => d.id === id ? { ...d, ...docData } : d));
     };
     const deleteDocument = async (id: string) => {
         if (!user) return;
-        await deleteDoc(doc(db, 'users', user.uid, 'documents', id));
+        await deleteDoc(doc(db, COLECCION_TUTOR, user.uid, 'documents', id));
         setDocuments(prev => prev.filter(d => d.id !== id));
     };
 
-    // Medications CRUD
+    // Medications del Titular (Cuentas_Tutor/{uid}/medications)
     const addMedication = async (med: Omit<Medication, 'id'>) => {
         if (!user) return;
-        const newDocRef = doc(collection(db, 'users', user.uid, 'medications'));
+        const newDocRef = doc(collection(db, COLECCION_TUTOR, user.uid, 'medications'));
         const newMed = { ...med, id: newDocRef.id };
         await setDoc(newDocRef, newMed);
         setMedications(prev => [...prev, newMed]);
@@ -297,7 +300,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
 
     const updateMedication = async (id: string, med: Partial<Medication>) => {
         if (!user) return;
-        const medicationDocRef = doc(db, 'users', user.uid, 'medications', id);
+        const medicationDocRef = doc(db, COLECCION_TUTOR, user.uid, 'medications', id);
         await updateDoc(medicationDocRef, med);
         const fullMed = { ...medications.find(m => m.id === id), ...med } as Medication;
         setMedications(prev => prev.map(m => m.id === id ? fullMed : m));
@@ -305,7 +308,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     
     const deleteMedication = async (id: string) => {
         if (!user) return;
-        await deleteDoc(doc(db, 'users', user.uid, 'medications', id));
+        await deleteDoc(doc(db, COLECCION_TUTOR, user.uid, 'medications', id));
         setMedications(prev => prev.filter(m => m.id !== id));
     };
 

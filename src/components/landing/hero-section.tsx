@@ -17,10 +17,10 @@ export default function HeroSection() {
           />
         </div>
         <div className="relative z-10">
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold text-slate-800 leading-tight mb-6">
-            Tu Expediente Médico Digital, <br className="hidden md:block" /> <span className="text-primary">Control Total en tus Manos.</span>
+            <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold text-primary leading-tight mb-6">
+            Tu Expediente Médico Digital, <br className="hidden md:block" /> <span className="text-accent">Control Total en tus Manos.</span>
             </h1>
-            <p className="text-lg md:text-xl text-slate-600 mb-10 max-w-3xl mx-auto">
+            <p className="text-lg md:text-xl text-muted-foreground mb-10 max-w-3xl mx-auto">
             Gestiona tu historial de salud y el de tu familia desde la palma de tu mano, de forma segura y sencilla.
             </p>
             <div className="mt-10 mb-12">
