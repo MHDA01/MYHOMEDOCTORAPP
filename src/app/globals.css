@@ -4,78 +4,103 @@
 
 @layer base {
   :root {
-    --background: 33 33% 97%; /* Blanco Marfil: #F8F6F3 */
-    --foreground: 206 7% 28%; /* Azul Gris Oscuro: #43494E */
-    --card: 33 33% 98%;
-    --card-foreground: 206 7% 28%;
-    --popover: 33 33% 97%;
-    --popover-foreground: 206 7% 28%;
-    --primary: 211 39% 35%; /* Azul Hogar: #35577C */
-    --primary-foreground: 0 0% 100%;
-    --secondary: 208 51% 81%; /* Azul Cielo Claro: #B3D4EB */
-    --secondary-foreground: 211 39% 35%;
-    --muted: 208 51% 91%;
-    --muted-foreground: 206 7% 45%;
-    --accent: 153 45% 42%; /* Verde Médico: #409070 */
-    --accent-foreground: 0 0% 100%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 208 51% 88%;
-    --input: 208 51% 92%;
-    --ring: 211 39% 35%;
-    --radius: 0.8rem;
-    
-    --chart-1: 211 39% 35%;
-    --chart-2: 153 45% 42%;
-    --chart-3: 152 38% 55%; /* Verde Claro: #62B78A */
-    --chart-4: 208 51% 81%;
-    --chart-5: 206 7% 45%;
+    /* ── Paleta MyHomeDoctorApp ─────────────────────────────────────────────
+     *  Primary  (#2D4A3E)  Verde Bosque Oscuro  →  hsl(155, 25%, 23%)
+     *  Accent   (#2A9D8F)  Verde Cerceta / Teal →  hsl(173, 58%, 39%)
+     *  Bg       (#F4F1DE)  Beige Crema          →  hsl(52,  50%, 91%)
+     *  Fg       (#3A3A3A)  Gris Carbón          →  hsl(0,    0%, 23%)
+     *  Card     (#FFFFFF)  Blanco               →  hsl(0,    0%, 100%)
+     * ─────────────────────────────────────────────────────────────────────── */
+    --background:            52  50% 91%;   /* #F4F1DE — Beige/Crema */
+    --foreground:             0   0% 23%;   /* #3A3A3A — Gris Carbón profundo */
 
-    --sidebar-background: 33 33% 96%;
-    --sidebar-foreground: 206 7% 28%;
-    --sidebar-primary: 211 39% 35%;
+    --card:                   0   0% 100%;  /* #FFFFFF — Blanco */
+    --card-foreground:        0   0% 23%;
+
+    --popover:                0   0% 100%;
+    --popover-foreground:     0   0% 23%;
+
+    --primary:              155  25% 23%;   /* #2D4A3E — Verde Bosque (sin azul) */
+    --primary-foreground:     0   0% 100%;
+
+    --secondary:             52  30% 84%;   /* Beige oscurecido */
+    --secondary-foreground: 155  25% 23%;
+
+    --muted:                 52  35% 87%;   /* Beige suave */
+    --muted-foreground:       0   0% 42%;
+
+    --accent:               173  58% 39%;   /* #2A9D8F — Teal/Cerceta */
+    --accent-foreground:      0   0% 100%;
+
+    --destructive:            0  72% 51%;
+    --destructive-foreground: 0   0% 98%;
+
+    --border:                52  15% 82%;
+    --input:                 52  20% 88%;
+    --ring:                 173  58% 39%;   /* Ring = Teal para foco */
+    --radius:               0.75rem;
+
+    /* ── Charts ──────────────────────────────────────────────────────────── */
+    --chart-1:              173  58% 39%;   /* Teal principal */
+    --chart-2:              155  25% 35%;   /* Verde bosque medio */
+    --chart-3:              173  45% 60%;   /* Teal claro */
+    --chart-4:               52  50% 70%;   /* Beige intenso */
+    --chart-5:                0   0% 42%;   /* Gris */
+
+    /* ── Sidebar (beige — se mimetiza con la app) ────────────────────────── */
+    --sidebar-background:    52  45% 87%;   /* Beige ligeramente más oscuro que el fondo */
+    --sidebar-foreground:     0   0% 23%;   /* Gris carbón — texto legible sobre beige */
+    --sidebar-primary:      173  58% 39%;   /* Teal = ítem activo */
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 208 51% 91%;
-    --sidebar-accent-foreground: 211 39% 35%;
-    --sidebar-border: 208 51% 88%;
-    --sidebar-ring: 211 39% 35%;
+    --sidebar-accent:        52  25% 81%;   /* Beige más oscuro para hover */
+    --sidebar-accent-foreground:  155 25% 20%;
+    --sidebar-border:        52  15% 80%;
+    --sidebar-ring:         173  58% 39%;
   }
 
   .dark {
-    --background: 206 7% 15%; /* Dark version of Azul Gris Oscuro */
-    --foreground: 33 33% 97%; /* Blanco Marfil */
-    --card: 206 7% 18%;
-    --card-foreground: 33 33% 97%;
-    --popover: 206 7% 15%;
-    --popover-foreground: 33 33% 97%;
-    --primary: 211 39% 45%; /* Lighter Azul Hogar */
-    --primary-foreground: 0 0% 100%;
-    --secondary: 211 39% 25%;
-    --secondary-foreground: 33 33% 97%;
-    --muted: 211 39% 25%;
-    --muted-foreground: 33 33% 60%;
-    --accent: 153 45% 52%; /* Lighter Verde Médico */
-    --accent-foreground: 0 0% 100%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 211 39% 28%;
-    --input: 211 39% 28%;
-    --ring: 211 39% 45%;
-    
-    --chart-1: 211 39% 45%;
-    --chart-2: 153 45% 52%;
-    --chart-3: 152 38% 65%;
-    --chart-4: 208 51% 51%;
-    --chart-5: 33 33% 70%;
-    
-    --sidebar-background: 206 7% 17%;
-    --sidebar-foreground: 33 33% 97%;
-    --sidebar-primary: 211 39% 45%;
+    --background:           155  18%  9%;
+    --foreground:            52  40% 88%;
+
+    --card:                 155  18% 13%;
+    --card-foreground:       52  40% 88%;
+
+    --popover:              155  18% 13%;
+    --popover-foreground:    52  40% 88%;
+
+    --primary:              173  58% 50%;   /* Teal claro como primario en dark */
+    --primary-foreground:     0   0% 100%;
+
+    --secondary:            155  15% 20%;
+    --secondary-foreground:  52  40% 88%;
+
+    --muted:                155  15% 18%;
+    --muted-foreground:      52  25% 60%;
+
+    --accent:               173  55% 45%;
+    --accent-foreground:      0   0% 100%;
+
+    --destructive:            0  60% 38%;
+    --destructive-foreground: 0   0% 98%;
+
+    --border:               155  15% 24%;
+    --input:                155  15% 20%;
+    --ring:                 173  55% 45%;
+
+    --chart-1:              173  58% 50%;
+    --chart-2:              173  45% 60%;
+    --chart-3:              155  25% 45%;
+    --chart-4:               52  40% 55%;
+    --chart-5:                0   0% 60%;
+
+    --sidebar-background:   155  22% 10%;
+    --sidebar-foreground:    52  40% 88%;
+    --sidebar-primary:      173  55% 45%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 211 39% 25%;
-    --sidebar-accent-foreground: 33 33% 97%;
-    --sidebar-border: 211 39% 28%;
-    --sidebar-ring: 211 39% 45%;
+    --sidebar-accent:       173  50% 38%;
+    --sidebar-accent-foreground:  0 0% 100%;
+    --sidebar-border:       155  15% 20%;
+    --sidebar-ring:         173  55% 45%;
   }
 }
 
@@ -87,3 +112,4 @@
     @apply bg-background text-foreground;
   }
 }
+

@@ -14,8 +14,8 @@ function FeatureCard({ icon, title, description, benefit }: FeatureCardProps) {
         {icon}
       </div>
       <div>
-        <h3 className="text-2xl font-bold text-slate-800 mb-3">{title}</h3>
-        <div className="text-slate-600 mb-4">{description}</div>
+        <h3 className="text-2xl font-bold text-foreground mb-3">{title}</h3>
+        <div className="text-muted-foreground mb-4">{description}</div>
         <p className="font-semibold text-primary">{benefit}</p>
       </div>
     </div>
@@ -63,8 +63,8 @@ export default function SolutionSection() {
   return (
     <section id="solution-section" className="py-16 md:py-24 bg-white">
       <div className="container mx-auto text-center px-6">
-        <h2 className="text-3xl md:text-4xl font-bold text-slate-800 mb-4">La Solución en tus Manos</h2>
-        <p className="text-lg md:text-xl text-slate-600 mb-16 max-w-3xl mx-auto">
+        <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">La Solución en tus Manos</h2>
+        <p className="text-lg md:text-xl text-muted-foreground mb-16 max-w-3xl mx-auto">
           My Home Doctor App te devuelve el poder sobre tu información de salud, de forma simple, segura e intuitiva.
         </p>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 text-left">

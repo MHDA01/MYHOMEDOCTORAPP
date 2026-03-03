@@ -510,47 +510,58 @@ class FamilyProfilesManager {
 
             console.log('📦 profileData completo:', JSON.stringify(profileData, null, 2));
 
-            if (editingProfileId) {
-                // MODO EDICIÓN
+            // Determinar si se está editando un perfil existente (cualquier tipo)
+            let docIdToUpdate = editingProfileId;
+            if (!docIdToUpdate) {
+                // Buscar duplicado por nombre + fecha de nacimiento + parentesco
+                const existingProfile = this.profiles.find(p =>
+                    p.fullName === fullName &&
+                    p.dateOfBirth === dob &&
+                    p.relationship === relationship
+                );
+                if (existingProfile) {
+                    docIdToUpdate = existingProfile.id;
+                    console.log('🔍 Perfil existente detectado, se actualizará:', docIdToUpdate);
+                }
+            }
+
+            if (docIdToUpdate) {
+                // MODO EDICIÓN / UPSERT (cualquier tipo de perfil)
                 profileData.updatedAt = firebase.firestore.FieldValue.serverTimestamp();
-                
                 try {
                     // Nueva estructura: Cuentas_Tutor/{userId}/Integrantes/{profileId}
                     const updatePromise = this.db
                         .collection(COLECCION_TUTOR)
                         .doc(this.currentUser.uid)
                         .collection(SUBCOLECCION_INTEGRANTES)
-                        .doc(editingProfileId)
-                        .update(profileData);
+                        .doc(docIdToUpdate)
+                        .set(profileData, { merge: true });
                     await Promise.race([
                         updatePromise,
                         new Promise((_, reject) => 
                             setTimeout(() => reject(new Error('Timeout')), 15000)
                         )
                     ]);
-                    console.log('✅ Perfil actualizado en Firestore');
+                    console.log('✅ Perfil actualizado/upsert en Firestore');
                 } catch (err) {
-                    console.warn('⚠️ Error Firestore (actualización):', err.message);
+                    console.warn('⚠️ Error Firestore (upsert):', err.message);
                 }
-                
-                const profileIndex = this.profiles.findIndex(p => p.id === editingProfileId);
+                // Actualizar en array local
+                const profileIndex = this.profiles.findIndex(p => p.id === docIdToUpdate);
                 if (profileIndex >= 0) {
                     this.profiles[profileIndex] = {
                         ...this.profiles[profileIndex],
                         ...profileData,
-                        id: editingProfileId
+                        id: docIdToUpdate
                     };
                 }
                 sessionStorage.removeItem('editingProfileId');
             } else {
-                // MODO CREACIÓN
+                // MODO CREACIÓN (perfil genuinamente nuevo)
                 console.log('➕ MODO CREACIÓN - Agregando timestamps...');
                 profileData.createdAt = firebase.firestore.FieldValue.serverTimestamp();
                 profileData.updatedAt = firebase.firestore.FieldValue.serverTimestamp();
                 console.log('⏰ serverTimestamp asignados');
-
-                // ✨ NO ESPERAR - Solo enviar a Firestore sin bloquear
-                // El listener automáticamente recibirá los cambios
                 try {
                     console.log('🔄 Enviando perfil a Firestore (sin esperar)...');
                     // Nueva estructura: Cuentas_Tutor/{userId}/Integrantes
@@ -559,8 +570,6 @@ class FamilyProfilesManager {
                         .doc(this.currentUser.uid)
                         .collection(SUBCOLECCION_INTEGRANTES)
                         .add(profileData);
-                    
-                    // Guardamos el ID si se resuelve rápido (máximo 1 segundo)
                     addPromise
                         .then(docRef => {
                             console.log('✅ Perfil confirmado en Firestore:', docRef.id);
@@ -570,17 +579,13 @@ class FamilyProfilesManager {
                             console.warn('⚠️ Error en confirmación de Firestore:', err.message);
                             profileData.id = 'local_' + Date.now();
                         });
-                    
-                    // NO esperar - continuar inmediatamente
                     console.log('✅ Perfil enviado, continuando sin esperar...');
                 } catch (err) {
                     console.error('❌ Error al iniciar guardado:', err.message);
                     profileData.id = 'local_' + Date.now();
                 }
-                
                 this.profiles.push(profileData);
                 console.log('✅ Perfil en array local. Total:', this.profiles.length);
-                
                 // ✨ Guardar en localStorage inmediatamente
                 this.saveProfilesToLocalStorage();
             }
@@ -626,7 +631,16 @@ class FamilyProfilesManager {
             return;
         }
 
-        profilesList.innerHTML = this.profiles
+        // Ordenar perfiles: Titular siempre primero
+        const sortedProfiles = [...this.profiles].sort((a, b) => {
+            const aTitular = a.esTitular || a.parentesco === 'Titular' || a.relationship === 'Titular';
+            const bTitular = b.esTitular || b.parentesco === 'Titular' || b.relationship === 'Titular';
+            if (aTitular && !bTitular) return -1;
+            if (!aTitular && bTitular) return 1;
+            return 0;
+        });
+
+        profilesList.innerHTML = sortedProfiles
             .map(profile => {
                 // Determinar icono de género
                 const sexIcon = profile.sex === 'M' || profile.sexo === 'Masculino' ? '👨' : 

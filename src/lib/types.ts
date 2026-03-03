@@ -52,3 +52,37 @@ export type PersonalInfo = {
   insuranceProvider: string;
   insuranceProviderName?: string;
 }
+
+// Campos almacenados en Cuentas_Tutor/{uid}/Integrantes/{profileId}
+// Solo datos de tarjeta — documentos ligeros descargados por onSnapshot
+export type FamilyProfile = {
+  id: string;
+  userId: string;
+  firstName: string;
+  lastName: string;
+  sex: 'male' | 'female' | 'other';
+  dateOfBirth: string;
+  age?: number;
+  weight?: number;
+  country?: 'chile' | 'argentina' | 'colombia';
+  insuranceProvider?: string;
+  insuranceProviderName?: string;
+  relationship: string;
+  esTitular?: boolean;
+  // Resumen médico (arrays cortos, útiles en tarjeta)
+  allergies?: string[];
+  medications?: string[];
+  // Flag ligero — el historial clínico largo vive en la subcolección historial/registro
+  hasHistory?: boolean;
+  createdAt?: any;
+  updatedAt?: any;
+};
+
+// Campos almacenados en Cuentas_Tutor/{uid}/Integrantes/{profileId}/historial/registro
+// Cargados únicamente bajo demanda al abrir el panel de edición
+export type FamilyProfileMedical = {
+  pathologicalHistory?: string;
+  surgicalHistory?: string;
+  gynecologicalHistory?: string;
+  updatedAt?: any;
+};
