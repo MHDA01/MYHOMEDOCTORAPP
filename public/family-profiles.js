@@ -617,7 +617,7 @@ class FamilyProfilesManager {
 
         if (this.profiles.length === 0) {
             profilesList.innerHTML = `
-                <div class="text-center py-8">
+                <div class="text-center py-8 col-span-full">
                     <i class="fas fa-inbox text-4xl text-gray-300 mb-3 block"></i>
                     <p class="text-gray-500">No hay perfiles de familiares aún.</p>
                     <p class="text-gray-400 text-sm">Agrega el primero para comenzar.</p>
@@ -627,35 +627,76 @@ class FamilyProfilesManager {
         }
 
         profilesList.innerHTML = this.profiles
-            .map(profile => `
-                <div class="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition cursor-pointer profile-card" data-profile-id="${profile.id}">
+            .map(profile => {
+                // Determinar icono de género
+                const sexIcon = profile.sex === 'M' || profile.sexo === 'Masculino' ? '👨' : 
+                               profile.sex === 'F' || profile.sexo === 'Femenino' ? '👩' : '👤';
+                
+                // Determinar si es titular
+                const esTitular = profile.esTitular || profile.parentesco === 'Titular' || profile.relationship === 'Titular';
+                const titularBadge = esTitular ? 
+                    '<span class="bg-amber-100 text-amber-800 text-xs font-semibold px-2 py-1 rounded-full ml-1">⭐ Titular</span>' : '';
+                
+                // Formatear parentesco
+                const parentesco = profile.relationship || profile.parentesco || 'Familiar';
+                
+                // Info demográfica
+                const edad = profile.age !== null && profile.age !== undefined ? `${profile.age} años` : '';
+                const peso = profile.weight ? `${profile.weight} kg` : '';
+                const infoDemo = [edad, peso].filter(Boolean).join(' • ');
+                
+                // Antecedentes (solo mostrar si existen)
+                let antecedentesHtml = '';
+                if (profile.antecedents) {
+                    const ant = profile.antecedents;
+                    if (ant.pathological) {
+                        antecedentesHtml += `<p class="text-gray-600"><i class="fas fa-heartbeat text-red-400 mr-1"></i> ${ant.pathological}</p>`;
+                    }
+                    if (ant.allergic) {
+                        antecedentesHtml += `<p class="text-gray-600"><i class="fas fa-allergies text-orange-400 mr-1"></i> ${ant.allergic}</p>`;
+                    }
+                    if (ant.medications) {
+                        antecedentesHtml += `<p class="text-gray-600"><i class="fas fa-pills text-blue-400 mr-1"></i> ${ant.medications}</p>`;
+                    }
+                }
+                
+                // Estado de perfil completo
+                const perfilIncompleto = !profile.dateOfBirth || !profile.sex && !profile.sexo;
+                const incompletoBadge = perfilIncompleto ? 
+                    '<span class="bg-yellow-100 text-yellow-700 text-xs px-2 py-1 rounded-full"><i class="fas fa-exclamation-circle mr-1"></i>Completar datos</span>' : '';
+                
+                return `
+                <div class="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition cursor-pointer profile-card ${esTitular ? 'ring-2 ring-amber-200' : ''}" data-profile-id="${profile.id}">
                     <div class="flex items-start justify-between">
                         <div class="flex-1">
-                            <div class="flex items-center gap-2 mb-1">
-                                <h4 class="font-semibold text-blue-950 text-lg">${profile.fullName}</h4>
+                            <div class="flex items-center gap-2 mb-2 flex-wrap">
+                                <span class="text-2xl">${sexIcon}</span>
+                                <h4 class="font-semibold text-blue-950 text-lg">${profile.fullName || profile.nombres || 'Sin nombre'}</h4>
+                                ${titularBadge}
+                            </div>
+                            <div class="flex flex-wrap gap-2 mb-2">
                                 <span class="bg-teal-100 text-teal-800 text-xs font-semibold px-2 py-1 rounded-full">
-                                    ${profile.relationship || 'Familiar'}
+                                    ${parentesco}
                                 </span>
+                                ${incompletoBadge}
                             </div>
-                            <p class="text-gray-600 text-sm">
-                                ${profile.age} años • ${profile.sex === 'M' ? '👨' : '👩'} • ${profile.weight} kg
-                            </p>
-                            <div class="mt-3 space-y-1 text-xs">
-                                ${profile.antecedents?.pathological ? `<p class="text-gray-600"><strong>Patológicos:</strong> ${profile.antecedents.pathological}</p>` : ''}
-                                ${profile.antecedents?.medications ? `<p class="text-gray-600"><strong>Medicamentos:</strong> ${profile.antecedents.medications}</p>` : ''}
-                            </div>
+                            ${infoDemo ? `<p class="text-gray-600 text-sm mb-2">${infoDemo}</p>` : ''}
+                            ${antecedentesHtml ? `<div class="mt-3 space-y-1 text-xs border-t pt-2">${antecedentesHtml}</div>` : ''}
                         </div>
-                        <div class="flex gap-2 ml-4">
+                        <div class="flex flex-col gap-2 ml-4">
                             <button class="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition edit-profile-btn" data-profile-id="${profile.id}" title="Editar">
                                 <i class="fas fa-edit"></i>
                             </button>
+                            ${!esTitular ? `
                             <button class="p-2 text-red-600 hover:bg-red-50 rounded-lg transition delete-profile-btn" data-profile-id="${profile.id}" title="Eliminar">
                                 <i class="fas fa-trash"></i>
                             </button>
+                            ` : ''}
                         </div>
                     </div>
                 </div>
-            `)
+            `;
+            })
             .join('');
 
         // Agregar listeners a botones de acción

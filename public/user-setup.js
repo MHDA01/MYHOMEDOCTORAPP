@@ -17,8 +17,25 @@ function generateId() {
     return 'int_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
 }
 
-async function setupUserDocument(user, userRole = 'patient') {
+/**
+ * Mapeo de tipos de cuenta a etiquetas legibles
+ */
+const ACCOUNT_TYPE_LABELS = {
+    'tutor': 'Responsable Familiar',
+    'individual': 'Usuario Individual'
+};
+
+/**
+ * Crea el documento del usuario en Firestore
+ * @param {object} user - Usuario de Firebase Auth
+ * @param {string} userRole - Rol del usuario ('patient' o 'doctor')
+ * @param {string} accountType - Tipo de cuenta ('tutor' o 'individual')
+ */
+async function setupUserDocument(user, userRole = 'patient', accountType = 'tutor') {
     try {
+        console.log('🔧 Configurando documento de usuario:', user.uid);
+        console.log('📋 Tipo de cuenta:', accountType);
+        
         // Usar la nueva colección Cuentas_Tutor
         const tutorRef = db.collection(COLECCION_TUTOR).doc(user.uid);
         
@@ -29,30 +46,43 @@ async function setupUserDocument(user, userRole = 'patient') {
             const timestamp = firebase.firestore.FieldValue.serverTimestamp();
             
             // 1. Crear documento de cuenta tutor
-            await tutorRef.set({
+            const cuentaData = {
                 email: user.email || '',
                 displayName: user.displayName || 'Usuario',
-                role: userRole, // 'patient' o 'doctor'
+                role: userRole,
+                accountType: accountType,
+                accountTypeLabel: ACCOUNT_TYPE_LABELS[accountType] || accountType,
                 estado_cuenta: 'activa',
                 fecha_creacion: timestamp,
-                updatedAt: timestamp
-            });
+                updatedAt: timestamp,
+                // Campos adicionales para organización
+                totalIntegrantes: 1,
+                planActivo: 'free'
+            };
             
-            console.log('✅ Cuenta Tutor creada con rol:', userRole);
+            await tutorRef.set(cuentaData);
+            console.log('✅ Cuenta Tutor creada:', cuentaData);
             
-            // 2. Crear el primer integrante como "Titular"
+            // 2. Crear el primer integrante como "Titular" o "Usuario" según tipo
             const integranteId = generateId();
             const integranteRef = tutorRef.collection(SUBCOLECCION_INTEGRANTES).doc(integranteId);
             
-            await integranteRef.set({
-                // Datos básicos del titular
-                fullName: user.displayName || 'Usuario',
-                nombres: user.displayName?.split(' ')[0] || 'Usuario',
-                apellidos: user.displayName?.split(' ').slice(1).join(' ') || '',
-                parentesco: 'Titular',
-                relationship: 'Titular',
+            const parentesco = accountType === 'tutor' ? 'Titular' : 'Usuario';
+            const nombres = user.displayName?.split(' ')[0] || 'Usuario';
+            const apellidos = user.displayName?.split(' ').slice(1).join(' ') || '';
+            
+            const integranteData = {
+                // Identificación
+                id: integranteId,
                 
-                // Campos demográficos (vacíos para completar después)
+                // Datos personales
+                fullName: user.displayName || 'Usuario',
+                nombres: nombres,
+                apellidos: apellidos,
+                parentesco: parentesco,
+                relationship: parentesco,
+                
+                // Campos demográficos (para completar)
                 dateOfBirth: null,
                 age: null,
                 sexo: '',
@@ -63,26 +93,35 @@ async function setupUserDocument(user, userRole = 'patient') {
                 eps: '',
                 insuranceProvider: '',
                 
-                // Campos de salud (vacíos para completar después)
+                // Historia clínica (vacía para completar)
                 antecedents: {
                     pathological: '',
                     surgical: '',
                     allergic: '',
-                    medications: ''
+                    medications: '',
+                    gynecological: '',
+                    familyHistory: ''
                 },
                 alergias: [],
                 antecedentes_patologicos: '',
                 antecedentes_quirurgicos: '',
                 medicamentos: [],
+                contactos_emergencia: [],
+                
+                // Documentos y citas
+                citas: [],
+                documentos: [],
                 
                 // Metadatos
                 userId: user.uid,
                 es_usuario_original: true,
+                esTitular: accountType === 'tutor',
                 createdAt: timestamp,
                 updatedAt: timestamp
-            });
+            };
             
-            console.log('✅ Integrante Titular creado:', integranteId);
+            await integranteRef.set(integranteData);
+            console.log('✅ Integrante creado:', integranteData);
             
         } else {
             console.log('ℹ️ Cuenta Tutor ya existe en Firestore');
@@ -91,41 +130,56 @@ async function setupUserDocument(user, userRole = 'patient') {
             const integrantesSnapshot = await tutorRef.collection(SUBCOLECCION_INTEGRANTES).limit(1).get();
             
             if (integrantesSnapshot.empty) {
-                // Crear integrante titular si no existe
-                const timestamp = firebase.firestore.FieldValue.serverTimestamp();
-                const integranteId = generateId();
-                const integranteRef = tutorRef.collection(SUBCOLECCION_INTEGRANTES).doc(integranteId);
-                
-                await integranteRef.set({
-                    fullName: user.displayName || 'Usuario',
-                    nombres: user.displayName?.split(' ')[0] || 'Usuario',
-                    apellidos: user.displayName?.split(' ').slice(1).join(' ') || '',
-                    parentesco: 'Titular',
-                    relationship: 'Titular',
-                    dateOfBirth: null,
-                    age: null,
-                    sexo: '',
-                    sex: '',
-                    weight: null,
-                    antecedents: {
-                        pathological: '',
-                        surgical: '',
-                        allergic: '',
-                        medications: ''
-                    },
-                    userId: user.uid,
-                    es_usuario_original: true,
-                    createdAt: timestamp,
-                    updatedAt: timestamp
-                });
-                
-                console.log('✅ Integrante Titular creado (cuenta existente):', integranteId);
+                console.log('⚠️ Cuenta sin integrantes, creando titular...');
+                await crearIntegranteTitular(tutorRef, user, accountType);
             }
         }
+        
+        console.log('🎉 Configuración de usuario completada');
+        return true;
+        
     } catch (error) {
         console.error('❌ Error en setupUserDocument:', error);
-        throw error; // Re-lanzar para que el llamador sepa que falló
+        throw error;
     }
+}
+
+/**
+ * Crea un integrante titular para una cuenta existente
+ */
+async function crearIntegranteTitular(tutorRef, user, accountType = 'tutor') {
+    const timestamp = firebase.firestore.FieldValue.serverTimestamp();
+    const integranteId = generateId();
+    const integranteRef = tutorRef.collection(SUBCOLECCION_INTEGRANTES).doc(integranteId);
+    
+    const parentesco = accountType === 'tutor' ? 'Titular' : 'Usuario';
+    
+    await integranteRef.set({
+        id: integranteId,
+        fullName: user.displayName || 'Usuario',
+        nombres: user.displayName?.split(' ')[0] || 'Usuario',
+        apellidos: user.displayName?.split(' ').slice(1).join(' ') || '',
+        parentesco: parentesco,
+        relationship: parentesco,
+        dateOfBirth: null,
+        age: null,
+        sexo: '',
+        sex: '',
+        weight: null,
+        antecedents: {
+            pathological: '',
+            surgical: '',
+            allergic: '',
+            medications: ''
+        },
+        userId: user.uid,
+        es_usuario_original: true,
+        esTitular: true,
+        createdAt: timestamp,
+        updatedAt: timestamp
+    });
+    
+    console.log('✅ Integrante Titular creado (cuenta existente):', integranteId);
 }
 
 /**
@@ -133,9 +187,7 @@ async function setupUserDocument(user, userRole = 'patient') {
  */
 async function redirectByRole(user) {
     try {
-        // Asegurar que el documento existe
-        await setupUserDocument(user, 'patient');
-        // Todos los usuarios van a family-health.html
+        await setupUserDocument(user, 'patient', 'tutor');
         window.location.href = 'family-health.html';
     } catch (error) {
         console.error('Error en redirectByRole:', error);
