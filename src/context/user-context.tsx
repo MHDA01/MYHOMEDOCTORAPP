@@ -1,35 +1,17 @@
 
 'use client';
 
-import { createContext, useState, useEffect, ReactNode, useCallback } from 'react';
+import { createContext, useState, useEffect, ReactNode } from 'react';
 import type { PersonalInfo, HealthInfo, Appointment, Document as DocumentType, Medication } from '@/lib/types';
 import { auth, db } from '@/lib/firebase';
 import { onAuthStateChanged, User, signOut, updateProfile } from 'firebase/auth';
-import { doc, getDoc, setDoc, Timestamp, collection, getDocs, addDoc, updateDoc, deleteDoc, query, orderBy } from 'firebase/firestore';
+import { doc, getDoc, setDoc, Timestamp, collection, getDocs, updateDoc, deleteDoc, query, orderBy } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
+import { COLECCION_TUTOR } from '@/lib/constants';
 
-// Jerarquía Firestore canónica: Cuentas_Tutor/{uid}  →  personalInfo/healthInfo como campos del doc
-// Subcolección del Titular: Cuentas_Tutor/{uid}/appointments | documents | medications
-const COLECCION_TUTOR = 'Cuentas_Tutor';
-
-// We need a way to serialize Date objects to be stored in Firestore
-// and deserialize them back to Date objects.
-type SerializablePersonalInfo = Omit<PersonalInfo, 'dateOfBirth'> & {
-  dateOfBirth: Timestamp;
-};
-
-type SerializableAppointment = Omit<Appointment, 'date'> & {
-    date: Timestamp;
-};
-
-type SerializableDocument = Omit<DocumentType, 'uploadedAt'> & {
-    uploadedAt: Timestamp;
-};
-
-type UserDocumentData = {
-    personalInfo: SerializablePersonalInfo,
-    healthInfo: HealthInfo
-}
+// Tipos internos para serialización/deserialización de fechas con Firestore
+type SerializableAppointment = Omit<Appointment, 'date'> & { date: Timestamp };
+type SerializableDocument   = Omit<DocumentType, 'uploadedAt'> & { uploadedAt: Timestamp };
 
 type UserDocument = {
     personalInfo: PersonalInfo;
@@ -53,23 +35,34 @@ async function getCollection<T>(userId: string, collectionName: string): Promise
 }
 
 
+// Convierte un valor de fecha almacenado en Firestore (Timestamp, Date o string) a Date
+function toDate(value: Timestamp | Date | string | null | undefined): Date {
+    if (!value) return new Date();
+    if (value instanceof Timestamp) return value.toDate();
+    if (value instanceof Date) return value;
+    const parsed = new Date(value as string);
+    return isNaN(parsed.getTime()) ? new Date() : parsed;
+}
+
 async function getUserDocument(userId: string): Promise<UserDocument | null> {
     const docRef = doc(db, COLECCION_TUTOR, userId);
     const docSnap = await getDoc(docRef);
     if (docSnap.exists()) {
-        const data = docSnap.data() as UserDocumentData;
-        // Basic check for data integrity
-        if (data && data.personalInfo && data.personalInfo.dateOfBirth) {
-             return {
+        const data = docSnap.data() as any;
+        if (data && data.personalInfo) {
+            return {
                 personalInfo: {
                     ...data.personalInfo,
-                    dateOfBirth: data.personalInfo.dateOfBirth.toDate(),
+                    dateOfBirth: toDate(data.personalInfo.dateOfBirth),
                 },
-                healthInfo: data.healthInfo,
+                healthInfo: data.healthInfo ?? {
+                    allergies: [], medications: [], pathologicalHistory: '',
+                    surgicalHistory: '', gynecologicalHistory: '', emergencyContacts: [],
+                },
             };
         }
     }
-    return null; 
+    return null;
 }
 
 async function updateUserDocument(userId: string, data: Partial<UserDocument>): Promise<void> {
@@ -104,7 +97,7 @@ interface UserContextType {
   addAppointment: (appointment: Omit<Appointment, 'id'>) => Promise<void>;
   updateAppointment: (id: string, appointment: Partial<Omit<Appointment, 'id'>>) => Promise<void>;
   deleteAppointment: (id: string) => Promise<void>;
-  addDocument: (doc: Omit<DocumentType, 'id'>) => Promise<void>;
+  addDocument: (doc: Omit<DocumentType, 'id'>) => Promise<string>;
   updateDocument: (id: string, doc: Partial<DocumentType>) => Promise<void>;
   deleteDocument: (id: string) => Promise<void>;
   addMedication: (med: Omit<Medication, 'id'>) => Promise<void>;
@@ -202,8 +195,8 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
               getCollection<Medication>(user.uid, 'medications'),
           ]);
 
-          setAppointments(appointmentsData.map(a => ({...a, date: a.date.toDate() })));
-          setDocuments(documentsData.map(d => ({...d, uploadedAt: d.uploadedAt.toDate() })));
+          setAppointments(appointmentsData.map(a => ({...a, date: toDate(a.date) })));
+          setDocuments(documentsData.map(d => ({...d, uploadedAt: toDate(d.uploadedAt) })));
           setMedications(medicationsData);
 
         } catch (error) {
@@ -271,12 +264,13 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     };
 
     // Documents del Titular (Cuentas_Tutor/{uid}/documents)
-    const addDocument = async (docData: Omit<DocumentType, 'id'>) => {
-        if (!user) return;
+    const addDocument = async (docData: Omit<DocumentType, 'id'>): Promise<string> => {
+        if (!user) return '';
         const newDocRef = doc(collection(db, COLECCION_TUTOR, user.uid, 'documents'));
         const data = { ...docData, uploadedAt: Timestamp.fromDate(docData.uploadedAt) };
         await setDoc(newDocRef, data);
         setDocuments(prev => [{...docData, id: newDocRef.id},...prev].sort((a, b) => b.uploadedAt.getTime() - a.uploadedAt.getTime()));
+        return newDocRef.id;
     };
     const updateDocument = async (id: string, docData: Partial<DocumentType>) => {
         if (!user) return;
@@ -293,9 +287,9 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     const addMedication = async (med: Omit<Medication, 'id'>) => {
         if (!user) return;
         const newDocRef = doc(collection(db, COLECCION_TUTOR, user.uid, 'medications'));
-        const newMed = { ...med, id: newDocRef.id };
-        await setDoc(newDocRef, newMed);
-        setMedications(prev => [...prev, newMed]);
+        // El id se obtiene del path del documento; no se almacena como campo
+        await setDoc(newDocRef, med);
+        setMedications(prev => [...prev, { ...med, id: newDocRef.id }]);
     };
 
     const updateMedication = async (id: string, med: Partial<Medication>) => {

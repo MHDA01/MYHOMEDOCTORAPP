@@ -1,5 +1,5 @@
 // Define el nombre de la caché y los archivos a cachear.
-const CACHE_NAME = 'my-home-doctor-app-cache-v1';
+const CACHE_NAME = 'my-home-doctor-app-cache-v2';
 const urlsToCache = [
   '/',
   '/login',
@@ -47,6 +47,12 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   // Ignora las peticiones que no son GET.
   if (event.request.method !== 'GET') {
+    return;
+  }
+  // Ignora esquemas no cacheables (chrome-extension://, data:, etc.).
+  // La Cache API solo soporta http:// y https://.
+  const url = new URL(event.request.url);
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') {
     return;
   }
   // Ignora las peticiones a Firestore y otros servicios de Google.

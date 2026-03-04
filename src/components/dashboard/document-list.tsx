@@ -13,6 +13,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { Document } from '@/lib/types';
+import { uploadMedicalDocumentEphemeral } from '@/lib/upload-medical-document';
+import { Progress } from '@/components/ui/progress';
 import { format } from "date-fns";
 import { es } from 'date-fns/locale';
 import { useToast } from "@/hooks/use-toast";
@@ -33,6 +35,7 @@ export function DocumentList() {
     const [capturedImage, setCapturedImage] = useState<string | null>(null);
     const [videoDevices, setVideoDevices] = useState<MediaDeviceInfo[]>([]);
     const [currentDeviceIndex, setCurrentDeviceIndex] = useState(0);
+    const [uploadProgress, setUploadProgress] = useState(0);
 
     // Form state
     const [docName, setDocName] = useState('');
@@ -44,7 +47,7 @@ export function DocumentList() {
     const { toast } = useToast();
 
     if (!context) throw new Error("DocumentList must be used within a UserProvider");
-    const { documents, addDocument, updateDocument, deleteDocument, loading } = context;
+    const { documents, addDocument, updateDocument, deleteDocument, loading, user } = context;
 
     const stopStream = useCallback(() => {
         if (streamRef.current) {
@@ -128,6 +131,7 @@ export function DocumentList() {
         setDocCategory('Other');
         setCapturedImage(null);
         setCurrentDeviceIndex(0);
+        setUploadProgress(0);
     };
 
     const handleOpenDialog = (mode: DialogMode, doc?: Document) => {
@@ -178,27 +182,65 @@ export function DocumentList() {
             toast({ variant: "destructive", title: "Por favor, capture una foto del documento." });
             return;
         }
-        
-        setIsSaving(true);
-        const docData = {
-            name: docName,
-            category: docCategory,
-            // In a real app, you would upload the image to a storage service and get a URL.
-            // For now, we'll store the data URI but this is not recommended for production.
-            url: capturedImage || selectedDoc?.url || '#',
-            uploadedAt: new Date(),
-        };
 
-        if (dialogMode === 'add') {
-            await addDocument(docData);
-            toast({ title: "Documento guardado con éxito" });
-        } else if (selectedDoc) {
-            await updateDocument(selectedDoc.id, { name: docName, category: docCategory });
-            toast({ title: "Documento actualizado" });
+        setIsSaving(true);
+        setUploadProgress(0);
+
+        try {
+            if (dialogMode === 'add' && capturedImage && context?.user) {
+                // 1. Convertir dataURL de canvas a Blob
+                const [header, data] = capturedImage.split(',');
+                const mime = header.match(/:(.*?);/)?.[1] ?? 'image/png';
+                const bytes = atob(data);
+                const arr = new Uint8Array(bytes.length);
+                for (let i = 0; i < bytes.length; i++) arr[i] = bytes.charCodeAt(i);
+                const blob = new Blob([arr], { type: mime });
+
+                // 2. Crear doc esqueleto en Firestore → obtener ID
+                //    Garantiza que la CF de IDP siempre tenga el firestoreDocId
+                const newDocId = await addDocument({
+                    name: docName,
+                    category: docCategory,
+                    url: '',          // placeholder; se actualiza en paso 4
+                    storagePath: '',  // placeholder; IDP lo elimina tras procesar
+                    uploadedAt: new Date(),
+                    idpStatus: 'pending',
+                });
+
+                // 3. Subir a Storage con firestoreDocId como metadato
+                let downloadURL = '', storagePath = '';
+                try {
+                    ({ downloadURL, storagePath } = await uploadMedicalDocumentEphemeral({
+                        tutorId: context.user.uid,
+                        patientId: context.user.uid, // Titular: patientId === tutorId
+                        file: blob,
+                        category: docCategory,
+                        firestoreDocId: newDocId,
+                        onProgress: setUploadProgress,
+                    }));
+                } catch (uploadErr) {
+                    // Si el upload falla, limpiar el doc esqueleto huérfano
+                    await deleteDocument(newDocId);
+                    throw uploadErr;
+                }
+
+                // 4. Actualizar doc con URL y storagePath reales
+                await updateDocument(newDocId, { url: downloadURL, storagePath });
+                toast({ title: 'Documento guardado — procesando con IA...' });
+
+            } else if (dialogMode === 'edit' && selectedDoc) {
+                // Edición: solo actualiza nombre y categoría
+                await updateDocument(selectedDoc.id, { name: docName, category: docCategory });
+                toast({ title: "Documento actualizado" });
+            }
+        } catch (err) {
+            console.error('[DocumentList] Error al guardar:', err);
+            toast({ variant: 'destructive', title: 'Error al guardar el documento' });
+        } finally {
+            setIsSaving(false);
+            setUploadProgress(0);
+            setIsDialogOpen(false);
         }
-        
-        setIsSaving(false);
-        setIsDialogOpen(false);
     };
 
     const handleDelete = async (docId: string) => {
@@ -352,6 +394,12 @@ export function DocumentList() {
                            <DialogClose asChild>
                                <Button variant="outline" disabled={isSaving}>Cancelar</Button>
                            </DialogClose>
+                           {isSaving && uploadProgress > 0 && (
+                               <div className="flex-1 space-y-1 mr-2">
+                                   <p className="text-xs text-muted-foreground text-center">Subiendo… {uploadProgress}%</p>
+                                   <Progress value={uploadProgress} className="h-1.5" />
+                               </div>
+                           )}
                              <Button type="submit" onClick={handleSubmit} disabled={isSaving || (dialogMode === 'add' && !capturedImage)}>
                                 {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                 Guardar Documento

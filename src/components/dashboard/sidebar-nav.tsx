@@ -26,7 +26,7 @@ import {
   Siren,
   Loader2,
   MoreVertical,
-  Stethoscope,
+  MessageCircleHeart,
 } from 'lucide-react';
 import { UserContext } from '@/context/user-context';
 import { Skeleton } from '../ui/skeleton';
@@ -34,7 +34,7 @@ import { DownloadReportButton } from './download-report-button';
 
 const mainNavItems = [
   { href: '/dashboard', icon: HeartPulse, label: 'Mi Salud y la de mi Familia' },
-  { href: '/dashboard/triaje', icon: Stethoscope, label: 'Triaje Inteligente' },
+  { href: '/dashboard/teleorientacion', icon: MessageCircleHeart, label: 'Teleorientación' },
   { href: '/dashboard/teleconsulta', icon: Video, label: 'Teleconsulta' },
   { href: '/dashboard/urgencias', icon: Siren, label: 'Urgencias y Domicilio' },
 ];

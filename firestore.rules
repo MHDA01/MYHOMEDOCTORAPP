@@ -24,7 +24,7 @@ service cloud.firestore {
     match /Cuentas_Tutor/{tutorId} {
       allow read, write: if isOwner(tutorId);
 
-      // Subcolecciones directas del tutor
+      // Subcolecciones directas del tutor — profundidad 1
       // (appointments, documents, medications, etc.)
       match /{subcol}/{docId} {
         allow read, write, delete: if isOwner(tutorId);
@@ -34,10 +34,12 @@ service cloud.firestore {
       match /Integrantes/{integranteId} {
         allow read, write, delete: if isOwner(tutorId);
 
-        // Sub-subcolecciones del integrante:
-        //   historial/registro  → historial clínico pesado (lazy load)
-        //   Documentos/{docId}  → documentos médicos por miembro
-        match /{subcol}/{docId} {
+        // Cualquier sub-subcolección bajo un Integrante, a cualquier profundidad:
+        //   historial/registro
+        //   Documentos/{docId}
+        //   orientaciones/{sessionId}
+        //   orientaciones/{sessionId}/mensajes/{msgId}   ← nuevo
+        match /{path=**} {
           allow read, write, delete: if isOwner(tutorId);
         }
       }
