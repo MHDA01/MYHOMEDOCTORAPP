@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import {
-  collection, onSnapshot, addDoc, deleteDoc, doc, serverTimestamp
+  collection, onSnapshot, deleteDoc, doc, serverTimestamp, setDoc, updateDoc
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { uploadMedicalDocumentEphemeral } from '@/lib/upload-medical-document';
@@ -183,26 +183,40 @@ export function MemberDocumentList({ userId, profileId }: Props) {
       // 1. Convertir dataURL de canvas a Blob
       const blob = dataURLtoBlob(capturedImage);
 
-      // 2. Subir a Firebase Storage en la zona temporal de OCR
-      //    Ruta: temp_ocr_uploads/{userId}/{profileId}/{nombre_timestamp}
-      //    Metadato: customMetadata.toBeProcessed = 'true'  ← gatillo para Cloud Function
-      const { downloadURL, storagePath } = await uploadMedicalDocumentEphemeral({
-        tutorId: userId,
-        patientId: profileId,
-        file: blob,
-        onProgress: setUploadProgress,
+      // 2. Crear doc esqueleto en Firestore → obtener ID
+      //    Garantiza que la CF de IDP siempre tenga el firestoreDocId
+      const newDocRef = doc(collection(db, collectionPath));
+      await setDoc(newDocRef, {
+        name:        docName,
+        category:    docCategory,
+        url:         '',   // placeholder; se actualiza en paso 4
+        storagePath: '',   // placeholder; IDP lo elimina tras procesar
+        uploadedAt:  serverTimestamp(),
+        idpStatus:   'pending',
       });
 
-      // 3. Registrar referencia en Firestore (URL de Storage, no base64)
-      await addDoc(collection(db, collectionPath), {
-        name: docName,
-        category: docCategory,
-        url: downloadURL,
-        storagePath,          // guardamos la ruta para poder borrar el archivo después
-        uploadedAt: serverTimestamp(),
-      });
+      // 3. Subir a Firebase Storage en la zona temporal de OCR/IDP
+      //    Metadato toBeProcessed='true' activa la Cloud Function de IDP
+      let downloadURL = '', storagePath = '';
+      try {
+        ({ downloadURL, storagePath } = await uploadMedicalDocumentEphemeral({
+          tutorId:        userId,
+          patientId:      profileId,
+          file:           blob,
+          category:       docCategory,
+          firestoreDocId: newDocRef.id,
+          onProgress:     setUploadProgress,
+        }));
+      } catch (uploadErr) {
+        // Si el upload falla, limpiar el doc esqueleto huérfano
+        await deleteDoc(newDocRef);
+        throw uploadErr;
+      }
 
-      toast({ title: 'Documento guardado con éxito' });
+      // 4. Actualizar doc con URL y storagePath reales
+      await updateDoc(newDocRef, { url: downloadURL, storagePath });
+
+      toast({ title: 'Documento guardado — procesando con IA...' });
       setDialogOpen(false);
     } catch (err) {
       console.error('[MemberDocumentList] Error al guardar:', err);

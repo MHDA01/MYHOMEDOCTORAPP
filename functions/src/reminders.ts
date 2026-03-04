@@ -1,214 +1,164 @@
-
+﻿
 /**
- * @fileoverview Lógica para los recordatorios de citas y medicamentos.
+ * @fileoverview LÃ³gica para los recordatorios de citas y medicamentos.
  * Contiene las Cloud Functions programadas que se encargan de enviar
  * notificaciones push a los usuarios.
+ *
+ * Estructura Firestore canÃ³nica:
+ *   Cuentas_Tutor/{uid}/appointments/{id}   â† citas del Titular
+ *   Cuentas_Tutor/{uid}/medications/{id}    â† medicamentos del Titular
+ *   Cuentas_Tutor/{uid}.notificationToken   â† FCM token del dispositivo
  */
 
 import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
 
-// Inicializa la app de Firebase Admin para poder acceder a los servicios.
 try {
   admin.initializeApp();
 } catch (e) {
-  console.log("Admin ya inicializado.");
+  // Ya inicializado en otro mÃ³dulo
 }
 
-const db = admin.firestore();
+const db        = admin.firestore();
 const messaging = admin.messaging();
 
 /**
- * Función programada para verificar y enviar recordatorios de citas.
- * Se ejecuta cada 5 minutos para prueba.
+ * FunciÃ³n programada para verificar y enviar recordatorios de citas.
+ * Se ejecuta cada 5 minutos.
+ *
+ * Lee appointments de todas las cuentas usando collectionGroup para
+ * evitar N+1 consultas de usuarios.
  */
 export const checkAppointmentReminders = functions
-  .region("us-central1") // Define la región donde se ejecutará la función.
-  .pubsub.schedule("every 5 minutes") // Se ejecuta cada 5 minutos.
-  .onRun(async (context) => {
-    console.log("Iniciando verificación de recordatorios de citas.");
+  .region("us-central1")
+  .pubsub.schedule("every 5 minutes")
+  .onRun(async (_context) => {
+    console.log("Iniciando verificaciÃ³n de recordatorios de citas.");
 
-    const now = new Date();
-    // Clona la fecha actual y le suma una hora para definir el rango de búsqueda.
+    const now            = new Date();
     const oneHourFromNow = new Date(now.getTime() + 60 * 60 * 1000);
 
-    // --- LÓGICA DE PRUEBA ---
-    // Vamos a enviar una notificación de prueba a un usuario específico para verificar.
-    const TEST_USER_ID = "tRAKDG4GVEXebI6UCuQYMJDs3ZZ2"; 
     try {
-        // RUTA MIGRADA: Cuentas_Tutor/{uid} (antes: users/{uid})
-        const userDoc = await db.collection("Cuentas_Tutor").doc(TEST_USER_ID).get();
-        const user = userDoc.data();
-        const token = user?.notificationToken;
+      // Consulta todas las citas pendientes con recordatorio no enviado
+      // collectionGroup abarca Cuentas_Tutor/{uid}/appointments sin iterar usuarios
+      const snapshot = await db
+        .collectionGroup("appointments")
+        .where("notified", "==", false)
+        .where("status",   "==", "Upcoming")
+        .get();
 
-        if (token) {
-            const testMessage = {
-                notification: {
-                    title: "Prueba de Notificación ✅",
-                    body: "Si recibes esto, ¡la infraestructura de notificaciones está funcionando!",
-                },
-                token: token,
-            };
-            await messaging.send(testMessage);
-            console.log(`Notificación de prueba enviada con éxito a ${TEST_USER_ID}`);
-        } else {
-            console.log(`Usuario de prueba ${TEST_USER_ID} no encontrado o sin token.`);
-        }
-    } catch (error) {
-        console.error("Error al enviar la notificación de prueba:", error);
-    }
-    // --- FIN DE LÓGICA DE PRUEBA ---
-
-    try {
-      // Consulta todas las citas en la colección 'citas'.
-      const appointmentsSnapshot = await db.collection("citas").get();
-
-      // Array para mantener todas las promesas de envío de notificaciones.
       const notificationPromises: Promise<any>[] = [];
 
-      for (const doc of appointmentsSnapshot.docs) {
-        const cita = doc.data();
+      for (const docSnap of snapshot.docs) {
+        const cita = docSnap.data();
 
-        // Valida que la cita tenga los campos necesarios.
-        if (!cita.fechaHoraCita || !cita.recordatorioHorasAntes || !cita.usuarioId) {
-          console.warn(`Cita ${doc.id} incompleta, saltando.`);
-          continue;
-        }
+        if (!cita.date || !cita.reminder) continue;
 
-        // Convierte el Timestamp de Firestore a un objeto Date de JavaScript.
-        const fechaCita = (cita.fechaHoraCita as admin.firestore.Timestamp).toDate();
-        const reminderHours = Number(cita.recordatorioHorasAntes);
+        const fechaCita    = (cita.date as admin.firestore.Timestamp).toDate();
 
-        // Calcula la hora exacta del recordatorio.
+        // Mapear clave de reminder a horas (ej: '1h' â†’ 1, '2d' â†’ 48)
+        const reminderMap: Record<string, number> = { '1h': 1, '2h': 2, '24h': 24, '2d': 48 };
+        const reminderHours = reminderMap[cita.reminder] ?? 24;
+
         const reminderTime = new Date(fechaCita.getTime() - reminderHours * 60 * 60 * 1000);
 
-        // Comprueba si el recordatorio debe enviarse en la próxima hora y si no ha sido enviado ya.
-        if (reminderTime >= now && reminderTime < oneHourFromNow && !cita.notified) {
-          console.log(`Recordatorio para cita ${doc.id} programado para envío.`);
+        if (reminderTime < now || reminderTime >= oneHourFromNow) continue;
 
-          // Obtiene el token de notificación del usuario.
-          // RUTA MIGRADA: Cuentas_Tutor/{uid} (antes: users/{uid})
-          const userDoc = await db.collection("Cuentas_Tutor").doc(cita.usuarioId).get();
-          const user = userDoc.data();
-          const token = user?.notificationToken;
+        // El uid es el ancestro en el path: Cuentas_Tutor/{uid}/appointments/{id}
+        const uid     = docSnap.ref.parent.parent?.id;
+        if (!uid) continue;
 
-          if (token) {
-            // Define el contenido del mensaje push.
-            const message = {
-              notification: {
-                title: "Recordatorio de Cita Médica",
-                body: `No olvides tu cita para ${cita.specialty || 'tu consulta'} hoy a las ${fechaCita.toLocaleTimeString("es-CL", { hour: '2-digit', minute: '2-digit' })}.`,
-              },
-              token: token,
-            };
+        const userSnap = await db.collection("Cuentas_Tutor").doc(uid).get();
+        const token    = userSnap.data()?.notificationToken as string | undefined;
 
-            // Añade la promesa de envío al array.
-            const promise = messaging.send(message)
-              .then(response => {
-                console.log("Notificación de cita enviada:", response);
-                // Marca la cita como notificada para no volver a enviarla.
-                return doc.ref.update({ notified: true });
-              })
-              .catch(error => {
-                console.error("Error al enviar notificación de cita:", error);
-              });
-            notificationPromises.push(promise);
-          } else {
-            console.log(`Usuario ${cita.usuarioId} no tiene token de notificación.`);
-          }
-        }
+        if (!token) continue;
+
+        const promise = messaging.send({
+          notification: {
+            title: "Recordatorio de Cita MÃ©dica",
+            body:  `No olvides tu cita con ${cita.doctor || 'el mÃ©dico'} (${cita.specialty || ''}) a las ${fechaCita.toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" })}.`,
+          },
+          token,
+        })
+          .then(() => docSnap.ref.update({ notified: true }))
+          .catch(err => console.error(`Error al enviar recordatorio de cita ${docSnap.id}:`, err));
+
+        notificationPromises.push(promise);
       }
 
-      // Espera a que todas las notificaciones se envíen.
       await Promise.all(notificationPromises);
-      console.log("Verificación de recordatorios de citas completada.");
+      console.log("VerificaciÃ³n de recordatorios de citas completada.");
 
     } catch (error) {
       console.error("Error general en checkAppointmentReminders:", error);
     }
 
-    return null; // Finaliza la ejecución de la función.
+    return null;
   });
 
 /**
- * Función programada para verificar y enviar recordatorios de medicamentos.
- * Se ejecuta cada 5 minutos para mayor precisión.
+ * FunciÃ³n programada para verificar y enviar recordatorios de medicamentos.
+ * Se ejecuta cada 5 minutos.
  */
 export const checkMedicationReminders = functions
   .region("us-central1")
   .pubsub.schedule("every 5 minutes")
-  .onRun(async (context) => {
-    console.log("Iniciando verificación de recordatorios de medicamentos.");
-    const now = admin.firestore.Timestamp.now();
-    const nowTime = now.toDate();
+  .onRun(async (_context) => {
+    console.log("Iniciando verificaciÃ³n de recordatorios de medicamentos.");
+
+    const nowTime = new Date();
 
     try {
-      // Obtiene todos los usuarios para iterar sobre sus medicamentos.
-        // RUTA MIGRADA: Cuentas_Tutor/{uid}/medications (antes: users/{uid}/medications)
-        // TODO: Migrar consulta de citas a collectionGroup('appointments') sobre Cuentas_Tutor
-        const usersSnapshot = await db.collection("Cuentas_Tutor").get();
+      const usersSnapshot = await db.collection("Cuentas_Tutor").get();
       const notificationPromises: Promise<any>[] = [];
 
       for (const userDoc of usersSnapshot.docs) {
-        const user = userDoc.data();
-        const userId = userDoc.id;
-        const token = user.notificationToken;
+        const token = userDoc.data().notificationToken as string | undefined;
+        if (!token) continue;
 
-        if (!token) {
-          continue; // Si el usuario no tiene token, pasa al siguiente.
-        }
-
-        // Obtiene la subcolección de medicamentos para el usuario actual.
-        const medicationsSnapshot = await db.collection("Cuentas_Tutor").doc(userId).collection("medications").where("active", "==", true).get();
+        const medicationsSnapshot = await db
+          .collection("Cuentas_Tutor")
+          .doc(userDoc.id)
+          .collection("medications")
+          .where("active", "==", true)
+          .get();
 
         for (const medDoc of medicationsSnapshot.docs) {
           const med = medDoc.data();
+          if (!med.time || !med.frequency) continue;
 
-          if (!med.time || !med.frequency) {
-            continue;
-          }
-          
-          // Itera sobre cada hora de recordatorio configurada para el medicamento.
-          for (const timeStr of med.time) {
-            const [hour, minute] = timeStr.split(':').map(Number);
-            
-            // Compara la hora actual con la hora del recordatorio.
-            // Se comprueba si la hora y los minutos coinciden con el intervalo de 5 minutos actual.
-            if (nowTime.getHours() === hour && nowTime.getMinutes() >= minute && nowTime.getMinutes() < minute + 5) {
-                console.log(`Recordatorio de medicamento ${med.name} para usuario ${userId} coincide con la hora actual.`);
+          for (const timeStr of med.time as string[]) {
+            const [hour, minute] = timeStr.split(":").map(Number);
 
-                const message = {
-                    notification: {
-                        title: "Recordatorio de Medicamento",
-                        body: `Es hora de tomar tu dosis de ${med.name} (${med.dosage}).`,
-                    },
-                    token: token,
-                };
+            // Enviar si los HH:mm del momento actual coinciden con el slot (ventana de 5 min)
+            if (
+              nowTime.getHours()   === hour &&
+              nowTime.getMinutes() >= minute &&
+              nowTime.getMinutes() <  minute + 5
+            ) {
+              const promise = messaging.send({
+                notification: {
+                  title: "Recordatorio de Medicamento",
+                  body:  `Es hora de tomar tu dosis de ${med.name} (${med.dosage}).`,
+                },
+                token,
+              })
+                .then(() => console.log(`Recordatorio de ${med.name} enviado a ${userDoc.id}`))
+                .catch(err => console.error(`Error al enviar recordatorio de medicamento ${medDoc.id}:`, err));
 
-                const promise = messaging.send(message)
-                    .then(response => {
-                        console.log(`Notificación de medicamento para ${med.name} enviada a ${userId}:`, response);
-                    })
-                    .catch(error => {
-                        console.error(`Error al enviar notificación de medicamento para ${userId}:`, error);
-                    });
-                notificationPromises.push(promise);
-
-                // Rompemos el bucle de horarios para no enviar múltiples notificaciones para el mismo medicamento en la misma ejecución.
-                break; 
+              notificationPromises.push(promise);
+              break; // una notificaciÃ³n por medicamento por ejecuciÃ³n
             }
           }
         }
       }
 
       await Promise.all(notificationPromises);
-      console.log("Verificación de recordatorios de medicamentos completada.");
+      console.log("VerificaciÃ³n de recordatorios de medicamentos completada.");
 
     } catch (error) {
       console.error("Error general en checkMedicationReminders:", error);
     }
-    
+
     return null;
   });
-
-    

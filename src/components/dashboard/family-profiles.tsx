@@ -1,6 +1,6 @@
 ﻿'use client';
 
-import { useState, useEffect, useContext } from 'react';
+import { useState, useEffect, useContext, useMemo } from 'react';
 import {
   collection, doc, onSnapshot, setDoc, addDoc, deleteDoc,
   getDoc, serverTimestamp
@@ -8,6 +8,7 @@ import {
 import { db } from '@/lib/firebase';
 import { UserContext } from '@/context/user-context';
 import type { FamilyProfile, FamilyProfileMedical } from '@/lib/types';
+import { COLECCION_TUTOR, SUBCOLECCION_INTEGRANTES, SUBCOLECCION_HISTORIAL, DOC_HISTORIAL } from '@/lib/constants';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -35,11 +36,7 @@ import {
 } from 'lucide-react';
 import { MemberDocumentList } from '@/components/dashboard/member-document-list';
 
-const COLECCION_TUTOR = 'Cuentas_Tutor';
-const SUBCOLECCION_INTEGRANTES = 'Integrantes';
-// Subcolección de historial clínico pesado — cargada sólo bajo demanda al editar
-const SUBCOLECCION_HISTORIAL = 'historial';
-const DOC_HISTORIAL = 'registro';
+// Las rutas canónicas de Firestore están centralizadas en @/lib/constants
 
 const RELATIONSHIPS = [
   'Titular', 'C�nyuge / Pareja', 'Hijo/a', 'Padre', 'Madre',
@@ -124,6 +121,38 @@ export function FamilyProfiles() {
   const [medicationsText, setMedicationsText] = useState('');
 
   const userId = context?.user?.uid;
+  const personalInfo = context?.personalInfo;
+  const healthInfo  = context?.healthInfo;
+
+  // Si no hay ningún Titular en Integrantes, se inyecta una tarjeta sintética
+  // construida desde personalInfo del contexto para que siempre aparezca el tutor.
+  const displayProfiles = useMemo<FamilyProfile[]>(() => {
+    const hasTitular = profiles.some(p => p.esTitular || p.relationship === 'Titular');
+    if (!hasTitular && personalInfo) {
+      const dob = personalInfo.dateOfBirth instanceof Date
+        ? personalInfo.dateOfBirth.toISOString().split('T')[0]
+        : '';
+      const titularCard: FamilyProfile = {
+        id: '__tutor__',
+        userId: userId || '',
+        firstName: personalInfo.firstName || '',
+        lastName: personalInfo.lastName || '',
+        sex: personalInfo.sex || 'other',
+        dateOfBirth: dob,
+        age: dob ? calcAge(dob) : undefined,
+        country: personalInfo.country,
+        insuranceProvider: personalInfo.insuranceProvider || '',
+        insuranceProviderName: personalInfo.insuranceProviderName || '',
+        relationship: 'Titular',
+        esTitular: true,
+        allergies: healthInfo?.allergies || [],
+        medications: healthInfo?.medications || [],
+        hasHistory: !!(healthInfo?.pathologicalHistory || healthInfo?.surgicalHistory),
+      };
+      return [titularCard, ...profiles];
+    }
+    return profiles;
+  }, [profiles, personalInfo, healthInfo, userId]);
 
   useEffect(() => {
     if (!userId) return;
@@ -183,8 +212,22 @@ export function FamilyProfiles() {
     setAllergiesText((profile.allergies || []).join(', '));
     setMedicationsText((profile.medications || []).join(', '));
     setAgeDisplay(profile.dateOfBirth ? `${calcAge(profile.dateOfBirth)} a�os` : '');
-    setEditingId(profile.id);
     setSheetOpen(true);
+
+    // Tarjeta sintética del tutor: carga historial desde el contexto, no desde Firestore
+    if (profile.id === '__tutor__') {
+      setEditingId(null); // se guardará como nuevo documento en Integrantes
+      setForm(prev => ({
+        ...prev,
+        pathologicalHistory: healthInfo?.pathologicalHistory || '',
+        surgicalHistory: healthInfo?.surgicalHistory || '',
+        gynecologicalHistory: healthInfo?.gynecologicalHistory || '',
+      }));
+      setLoadingMedical(false);
+      return;
+    }
+
+    setEditingId(profile.id);
 
     // Carga diferida: leer historial clínico pesado sólo al abrir el editor
     setLoadingMedical(true);
@@ -317,7 +360,7 @@ export function FamilyProfiles() {
           <div>
             <h2 className="text-xl font-bold text-primary">Grupo Familiar</h2>
             <p className="text-sm text-muted-foreground">
-              {profiles.length} perfil{profiles.length !== 1 ? 'es' : ''} registrado{profiles.length !== 1 ? 's' : ''}
+              {displayProfiles.length} perfil{displayProfiles.length !== 1 ? 'es' : ''} registrado{displayProfiles.length !== 1 ? 's' : ''}
             </p>
           </div>
         </div>
@@ -328,7 +371,7 @@ export function FamilyProfiles() {
       </div>
 
       {/* Lista de perfiles */}
-      {profiles.length === 0 ? (
+      {displayProfiles.length === 0 ? (
         <Card className="border-dashed">
           <CardContent className="flex flex-col items-center justify-center py-16 text-center">
             <Users className="h-12 w-12 text-muted-foreground/40 mb-4" />
@@ -342,7 +385,7 @@ export function FamilyProfiles() {
         </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {profiles.map(profile => {
+          {displayProfiles.map(profile => {
             const esTitular = profile.esTitular || profile.relationship === 'Titular';
             const fullName = `${profile.firstName || ''} ${profile.lastName || ''}`.trim();
             const age = profile.dateOfBirth ? calcAge(profile.dateOfBirth) : profile.age;
