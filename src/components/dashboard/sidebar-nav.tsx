@@ -107,16 +107,16 @@ export function SidebarNav() {
         <Separator className="my-2" />
          <DropdownMenu>
             <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="flex h-auto w-full justify-start items-center gap-3 p-2">
-                    <Avatar className="h-9 w-9">
+                <Button variant="ghost" className="flex h-auto w-full justify-start items-center gap-3 p-3 bg-accent text-accent-foreground hover:bg-accent/90 rounded-xl">
+                    <Avatar className="h-9 w-9 border-2 border-white/30">
                         <AvatarImage src="https://placehold.co/100x100.png" alt="@user" data-ai-hint="user avatar" />
-                        <AvatarFallback>{userInitials}</AvatarFallback>
+                        <AvatarFallback className="bg-white/20 text-white">{userInitials}</AvatarFallback>
                     </Avatar>
                     <div className="text-left flex-1 overflow-hidden">
                         <p className="font-medium text-sm truncate">{userFullName}</p>
-                        <p className="text-xs text-muted-foreground truncate">{userEmail}</p>
+                        <p className="text-xs text-white/70 truncate">{userEmail}</p>
                     </div>
-                    <MoreVertical className="h-4 w-4 text-muted-foreground ml-auto" />
+                    <MoreVertical className="h-4 w-4 text-white/70 ml-auto" />
                 </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent className="w-56" align="end" forceMount>

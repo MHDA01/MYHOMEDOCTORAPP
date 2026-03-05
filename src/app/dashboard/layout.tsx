@@ -14,7 +14,7 @@ export default function DashboardLayout({
           <Sidebar>
             <SidebarNav />
           </Sidebar>
-          <SidebarInset>
+          <SidebarInset className="bg-secondary">
             <div className="flex-1">{children}</div>
           </SidebarInset>
         </div>

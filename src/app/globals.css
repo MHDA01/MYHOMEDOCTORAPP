@@ -5,102 +5,102 @@
 @layer base {
   :root {
     /* ── Paleta MyHomeDoctorApp ─────────────────────────────────────────────
-     *  Primary  (#2D4A3E)  Verde Bosque Oscuro  →  hsl(155, 25%, 23%)
-     *  Accent   (#2A9D8F)  Verde Cerceta / Teal →  hsl(173, 58%, 39%)
-     *  Bg       (#F4F1DE)  Beige Crema          →  hsl(52,  50%, 91%)
-     *  Fg       (#3A3A3A)  Gris Carbón          →  hsl(0,    0%, 23%)
-     *  Card     (#FFFFFF)  Blanco               →  hsl(0,    0%, 100%)
+     *  Primary  (#3B82F6)  Azul Celeste         →  hsl(217, 91%, 60%)
+     *  Accent   (#48C9B0)  Turquesa / Teal      →  hsl(164, 53%, 54%)
+     *  Bg       (#F8F9FA)  Gris muy claro        →  hsl(210, 17%, 98%)
+     *  Fg       (#1E293B)  Azul marino oscuro    →  hsl(217, 33%, 17%)
+     *  Card     (#FFFFFF)  Blanco                →  hsl(0,   0%, 100%)
      * ─────────────────────────────────────────────────────────────────────── */
-    --background:            52  50% 91%;   /* #F4F1DE — Beige/Crema */
-    --foreground:             0   0% 23%;   /* #3A3A3A — Gris Carbón profundo */
+    --background:           210  17% 98%;   /* #F8F9FA — Gris muy claro */
+    --foreground:           217  33% 17%;   /* #1E293B — Azul marino oscuro */
 
     --card:                   0   0% 100%;  /* #FFFFFF — Blanco */
-    --card-foreground:        0   0% 23%;
+    --card-foreground:      217  33% 17%;
 
     --popover:                0   0% 100%;
-    --popover-foreground:     0   0% 23%;
+    --popover-foreground:   217  33% 17%;
 
-    --primary:              155  25% 23%;   /* #2D4A3E — Verde Bosque (sin azul) */
+    --primary:              217  91% 60%;   /* #3B82F6 — Azul celeste */
     --primary-foreground:     0   0% 100%;
 
-    --secondary:             52  30% 84%;   /* Beige oscurecido */
-    --secondary-foreground: 155  25% 23%;
+    --secondary:            210  33% 94%;   /* #EBF1F6 — Azul grisáceo pálido */
+    --secondary-foreground: 217  33% 17%;
 
-    --muted:                 52  35% 87%;   /* Beige suave */
-    --muted-foreground:       0   0% 42%;
+    --muted:                210  14% 96%;   /* #F1F3F5 — Gris muy tenue */
+    --muted-foreground:     210   7% 46%;   /* #6C757D — Gris medio */
 
-    --accent:               173  58% 39%;   /* #2A9D8F — Teal/Cerceta */
+    --accent:               164  53% 54%;   /* #48C9B0 — Turquesa/Teal */
     --accent-foreground:      0   0% 100%;
 
     --destructive:            0  72% 51%;
     --destructive-foreground: 0   0% 98%;
 
-    --border:                52  15% 82%;
-    --input:                 52  20% 88%;
-    --ring:                 173  58% 39%;   /* Ring = Teal para foco */
+    --border:               210  14% 89%;   /* Gris borde sutil */
+    --input:                210  14% 95%;   /* Fondo input gris tenue */
+    --ring:                 217  91% 60%;   /* Ring = Azul para foco */
     --radius:               0.75rem;
 
     /* ── Charts ──────────────────────────────────────────────────────────── */
-    --chart-1:              173  58% 39%;   /* Teal principal */
-    --chart-2:              155  25% 35%;   /* Verde bosque medio */
-    --chart-3:              173  45% 60%;   /* Teal claro */
-    --chart-4:               52  50% 70%;   /* Beige intenso */
-    --chart-5:                0   0% 42%;   /* Gris */
+    --chart-1:              217  91% 60%;   /* Azul principal */
+    --chart-2:              164  53% 54%;   /* Turquesa */
+    --chart-3:              217  70% 75%;   /* Azul claro */
+    --chart-4:              210  33% 70%;   /* Gris azulado */
+    --chart-5:              210   7% 46%;   /* Gris */
 
-    /* ── Sidebar (beige — se mimetiza con la app) ────────────────────────── */
-    --sidebar-background:    52  45% 87%;   /* Beige ligeramente más oscuro que el fondo */
-    --sidebar-foreground:     0   0% 23%;   /* Gris carbón — texto legible sobre beige */
-    --sidebar-primary:      173  58% 39%;   /* Teal = ítem activo */
+    /* ── Sidebar (blanco/claro) ───────────────────────────────────────────── */
+    --sidebar-background:     0   0% 100%;  /* Blanco */
+    --sidebar-foreground:   217  33% 17%;   /* Azul marino */
+    --sidebar-primary:      217  91% 60%;   /* Azul = ítem activo */
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent:        52  25% 81%;   /* Beige más oscuro para hover */
-    --sidebar-accent-foreground:  155 25% 20%;
-    --sidebar-border:        52  15% 80%;
-    --sidebar-ring:         173  58% 39%;
+    --sidebar-accent:       213  94% 95%;   /* Azul muy tenue para activo */
+    --sidebar-accent-foreground: 217 91% 60%;  /* Texto azul */
+    --sidebar-border:       210  14% 91%;
+    --sidebar-ring:         217  91% 60%;
   }
 
   .dark {
-    --background:           155  18%  9%;
-    --foreground:            52  40% 88%;
+    --background:           222  47% 11%;
+    --foreground:           210  17% 95%;
 
-    --card:                 155  18% 13%;
-    --card-foreground:       52  40% 88%;
+    --card:                 217  33% 15%;
+    --card-foreground:      210  17% 95%;
 
-    --popover:              155  18% 13%;
-    --popover-foreground:    52  40% 88%;
+    --popover:              217  33% 15%;
+    --popover-foreground:   210  17% 95%;
 
-    --primary:              173  58% 50%;   /* Teal claro como primario en dark */
+    --primary:              217  91% 60%;
     --primary-foreground:     0   0% 100%;
 
-    --secondary:            155  15% 20%;
-    --secondary-foreground:  52  40% 88%;
+    --secondary:            217  33% 20%;
+    --secondary-foreground: 210  17% 95%;
 
-    --muted:                155  15% 18%;
-    --muted-foreground:      52  25% 60%;
+    --muted:                217  33% 18%;
+    --muted-foreground:     210  14% 60%;
 
-    --accent:               173  55% 45%;
+    --accent:               164  53% 45%;
     --accent-foreground:      0   0% 100%;
 
     --destructive:            0  60% 38%;
     --destructive-foreground: 0   0% 98%;
 
-    --border:               155  15% 24%;
-    --input:                155  15% 20%;
-    --ring:                 173  55% 45%;
+    --border:               217  33% 24%;
+    --input:                217  33% 20%;
+    --ring:                 217  91% 60%;
 
-    --chart-1:              173  58% 50%;
-    --chart-2:              173  45% 60%;
-    --chart-3:              155  25% 45%;
-    --chart-4:               52  40% 55%;
-    --chart-5:                0   0% 60%;
+    --chart-1:              217  91% 60%;
+    --chart-2:              164  53% 45%;
+    --chart-3:              210  40% 50%;
+    --chart-4:              180  40% 50%;
+    --chart-5:              210  14% 60%;
 
-    --sidebar-background:   155  22% 10%;
-    --sidebar-foreground:    52  40% 88%;
-    --sidebar-primary:      173  55% 45%;
+    --sidebar-background:   222  47% 11%;
+    --sidebar-foreground:   210  17% 95%;
+    --sidebar-primary:      217  91% 60%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent:       173  50% 38%;
-    --sidebar-accent-foreground:  0 0% 100%;
-    --sidebar-border:       155  15% 20%;
-    --sidebar-ring:         173  55% 45%;
+    --sidebar-accent:       217  50% 20%;
+    --sidebar-accent-foreground: 217 91% 70%;
+    --sidebar-border:       217  33% 20%;
+    --sidebar-ring:         217  91% 60%;
   }
 }
 

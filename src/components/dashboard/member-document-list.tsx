@@ -118,17 +118,19 @@ export function MemberDocumentList({ userId, profileId }: Props) {
   const initCamera = useCallback(async () => {
     stopStream();
     try {
-      const init = await navigator.mediaDevices.getUserMedia({ video: true });
+      // Solicitar permiso y obtener stream (preferir cámara trasera para documentos)
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
       setHasCameraPermission(true);
       const devices = await navigator.mediaDevices.enumerateDevices();
       const inputs = devices.filter(d => d.kind === 'videoinput');
       setVideoDevices(inputs);
-      init.getTracks().forEach(t => t.stop());
-      await startStream(inputs[currentDeviceIndex]?.deviceId);
+      // Usar directamente el stream obtenido (evita stale closure con startStream)
+      streamRef.current = stream;
+      if (videoRef.current) videoRef.current.srcObject = stream;
     } catch {
       setHasCameraPermission(false);
     }
-  }, [stopStream, startStream, currentDeviceIndex]);
+  }, [stopStream]);
 
   useEffect(() => {
     if (dialogOpen && !capturedImage) initCamera();
@@ -136,16 +138,36 @@ export function MemberDocumentList({ userId, profileId }: Props) {
     return () => stopStream();
   }, [dialogOpen, capturedImage, initCamera, stopStream]);
 
-  useEffect(() => {
-    if (videoDevices.length > 0 && dialogOpen && !capturedImage) {
-      startStream(videoDevices[currentDeviceIndex]?.deviceId);
+  const handleCameraSwitch = async () => {
+    if (videoDevices.length <= 1) return;
+    const nextIndex = (currentDeviceIndex + 1) % videoDevices.length;
+    setCurrentDeviceIndex(nextIndex);
+    stopStream();
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { deviceId: { exact: videoDevices[nextIndex].deviceId } }
+      });
+      streamRef.current = stream;
+      if (videoRef.current) videoRef.current.srcObject = stream;
+    } catch {
+      console.error('Error switching camera');
     }
-  }, [currentDeviceIndex, videoDevices, dialogOpen, capturedImage, startStream]);
+  };
 
   const handleCapture = () => {
     if (!videoRef.current || !canvasRef.current) return;
     const v = videoRef.current;
     const c = canvasRef.current;
+
+    if (!v.videoWidth || !v.videoHeight) {
+      toast({
+        variant: 'destructive',
+        title: 'Cámara inicializando',
+        description: 'Espera un momento a que la cámara se inicie completamente.',
+      });
+      return;
+    }
+
     c.width = v.videoWidth; c.height = v.videoHeight;
     const ctx = c.getContext('2d');
     if (ctx) {
@@ -217,13 +239,14 @@ export function MemberDocumentList({ userId, profileId }: Props) {
       await updateDoc(newDocRef, { url: downloadURL, storagePath });
 
       toast({ title: 'Documento guardado — procesando con IA...' });
-      setDialogOpen(false);
     } catch (err) {
       console.error('[MemberDocumentList] Error al guardar:', err);
       toast({ variant: 'destructive', title: 'Error al guardar el documento' });
     } finally {
       setSaving(false);
       setUploadProgress(0);
+      resetDialog();
+      setDialogOpen(false);
     }
   };
 
@@ -316,7 +339,7 @@ export function MemberDocumentList({ userId, profileId }: Props) {
                 )}
                 <div className="flex justify-center gap-3">
                   {videoDevices.length > 1 && (
-                    <Button variant="outline" size="sm" onClick={() => setCurrentDeviceIndex(i => (i + 1) % videoDevices.length)}>
+                    <Button variant="outline" size="sm" onClick={handleCameraSwitch}>
                       <SwitchCamera className="mr-2 h-4 w-4" /> Cambiar cámara
                     </Button>
                   )}
