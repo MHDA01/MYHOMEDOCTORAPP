@@ -86,18 +86,19 @@ export function DocumentList() {
         stopStream(); 
 
         try {
-            const initialStream = await navigator.mediaDevices.getUserMedia({ video: true });
+            // Solicitar permiso y obtener stream (preferir cámara trasera para documentos)
+            const initialStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
             setHasCameraPermission(true);
             
             const devices = await navigator.mediaDevices.enumerateDevices();
             const videoInputs = devices.filter(device => device.kind === 'videoinput');
             setVideoDevices(videoInputs);
 
-            initialStream.getTracks().forEach(track => track.stop());
-
-            const selectedDeviceId = videoInputs.length > 0 ? videoInputs[currentDeviceIndex].deviceId : undefined;
-            await startStream(selectedDeviceId);
-
+            // Usar directamente el stream obtenido (evita stale closure con startStream)
+            streamRef.current = initialStream;
+            if (videoRef.current) {
+                videoRef.current.srcObject = initialStream;
+            }
         } catch (error) {
             console.error('Error accessing camera:', error);
             setHasCameraPermission(false);
@@ -107,7 +108,7 @@ export function DocumentList() {
                 description: 'Por favor, activa los permisos de la cámara en la configuración de tu navegador para usar esta función.',
             });
         }
-    }, [dialogMode, isDialogOpen, stopStream, currentDeviceIndex, startStream, toast]);
+    }, [dialogMode, isDialogOpen, stopStream, toast]);
 
     useEffect(() => {
         if (isDialogOpen && dialogMode === 'add' && !capturedImage) {
@@ -118,13 +119,6 @@ export function DocumentList() {
         
         return () => stopStream();
     }, [isDialogOpen, dialogMode, capturedImage, initializeCamera, stopStream]);
-    
-     useEffect(() => {
-        if (videoDevices.length > 0 && isDialogOpen && dialogMode === 'add' && !capturedImage) {
-            const deviceId = videoDevices[currentDeviceIndex]?.deviceId;
-            startStream(deviceId);
-        }
-    }, [currentDeviceIndex, videoDevices, isDialogOpen, dialogMode, capturedImage, startStream]);
 
     const resetForm = () => {
         setDocName('');
@@ -151,6 +145,16 @@ export function DocumentList() {
         if (videoRef.current && canvasRef.current) {
             const video = videoRef.current;
             const canvas = canvasRef.current;
+
+            if (!video.videoWidth || !video.videoHeight) {
+                toast({
+                    variant: 'destructive',
+                    title: 'Cámara inicializando',
+                    description: 'Espera un momento a que la cámara se inicie completamente.',
+                });
+                return;
+            }
+
             canvas.width = video.videoWidth;
             canvas.height = video.videoHeight;
             const context = canvas.getContext('2d');
@@ -167,9 +171,22 @@ export function DocumentList() {
         setCapturedImage(null);
     };
 
-    const handleCameraSwitch = () => {
+    const handleCameraSwitch = async () => {
         if (videoDevices.length > 1) {
-            setCurrentDeviceIndex((prevIndex) => (prevIndex + 1) % videoDevices.length);
+            const nextIndex = (currentDeviceIndex + 1) % videoDevices.length;
+            setCurrentDeviceIndex(nextIndex);
+            stopStream();
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: { deviceId: { exact: videoDevices[nextIndex].deviceId } }
+                });
+                streamRef.current = stream;
+                if (videoRef.current) {
+                    videoRef.current.srcObject = stream;
+                }
+            } catch (error) {
+                console.error('Error switching camera:', error);
+            }
         }
     };
 
@@ -239,6 +256,7 @@ export function DocumentList() {
         } finally {
             setIsSaving(false);
             setUploadProgress(0);
+            resetForm();
             setIsDialogOpen(false);
         }
     };
@@ -400,7 +418,7 @@ export function DocumentList() {
                                    <Progress value={uploadProgress} className="h-1.5" />
                                </div>
                            )}
-                             <Button type="submit" onClick={handleSubmit} disabled={isSaving || (dialogMode === 'add' && !capturedImage)}>
+                             <Button type="button" onClick={handleSubmit} disabled={isSaving || (dialogMode === 'add' && !capturedImage)}>
                                 {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                 Guardar Documento
                             </Button>

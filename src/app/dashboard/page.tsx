@@ -23,8 +23,8 @@ const sections = [
   {
     value: 'health-record',
     icon: ShieldAlert,
-    iconBg: 'bg-accent/10',
-    iconColor: 'text-accent',
+    iconBg: 'bg-destructive/10',
+    iconColor: 'text-destructive',
     title: 'Historial Médico',
     description: 'Antecedentes, alergias, medicamentos y cirugías',
     content: <HealthRecordCard />,
@@ -32,8 +32,8 @@ const sections = [
   {
     value: 'familia',
     icon: Users,
-    iconBg: 'bg-accent/15',
-    iconColor: 'text-accent',
+    iconBg: 'bg-primary/10',
+    iconColor: 'text-primary',
     title: 'Grupo Familiar',
     description: 'Perfiles médicos de todos los integrantes de la familia',
     content: <FamilyProfiles />,

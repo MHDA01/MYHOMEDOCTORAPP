@@ -31,8 +31,11 @@ import {
   AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger
 } from '@/components/ui/alert-dialog';
 import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose
+} from '@/components/ui/dialog';
+import {
   UserPlus, Pencil, Trash2, HeartPulse, AlertCircle,
-  Pill, Star, User, Users, Baby, Stethoscope, MapPin, Shield, FileText, Loader2
+  Pill, Star, User, Users, Baby, Stethoscope, MapPin, Shield, FileText, Loader2, Eye
 } from 'lucide-react';
 import { MemberDocumentList } from '@/components/dashboard/member-document-list';
 
@@ -120,38 +123,63 @@ export function FamilyProfiles() {
   const [allergiesText, setAllergiesText] = useState('');
   const [medicationsText, setMedicationsText] = useState('');
 
+  // Estado para el diálogo de consulta de historial médico (solo lectura)
+  const [viewDialogOpen, setViewDialogOpen] = useState(false);
+  const [viewProfile, setViewProfile] = useState<FamilyProfile | null>(null);
+  const [viewMedical, setViewMedical] = useState<FamilyProfileMedical | null>(null);
+  const [loadingView, setLoadingView] = useState(false);
+
   const userId = context?.user?.uid;
   const personalInfo = context?.personalInfo;
   const healthInfo  = context?.healthInfo;
 
-  // Si no hay ningún Titular en Integrantes, se inyecta una tarjeta sintética
-  // construida desde personalInfo del contexto para que siempre aparezca el tutor.
+  // La tarjeta Titular SIEMPRE se construye desde personalInfo + healthInfo del
+  // contexto (fuente de verdad actualizada). Detecta la tarjeta existente del
+  // tutor por esTitular, relationship=Titular O por coincidencia de nombre+apellido.
   const displayProfiles = useMemo<FamilyProfile[]>(() => {
-    const hasTitular = profiles.some(p => p.esTitular || p.relationship === 'Titular');
-    if (!hasTitular && personalInfo) {
-      const dob = personalInfo.dateOfBirth instanceof Date
-        ? personalInfo.dateOfBirth.toISOString().split('T')[0]
-        : '';
-      const titularCard: FamilyProfile = {
-        id: '__tutor__',
-        userId: userId || '',
-        firstName: personalInfo.firstName || '',
-        lastName: personalInfo.lastName || '',
-        sex: personalInfo.sex || 'other',
-        dateOfBirth: dob,
-        age: dob ? calcAge(dob) : undefined,
-        country: personalInfo.country,
-        insuranceProvider: personalInfo.insuranceProvider || '',
-        insuranceProviderName: personalInfo.insuranceProviderName || '',
-        relationship: 'Titular',
-        esTitular: true,
-        allergies: healthInfo?.allergies || [],
-        medications: healthInfo?.medications || [],
-        hasHistory: !!(healthInfo?.pathologicalHistory || healthInfo?.surgicalHistory),
-      };
-      return [titularCard, ...profiles];
-    }
-    return profiles;
+    if (!personalInfo) return profiles;
+
+    const dob = personalInfo.dateOfBirth instanceof Date
+      ? personalInfo.dateOfBirth.toISOString().split('T')[0]
+      : '';
+
+    const fName = (personalInfo.firstName || '').trim().toLowerCase();
+    const lName = (personalInfo.lastName || '').trim().toLowerCase();
+
+    // Buscar por: esTitular/Titular ─ o ─ mismo nombre+apellido que el tutor
+    const titularIdx = profiles.findIndex(p =>
+      p.esTitular ||
+      p.relationship === 'Titular' ||
+      (fName && lName &&
+        (p.firstName || '').trim().toLowerCase() === fName &&
+        (p.lastName || '').trim().toLowerCase() === lName)
+    );
+    const existingTitular = titularIdx >= 0 ? profiles[titularIdx] : null;
+
+    const titularCard: FamilyProfile = {
+      id: existingTitular?.id || '__tutor__',
+      userId: userId || '',
+      firstName: personalInfo.firstName || '',
+      lastName: personalInfo.lastName || '',
+      sex: personalInfo.sex || 'other',
+      dateOfBirth: dob,
+      age: dob ? calcAge(dob) : undefined,
+      weight: existingTitular?.weight,
+      country: personalInfo.country,
+      insuranceProvider: personalInfo.insuranceProvider || '',
+      insuranceProviderName: personalInfo.insuranceProviderName || '',
+      relationship: 'Titular',
+      esTitular: true,
+      allergies: healthInfo?.allergies || [],
+      medications: healthInfo?.medications || [],
+      hasHistory: !!(healthInfo?.pathologicalHistory || healthInfo?.surgicalHistory),
+    };
+
+    const otherProfiles = existingTitular
+      ? profiles.filter((_, i) => i !== titularIdx)
+      : profiles;
+
+    return [titularCard, ...otherProfiles];
   }, [profiles, personalInfo, healthInfo, userId]);
 
   useEffect(() => {
@@ -214,9 +242,12 @@ export function FamilyProfiles() {
     setAgeDisplay(profile.dateOfBirth ? `${calcAge(profile.dateOfBirth)} a�os` : '');
     setSheetOpen(true);
 
-    // Tarjeta sintética del tutor: carga historial desde el contexto, no desde Firestore
-    if (profile.id === '__tutor__') {
-      setEditingId(null); // se guardará como nuevo documento en Integrantes
+    // Tarjeta del Titular: siempre carga historial desde el contexto (fuente de verdad)
+    const isTitular = profile.esTitular || profile.relationship === 'Titular';
+    if (isTitular) {
+      // Si es __tutor__ (aún no guardado en Integrantes) → editingId null → creará doc nuevo
+      // Si tiene id real de Integrantes → editingId con ese id → actualizará doc existente
+      setEditingId(profile.id === '__tutor__' ? null : profile.id);
       setForm(prev => ({
         ...prev,
         pathologicalHistory: healthInfo?.pathologicalHistory || '',
@@ -255,6 +286,43 @@ export function FamilyProfiles() {
     }
   };
 
+  const openViewHistory = async (profile: FamilyProfile) => {
+    setViewProfile(profile);
+    setViewMedical(null);
+    setViewDialogOpen(true);
+
+    const isTitular = profile.esTitular || profile.relationship === 'Titular';
+    if (isTitular) {
+      setViewMedical({
+        pathologicalHistory: healthInfo?.pathologicalHistory || '',
+        surgicalHistory: healthInfo?.surgicalHistory || '',
+        gynecologicalHistory: healthInfo?.gynecologicalHistory || '',
+      });
+      return;
+    }
+
+    setLoadingView(true);
+    try {
+      const historialRef = doc(
+        db,
+        COLECCION_TUTOR, userId!,
+        SUBCOLECCION_INTEGRANTES, profile.id,
+        SUBCOLECCION_HISTORIAL, DOC_HISTORIAL
+      );
+      const snap = await getDoc(historialRef);
+      if (snap.exists()) {
+        setViewMedical(snap.data() as FamilyProfileMedical);
+      } else {
+        setViewMedical({ pathologicalHistory: '', surgicalHistory: '', gynecologicalHistory: '' });
+      }
+    } catch (err) {
+      console.warn('No se pudo cargar el historial:', err);
+      setViewMedical({ pathologicalHistory: '', surgicalHistory: '', gynecologicalHistory: '' });
+    } finally {
+      setLoadingView(false);
+    }
+  };
+
   const handleSave = async () => {
     if (!userId) return;
     if (!form.firstName || !form.lastName || !form.dateOfBirth || !form.relationship) {
@@ -264,25 +332,26 @@ export function FamilyProfiles() {
     setSaving(true);
 
     // Documento padre: campos ligeros para las tarjetas
-    const summaryData: Omit<FamilyProfile, 'id'> = {
+    // Firestore no acepta undefined — se omiten los campos sin valor.
+    const summaryData: Record<string, any> = {
       userId,
       firstName: form.firstName,
       lastName: form.lastName,
       sex: form.sex,
       dateOfBirth: form.dateOfBirth,
       age: calcAge(form.dateOfBirth),
-      weight: form.weight ? Number(form.weight) : undefined,
-      country: form.country,
       insuranceProvider: form.insuranceProvider || '',
       insuranceProviderName: form.insuranceProviderName || '',
       relationship: form.relationship,
-      esTitular: form.relationship === 'Titular',
+      esTitular: form.esTitular || form.relationship === 'Titular',
       allergies: allergiesText.split(',').map(s => s.trim()).filter(Boolean),
       medications: medicationsText.split(',').map(s => s.trim()).filter(Boolean),
-      // Flag ligero para mostrar indicador en tarjeta sin leer el historial completo
       hasHistory: !!(form.pathologicalHistory || form.surgicalHistory || (form.sex === 'female' && form.gynecologicalHistory)),
       updatedAt: serverTimestamp(),
     };
+    // Solo incluir campos opcionales si tienen valor (evitar undefined en Firestore)
+    if (form.weight) summaryData.weight = Number(form.weight);
+    if (form.country) summaryData.country = form.country;
 
     // Subcolección historial/registro: texto clínico pesado — sólo se lee al editar
     const medicalData: FamilyProfileMedical = {
@@ -295,10 +364,12 @@ export function FamilyProfiles() {
     try {
       let docIdToUpdate = editingId;
       if (!docIdToUpdate) {
+        // Buscar coincidencia por nombre (case-insensitive) para evitar duplicados
+        const fName = form.firstName.trim().toLowerCase();
+        const lName = form.lastName.trim().toLowerCase();
         const existing = profiles.find(p =>
-          p.firstName === form.firstName &&
-          p.lastName === form.lastName &&
-          p.dateOfBirth === form.dateOfBirth
+          (p.firstName || '').trim().toLowerCase() === fName &&
+          (p.lastName || '').trim().toLowerCase() === lName
         );
         if (existing) docIdToUpdate = existing.id;
       }
@@ -414,6 +485,14 @@ export function FamilyProfiles() {
                       </div>
                     </div>
                     <div className="flex gap-1 shrink-0">
+                      <Button
+                        variant="ghost" size="icon"
+                        className="h-8 w-8 text-accent hover:bg-accent/10"
+                        onClick={() => openViewHistory(profile)}
+                        title="Ver historial médico"
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
                       <Button
                         variant="ghost" size="icon"
                         className="h-8 w-8 text-primary hover:bg-primary/10"
@@ -752,6 +831,87 @@ export function FamilyProfiles() {
           </SheetFooter>
         </SheetContent>
       </Sheet>
+
+      {/* Dialog consulta de historial médico (solo lectura) */}
+      <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <HeartPulse className="h-5 w-5 text-red-500" />
+              Historial Médico — {viewProfile ? `${viewProfile.firstName} ${viewProfile.lastName}`.trim() : ''}
+            </DialogTitle>
+          </DialogHeader>
+
+          {loadingView ? (
+            <div className="flex items-center justify-center py-10 gap-3 text-muted-foreground">
+              <Loader2 className="h-5 w-5 animate-spin" />
+              <span className="text-sm">Cargando historial…</span>
+            </div>
+          ) : viewProfile && viewMedical ? (
+            <div className="space-y-5 py-2 max-h-[65vh] overflow-y-auto pr-1 text-sm">
+              {/* Alergias y Medicamentos */}
+              <div>
+                <h4 className="font-semibold mb-1.5 flex items-center gap-2">
+                  <Pill className="h-4 w-4 text-accent" /> Alergias
+                </h4>
+                <p className="pl-6 text-muted-foreground">
+                  {(viewProfile.allergies || []).length > 0
+                    ? viewProfile.allergies!.join(', ')
+                    : 'No registradas'}
+                </p>
+              </div>
+              <div>
+                <h4 className="font-semibold mb-1.5 flex items-center gap-2">
+                  <Pill className="h-4 w-4 text-accent" /> Medicamentos Frecuentes
+                </h4>
+                <p className="pl-6 text-muted-foreground">
+                  {(viewProfile.medications || []).length > 0
+                    ? viewProfile.medications!.join(', ')
+                    : 'No registrados'}
+                </p>
+              </div>
+
+              {/* Antecedentes Patológicos */}
+              <div>
+                <h4 className="font-semibold mb-1.5 flex items-center gap-2">
+                  <HeartPulse className="h-4 w-4 text-red-400" /> Antecedentes Patológicos
+                </h4>
+                <p className="pl-6 text-muted-foreground whitespace-pre-wrap">
+                  {viewMedical.pathologicalHistory || 'No registrados.'}
+                </p>
+              </div>
+
+              {/* Antecedentes Quirúrgicos */}
+              <div>
+                <h4 className="font-semibold mb-1.5 flex items-center gap-2">
+                  <Stethoscope className="h-4 w-4 text-purple-400" /> Antecedentes Quirúrgicos
+                </h4>
+                <p className="pl-6 text-muted-foreground whitespace-pre-wrap">
+                  {viewMedical.surgicalHistory || 'No registrados.'}
+                </p>
+              </div>
+
+              {/* Gineco-Obstétricos (solo si femenino) */}
+              {viewProfile.sex === 'female' && (
+                <div>
+                  <h4 className="font-semibold mb-1.5 flex items-center gap-2">
+                    <Baby className="h-4 w-4 text-pink-400" /> Antecedentes Gineco-Obstétricos
+                  </h4>
+                  <p className="pl-6 text-muted-foreground whitespace-pre-wrap">
+                    {viewMedical.gynecologicalHistory || 'No registrados.'}
+                  </p>
+                </div>
+              )}
+            </div>
+          ) : (
+            <p className="text-center text-muted-foreground py-8">No hay historial disponible.</p>
+          )}
+
+          <DialogClose asChild>
+            <Button variant="outline" className="w-full mt-2">Cerrar</Button>
+          </DialogClose>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

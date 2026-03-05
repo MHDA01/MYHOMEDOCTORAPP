@@ -51,3 +51,4 @@ serviceAccountKey.json
 *-adminsdk-*.json
 *.pem
 .firebase/
+node_modules

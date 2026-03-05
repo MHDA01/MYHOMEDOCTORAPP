@@ -12,6 +12,7 @@ import { auth, db } from '@/lib/firebase';
 import { doc, setDoc } from 'firebase/firestore';
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from 'lucide-react';
+import { COLECCION_TUTOR } from '@/lib/constants';
 
 export function RegisterForm() {
   const router = useRouter();
@@ -62,7 +63,7 @@ export function RegisterForm() {
         },
       };
 
-      await setDoc(doc(db, 'users', user.uid), initialProfile);
+      await setDoc(doc(db, COLECCION_TUTOR, user.uid), initialProfile);
 
       router.push('/dashboard');
     } catch (error: any) {

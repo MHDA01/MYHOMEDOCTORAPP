@@ -259,7 +259,11 @@ export function TeleorientacionChatPage() {
                 : new Date();
               return { role: data.role as 'user' | 'model', content: data.content, timestamp: ts };
             });
-            const recoveredHistory = recovered.map(m => ({ role: m.role, content: m.content }));
+            // Gemini exige que el historial empiece siempre con 'user'.
+            // Eliminamos los mensajes 'model' iniciales (ej: mensaje de bienvenida).
+            const trimmed = [...recovered];
+            while (trimmed.length > 0 && trimmed[0].role === 'model') trimmed.shift();
+            const recoveredHistory = trimmed.map(m => ({ role: m.role, content: m.content }));
             setMessages(recovered);
             setHistory(recoveredHistory);
             setLoadingSession(false);
@@ -301,10 +305,11 @@ export function TeleorientacionChatPage() {
       ? welcomeResult.response
       : `Hola, estoy aquí para orientarte sobre la salud de ${profile.firstName} 💙. Cuéntame, ¿en qué puedo ayudarte hoy?`;
 
-    // Guardar bienvenida en Firestore
+    // Guardar bienvenida en Firestore (solo para display, NO entra al history de Gemini
+    // porque la API exige que el historial empiece con role 'user').
     const welcomeEntry: ChatEntry = { role: 'model', content: welcomeText, timestamp: new Date() };
     setMessages([welcomeEntry]);
-    setHistory([{ role: 'model', content: welcomeText }]);
+    setHistory([]); // Gemini history vacío: el primer turno real será del usuario
     await saveMsg(profile, 'model', welcomeText);
 
     setLoadingSession(false);
@@ -397,8 +402,8 @@ export function TeleorientacionChatPage() {
             <div className="space-y-6">
               {/* Encabezado */}
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-emerald-100 rounded-xl">
-                  <MessageCircleHeart className="h-6 w-6 text-emerald-600" />
+                <div className="p-2 bg-blue-100 rounded-xl">
+                  <MessageCircleHeart className="h-6 w-6 text-blue-600" />
                 </div>
                 <div>
                   <h2 className="text-xl font-bold text-primary font-headline">
@@ -411,8 +416,8 @@ export function TeleorientacionChatPage() {
               </div>
 
               {/* Aviso informativo */}
-              <Alert className="border-emerald-200 bg-emerald-50">
-                <Sparkles className="h-4 w-4 text-emerald-600" />
+              <Alert className="border-blue-200 bg-blue-50">
+                <Sparkles className="h-4 w-4 text-blue-600" />
                 <AlertDescription className="text-sm text-foreground/80">
                   Nuestro Asistente de Orientación Médica conoce el historial clínico completo
                   de cada integrante de tu familia y te brindará orientación{' '}
@@ -439,10 +444,10 @@ export function TeleorientacionChatPage() {
                       <button
                         key={profile.id}
                         onClick={() => handleSelectProfile(profile)}
-                        className="flex items-center gap-4 p-4 text-left rounded-xl border bg-card hover:bg-accent/5 hover:border-emerald-300 hover:shadow-md transition-all duration-200 group"
+                        className="flex items-center gap-4 p-4 text-left rounded-xl border bg-card hover:bg-primary/5 hover:border-blue-300 hover:shadow-md transition-all duration-200 group"
                       >
-                        <Avatar className="h-12 w-12 border-2 border-emerald-100 group-hover:border-emerald-300 transition-colors">
-                          <AvatarFallback className="bg-emerald-50 text-emerald-700 font-bold text-sm">
+                        <Avatar className="h-12 w-12 border-2 border-blue-100 group-hover:border-blue-300 transition-colors">
+                          <AvatarFallback className="bg-blue-50 text-blue-700 font-bold text-sm">
                             {initials(profile.firstName, profile.lastName)}
                           </AvatarFallback>
                         </Avatar>
@@ -458,7 +463,7 @@ export function TeleorientacionChatPage() {
                               {sexLabel(profile.sex)}
                             </span>
                             {profile.esTitular && (
-                              <Badge variant="outline" className="text-xs border-emerald-300 text-emerald-700 bg-emerald-50">
+                              <Badge variant="outline" className="text-xs border-blue-300 text-blue-700 bg-blue-50">
                                 Titular
                               </Badge>
                             )}
@@ -481,16 +486,16 @@ export function TeleorientacionChatPage() {
           {view === 'loading-context' && (
             <div className="flex flex-col items-center justify-center flex-1 gap-5">
               <div className="relative">
-                <div className="h-16 w-16 rounded-full bg-emerald-100 flex items-center justify-center">
-                  <MessageCircleHeart className="h-8 w-8 text-emerald-600" />
+                <div className="h-16 w-16 rounded-full bg-blue-100 flex items-center justify-center">
+                  <MessageCircleHeart className="h-8 w-8 text-blue-600" />
                 </div>
-                <Loader2 className="h-20 w-20 absolute -top-2 -left-2 animate-spin text-emerald-400 opacity-60" />
+                <Loader2 className="h-20 w-20 absolute -top-2 -left-2 animate-spin text-blue-400 opacity-60" />
               </div>
               <div className="text-center space-y-1">
                 <p className="font-semibold text-foreground">Preparando orientación personalizada…</p>
                 <p className="text-sm text-muted-foreground">
                   Cargando historial clínico, laboratorios y sesiones previas de{' '}
-                  <span className="font-medium text-emerald-600">{selectedProfile?.firstName}</span>
+                  <span className="font-medium text-blue-600">{selectedProfile?.firstName}</span>
                 </p>
               </div>
               <div className="flex gap-2 text-xs text-muted-foreground mt-2">
@@ -508,7 +513,7 @@ export function TeleorientacionChatPage() {
             <div className="flex flex-col flex-1 min-h-0 gap-3">
 
               {/* Cabecera contextual obligatoria */}
-              <div className="flex items-center gap-3 bg-card rounded-xl border border-emerald-200 px-4 py-3 shadow-sm">
+              <div className="flex items-center gap-3 bg-card rounded-xl border border-blue-200 px-4 py-3 shadow-sm">
                 <Button
                   variant="ghost"
                   size="icon"
@@ -519,14 +524,14 @@ export function TeleorientacionChatPage() {
                   <ArrowLeft className="h-4 w-4" />
                 </Button>
 
-                <Avatar className="h-10 w-10 border-2 border-emerald-200 shrink-0">
-                  <AvatarFallback className="bg-emerald-50 text-emerald-700 font-bold text-sm">
+                <Avatar className="h-10 w-10 border-2 border-blue-200 shrink-0">
+                  <AvatarFallback className="bg-blue-50 text-blue-700 font-bold text-sm">
                     {initials(selectedProfile.firstName, selectedProfile.lastName)}
                   </AvatarFallback>
                 </Avatar>
 
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium text-emerald-600 uppercase tracking-wide">
+                  <p className="text-xs font-medium text-blue-600 uppercase tracking-wide">
                     Orientando sobre
                   </p>
                   <p className="font-bold text-foreground truncate">
@@ -541,7 +546,7 @@ export function TeleorientacionChatPage() {
 
                 <div className="flex items-center gap-2 shrink-0">
                   {patientContext.lastLabResults?.length ? (
-                    <Badge className="bg-emerald-100 text-emerald-700 border border-emerald-200 text-xs gap-1 hidden sm:flex">
+                    <Badge className="bg-blue-100 text-blue-700 border border-blue-200 text-xs gap-1 hidden sm:flex">
                       <FlaskConical className="h-3 w-3" />
                       {patientContext.lastLabResults.length} lab{patientContext.lastLabResults.length > 1 ? 's' : ''}
                     </Badge>
@@ -586,8 +591,8 @@ export function TeleorientacionChatPage() {
                     >
                       {/* Avatar */}
                       {msg.role === 'model' ? (
-                        <div className="h-8 w-8 rounded-full bg-emerald-100 flex items-center justify-center shrink-0 mt-1">
-                          <MessageCircleHeart className="h-4 w-4 text-emerald-600" />
+                        <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center shrink-0 mt-1">
+                          <MessageCircleHeart className="h-4 w-4 text-blue-600" />
                         </div>
                       ) : (
                         <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0 mt-1">
@@ -631,7 +636,7 @@ export function TeleorientacionChatPage() {
               )}
 
               {/* Input */}
-              <div className="flex gap-2 items-center bg-card rounded-xl border px-3 py-2 shadow-sm focus-within:border-emerald-300 focus-within:ring-1 focus-within:ring-emerald-200 transition-all">
+              <div className="flex gap-2 items-center bg-card rounded-xl border px-3 py-2 shadow-sm focus-within:border-blue-300 focus-within:ring-1 focus-within:ring-blue-200 transition-all">
                 <Input
                   ref={inputRef}
                   value={inputValue}
@@ -645,7 +650,7 @@ export function TeleorientacionChatPage() {
                   size="icon"
                   onClick={handleSend}
                   disabled={!inputValue.trim() || sending}
-                  className="h-8 w-8 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white shrink-0"
+                  className="h-8 w-8 rounded-lg bg-primary hover:bg-primary/90 text-white shrink-0"
                 >
                   {sending
                     ? <Loader2 className="h-4 w-4 animate-spin" />

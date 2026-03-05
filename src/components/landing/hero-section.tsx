@@ -3,36 +3,60 @@ import Link from 'next/link';
 
 export default function HeroSection() {
   return (
-    <section id="hero-section" className="bg-white pt-16 pb-12 md:pt-24 md:pb-16 text-center overflow-hidden">
-      <div className="container mx-auto px-6">
-        <div className="flex justify-center mb-8">
+    <>
+      {/* Logo Banner */}
+      <section className="pt-20 pb-8 px-4 sm:px-6 lg:px-8 bg-white">
+        <div className="max-w-7xl mx-auto flex justify-center">
           <Image
-            src="https://i.postimg.cc/J7N5r89y/LOGO-1.png"
-            alt="Logo de My Home Doctor App con una doctora sonriente"
-            width={800}
-            height={600}
-            className="w-full h-auto"
-            data-ai-hint="app logo"
+            src="https://i.postimg.cc/SsRdwdzD/LOGO-1-transparent.png"
+            alt="MyHomeDoctorApp Logo"
+            width={384}
+            height={384}
+            className="w-64 h-64 sm:w-80 sm:h-80 lg:w-96 lg:h-96 object-contain drop-shadow-lg"
             priority
           />
         </div>
-        <div className="relative z-10">
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold text-primary leading-tight mb-6">
-            Tu Expediente Médico Digital, <br className="hidden md:block" /> <span className="text-accent">Control Total en tus Manos.</span>
+      </section>
+
+      {/* Hero Content */}
+      <section className="pt-4 pb-20 px-4 sm:px-6 lg:px-8 bg-white">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex flex-col justify-center">
+            <h1 className="font-serif text-5xl lg:text-6xl font-black text-blue-950 mb-6" style={{ lineHeight: 1.3 }}>
+              Tu Familia protegida por Médicos Expertos e Inteligencia Artificial.
             </h1>
-            <p className="text-lg md:text-xl text-muted-foreground mb-10 max-w-3xl mx-auto">
-            Gestiona tu historial de salud y el de tu familia desde la palma de tu mano, de forma segura y sencilla.
+
+            <p className="text-xl text-gray-600 mb-8 leading-relaxed font-light">
+              Deja de adivinar con Google. MyHomeDoctorApp te ofrece orientación médica basada en evidencia científica actualizada y auditada por médicos expertos para gestionar la salud de tu núcleo familiar. Creada por médicos, diseñada para tu hogar.
             </p>
-            <div className="mt-10 mb-12">
+
+            <div className="flex flex-col sm:flex-row gap-4">
               <Link
                 href="/login"
-                className="bg-primary text-primary-foreground font-bold py-4 px-10 rounded-full shadow-lg hover:bg-primary/90 transform hover:scale-105 transition-all duration-300 ease-in-out text-lg"
+                className="py-3 px-8 bg-gradient-to-br from-teal-600 to-teal-500 text-white rounded-lg text-center text-lg font-semibold hover:opacity-90 transition"
               >
-                Ir a la App
+                Accede a MyHomeDoctorApp
               </Link>
             </div>
+
+            {/* Trust Indicators */}
+            <div className="mt-6 pt-4 border-t border-gray-200 flex gap-8 flex-wrap">
+              <div>
+                <div className="text-3xl font-bold text-emerald-600">100%</div>
+                <p className="text-gray-600 text-sm">Seguridad Encriptada</p>
+              </div>
+              <div>
+                <div className="text-3xl font-bold text-blue-950">Real</div>
+                <p className="text-gray-600 text-sm">Expertise Médico</p>
+              </div>
+              <div>
+                <div className="text-3xl font-bold text-emerald-600">24/7</div>
+                <p className="text-gray-600 text-sm">Disponibilidad</p>
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
-    </section>
+      </section>
+    </>
   );
 }
