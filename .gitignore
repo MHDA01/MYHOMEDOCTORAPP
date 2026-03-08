@@ -48,6 +48,7 @@ firestore-debug.log
 serviceAcountkey.json
 serviceAccountKey.json
 *-service-account*.json
+public/firebase-config.js
 *-adminsdk-*.json
 *.pem
 .firebase/
