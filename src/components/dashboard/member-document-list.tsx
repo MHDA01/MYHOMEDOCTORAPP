@@ -18,16 +18,32 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
   DialogFooter, DialogClose
 } from '@/components/ui/dialog';
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow
+} from '@/components/ui/table';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import {
   Camera, FileText, Trash2, RefreshCcw, SwitchCamera,
-  Loader2, FolderOpen, Info
+  Loader2, FolderOpen, Info, Eye, BrainCircuit, AlertCircle,
+  Clock, CheckCircle2
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
 
 type DocCategory = 'Lab Result' | 'Imaging Report' | 'Prescription' | 'Other';
+type IdpStatus = 'pending' | 'processing' | 'done' | 'error';
+
+interface IdpExtracted {
+  estudio?: string;
+  resultados?: Array<{
+    parametro: string;
+    valor: string;
+    referencia?: string;
+    interpretacion?: string;
+  }>;
+  conclusion_general?: string;
+}
 
 type MemberDoc = {
   id: string;
@@ -35,6 +51,9 @@ type MemberDoc = {
   category: DocCategory;
   url: string;
   uploadedAt: Date;
+  idpStatus?: IdpStatus;
+  idpExtracted?: IdpExtracted;
+  idpError?: string;
 };
 
 const CATEGORY_LABELS: Record<DocCategory, string> = {
@@ -61,6 +80,7 @@ export function MemberDocumentList({ userId, profileId }: Props) {
   const [videoDevices, setVideoDevices] = useState<MediaDeviceInfo[]>([]);
   const [currentDeviceIndex, setCurrentDeviceIndex] = useState(0);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [viewingDoc, setViewingDoc] = useState<MemberDoc | null>(null);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -84,6 +104,9 @@ export function MemberDocumentList({ userId, profileId }: Props) {
           category: raw.category as DocCategory,
           url: raw.url,
           uploadedAt: raw.uploadedAt?.toDate ? raw.uploadedAt.toDate() : new Date(raw.uploadedAt),
+          idpStatus: raw.idpStatus as IdpStatus | undefined,
+          idpExtracted: raw.idpExtracted as IdpExtracted | undefined,
+          idpError: raw.idpError as string | undefined,
         };
       });
       data.sort((a, b) => b.uploadedAt.getTime() - a.uploadedAt.getTime());
@@ -295,12 +318,36 @@ export function MemberDocumentList({ userId, profileId }: Props) {
               <FileText className="h-5 w-5 text-accent shrink-0" />
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium truncate">{d.name}</p>
-                <p className="text-xs text-muted-foreground">
-                  {CATEGORY_LABELS[d.category]} · {format(d.uploadedAt, 'PP', { locale: es })}
-                </p>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <p className="text-xs text-muted-foreground">
+                    {CATEGORY_LABELS[d.category]} · {format(d.uploadedAt, 'PP', { locale: es })}
+                  </p>
+                  {d.idpStatus === 'pending' && (
+                    <Badge variant="outline" className="text-xs text-amber-600 border-amber-300 bg-amber-50 gap-1"><Clock className="h-3 w-3" />Pendiente</Badge>
+                  )}
+                  {d.idpStatus === 'processing' && (
+                    <Badge variant="outline" className="text-xs text-blue-600 border-blue-300 bg-blue-50 gap-1"><Loader2 className="h-3 w-3 animate-spin" />Procesando</Badge>
+                  )}
+                  {d.idpStatus === 'done' && (
+                    <Badge variant="outline" className="text-xs text-green-600 border-green-300 bg-green-50 gap-1"><CheckCircle2 className="h-3 w-3" />Listo</Badge>
+                  )}
+                  {d.idpStatus === 'error' && (
+                    <Badge variant="outline" className="text-xs text-red-600 border-red-300 bg-red-50 gap-1"><AlertCircle className="h-3 w-3" />Error</Badge>
+                  )}
+                </div>
               </div>
               <div className="flex items-center gap-1">
                 <Badge variant="secondary" className="text-xs hidden sm:flex">{CATEGORY_LABELS[d.category]}</Badge>
+                {(d.idpStatus === 'done' || d.idpStatus === 'error') && (
+                  <Button
+                    variant="ghost" size="icon"
+                    className="h-8 w-8"
+                    onClick={() => setViewingDoc(d)}
+                    title="Ver resultados IA"
+                  >
+                    <Eye className="h-4 w-4" />
+                  </Button>
+                )}
                 <Button
                   variant="ghost" size="icon"
                   className="h-8 w-8 text-destructive hover:text-destructive"
@@ -396,6 +443,74 @@ export function MemberDocumentList({ userId, profileId }: Props) {
               </Button>
             </div>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog de resultados IDP */}
+      <Dialog open={!!viewingDoc} onOpenChange={(v) => { if (!v) setViewingDoc(null); }}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <BrainCircuit className="h-5 w-5 text-primary" />
+              Resultados IA — {viewingDoc?.name}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
+            {viewingDoc?.idpStatus === 'error' && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>Error de procesamiento</AlertTitle>
+                <AlertDescription>{viewingDoc.idpError ?? 'Error desconocido'}</AlertDescription>
+              </Alert>
+            )}
+            {viewingDoc?.idpExtracted ? (
+              <>
+                {viewingDoc.idpExtracted.estudio && (
+                  <div>
+                    <p className="text-sm font-semibold text-muted-foreground">Estudio</p>
+                    <p className="text-base font-medium">{viewingDoc.idpExtracted.estudio}</p>
+                  </div>
+                )}
+                {viewingDoc.idpExtracted.resultados && viewingDoc.idpExtracted.resultados.length > 0 && (
+                  <div>
+                    <p className="text-sm font-semibold text-muted-foreground mb-2">Resultados</p>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Parámetro</TableHead>
+                          <TableHead>Valor</TableHead>
+                          <TableHead>Ref.</TableHead>
+                          <TableHead>Interp.</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {viewingDoc.idpExtracted.resultados.map((r, i) => (
+                          <TableRow key={i}>
+                            <TableCell className="font-medium">{r.parametro}</TableCell>
+                            <TableCell>{r.valor}</TableCell>
+                            <TableCell className="text-muted-foreground">{r.referencia ?? '—'}</TableCell>
+                            <TableCell>
+                              <Badge variant={r.interpretacion === 'Normal' ? 'secondary' : 'destructive'} className="text-xs">
+                                {r.interpretacion ?? '—'}
+                              </Badge>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+                {viewingDoc.idpExtracted.conclusion_general && (
+                  <div>
+                    <p className="text-sm font-semibold text-muted-foreground">Conclusión General</p>
+                    <p className="text-sm">{viewingDoc.idpExtracted.conclusion_general}</p>
+                  </div>
+                )}
+              </>
+            ) : viewingDoc?.idpStatus !== 'error' ? (
+              <p className="text-sm text-muted-foreground text-center py-4">No hay datos extraídos disponibles.</p>
+            ) : null}
+          </div>
         </DialogContent>
       </Dialog>
     </div>

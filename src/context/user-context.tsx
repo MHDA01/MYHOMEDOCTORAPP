@@ -5,7 +5,7 @@ import { createContext, useState, useEffect, ReactNode } from 'react';
 import type { PersonalInfo, HealthInfo, Appointment, Document as DocumentType, Medication } from '@/lib/types';
 import { auth, db } from '@/lib/firebase';
 import { onAuthStateChanged, User, signOut, updateProfile } from 'firebase/auth';
-import { doc, getDoc, setDoc, Timestamp, collection, getDocs, updateDoc, deleteDoc, query, orderBy } from 'firebase/firestore';
+import { doc, getDoc, setDoc, Timestamp, collection, getDocs, updateDoc, deleteDoc, query, orderBy, onSnapshot } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { COLECCION_TUTOR } from '@/lib/constants';
 
@@ -189,14 +189,12 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
               setHealthInfo(defaultHealthInfo);
           }
           
-          const [appointmentsData, documentsData, medicationsData] = await Promise.all([
+          const [appointmentsData, medicationsData] = await Promise.all([
               getCollection<SerializableAppointment>(user.uid, 'appointments'),
-              getCollection<SerializableDocument>(user.uid, 'documents'),
               getCollection<Medication>(user.uid, 'medications'),
           ]);
 
           setAppointments(appointmentsData.map(a => ({...a, date: toDate(a.date) })));
-          setDocuments(documentsData.map(d => ({...d, uploadedAt: toDate(d.uploadedAt) })));
           setMedications(medicationsData);
 
         } catch (error) {
@@ -216,6 +214,29 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       manageUserProfile();
     }
   }, [user, toast]);
+
+  // ── Listener en tiempo real para documentos del Titular ──────────────
+  // La Cloud Function de IDP actualiza idpStatus/idpExtracted externamente;
+  // onSnapshot garantiza que el UI refleje esos cambios sin recargar.
+  useEffect(() => {
+    if (!user) { setDocuments([]); return; }
+    const q = query(
+      collection(db, COLECCION_TUTOR, user.uid, 'documents'),
+      orderBy('uploadedAt', 'desc')
+    );
+    const unsub = onSnapshot(q, (snap) => {
+      const docs = snap.docs.map(d => {
+        const raw = d.data();
+        return {
+          id: d.id,
+          ...raw,
+          uploadedAt: toDate(raw.uploadedAt),
+        } as DocumentType;
+      });
+      setDocuments(docs);
+    });
+    return () => unsub();
+  }, [user]);
 
   const signOutUser = async () => {
     try {
@@ -264,23 +285,21 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     };
 
     // Documents del Titular (Cuentas_Tutor/{uid}/documents)
+    // onSnapshot se encarga de actualizar el estado; aquí solo se escribe a Firestore.
     const addDocument = async (docData: Omit<DocumentType, 'id'>): Promise<string> => {
         if (!user) return '';
         const newDocRef = doc(collection(db, COLECCION_TUTOR, user.uid, 'documents'));
         const data = { ...docData, uploadedAt: Timestamp.fromDate(docData.uploadedAt) };
         await setDoc(newDocRef, data);
-        setDocuments(prev => [{...docData, id: newDocRef.id},...prev].sort((a, b) => b.uploadedAt.getTime() - a.uploadedAt.getTime()));
         return newDocRef.id;
     };
     const updateDocument = async (id: string, docData: Partial<DocumentType>) => {
         if (!user) return;
         await updateDoc(doc(db, COLECCION_TUTOR, user.uid, 'documents', id), docData);
-        setDocuments(prev => prev.map(d => d.id === id ? { ...d, ...docData } : d));
     };
     const deleteDocument = async (id: string) => {
         if (!user) return;
         await deleteDoc(doc(db, COLECCION_TUTOR, user.uid, 'documents', id));
-        setDocuments(prev => prev.filter(d => d.id !== id));
     };
 
     // Medications del Titular (Cuentas_Tutor/{uid}/medications)

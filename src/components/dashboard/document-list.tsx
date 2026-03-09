@@ -6,13 +6,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { MoreVertical, FileText, View, Trash2, Camera, FilePenLine, RefreshCcw, SwitchCamera, Loader2 } from "lucide-react";
+import { MoreVertical, FileText, Eye, Trash2, Camera, FilePenLine, RefreshCcw, SwitchCamera, Loader2, BrainCircuit, AlertCircle, Clock, CheckCircle2 } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import type { Document } from '@/lib/types';
+import type { Document, IdpExtracted } from '@/lib/types';
 import { uploadMedicalDocumentEphemeral } from '@/lib/upload-medical-document';
 import { Progress } from '@/components/ui/progress';
 import { format } from "date-fns";
@@ -25,12 +25,102 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 type DialogMode = 'add' | 'edit';
 
+/** Badge visual para el estado IDP */
+function IdpStatusBadge({ status }: { status?: Document['idpStatus'] }) {
+    switch (status) {
+        case 'pending':
+            return <Badge variant="outline" className="text-amber-600 border-amber-300 bg-amber-50 gap-1"><Clock className="h-3 w-3" />Pendiente</Badge>;
+        case 'processing':
+            return <Badge variant="outline" className="text-blue-600 border-blue-300 bg-blue-50 gap-1"><Loader2 className="h-3 w-3 animate-spin" />Procesando</Badge>;
+        case 'done':
+            return <Badge variant="outline" className="text-green-600 border-green-300 bg-green-50 gap-1"><CheckCircle2 className="h-3 w-3" />Listo</Badge>;
+        case 'error':
+            return <Badge variant="outline" className="text-red-600 border-red-300 bg-red-50 gap-1"><AlertCircle className="h-3 w-3" />Error</Badge>;
+        default:
+            return <Badge variant="outline" className="text-muted-foreground gap-1">—</Badge>;
+    }
+}
+
+/** Dialog para visualizar los datos extraídos por IDP */
+function IdpResultsDialog({ doc, open, onOpenChange }: { doc: Document | null; open: boolean; onOpenChange: (v: boolean) => void }) {
+    const extracted = doc?.idpExtracted as IdpExtracted | undefined;
+    return (
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogContent className="sm:max-w-lg">
+                <DialogHeader>
+                    <DialogTitle className="flex items-center gap-2">
+                        <BrainCircuit className="h-5 w-5 text-primary" />
+                        Resultados IA — {doc?.name}
+                    </DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
+                    {doc?.idpStatus === 'error' && (
+                        <Alert variant="destructive">
+                            <AlertCircle className="h-4 w-4" />
+                            <AlertTitle>Error de procesamiento</AlertTitle>
+                            <AlertDescription>{doc.idpError ?? 'Error desconocido'}</AlertDescription>
+                        </Alert>
+                    )}
+                    {extracted ? (
+                        <>
+                            {extracted.estudio && (
+                                <div>
+                                    <p className="text-sm font-semibold text-muted-foreground">Estudio</p>
+                                    <p className="text-base font-medium">{extracted.estudio}</p>
+                                </div>
+                            )}
+                            {extracted.resultados && extracted.resultados.length > 0 && (
+                                <div>
+                                    <p className="text-sm font-semibold text-muted-foreground mb-2">Resultados</p>
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow>
+                                                <TableHead>Parámetro</TableHead>
+                                                <TableHead>Valor</TableHead>
+                                                <TableHead>Referencia</TableHead>
+                                                <TableHead>Interpretación</TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {extracted.resultados.map((r, i) => (
+                                                <TableRow key={i}>
+                                                    <TableCell className="font-medium">{r.parametro}</TableCell>
+                                                    <TableCell>{r.valor}</TableCell>
+                                                    <TableCell className="text-muted-foreground">{r.referencia ?? '—'}</TableCell>
+                                                    <TableCell>
+                                                        <Badge variant={r.interpretacion === 'Normal' ? 'secondary' : 'destructive'} className="text-xs">
+                                                            {r.interpretacion ?? '—'}
+                                                        </Badge>
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))}
+                                        </TableBody>
+                                    </Table>
+                                </div>
+                            )}
+                            {extracted.conclusion_general && (
+                                <div>
+                                    <p className="text-sm font-semibold text-muted-foreground">Conclusión General</p>
+                                    <p className="text-sm">{extracted.conclusion_general}</p>
+                                </div>
+                            )}
+                        </>
+                    ) : doc?.idpStatus !== 'error' ? (
+                        <p className="text-sm text-muted-foreground text-center py-4">No hay datos extraídos disponibles.</p>
+                    ) : null}
+                </div>
+            </DialogContent>
+        </Dialog>
+    );
+}
+
 export function DocumentList() {
     const context = useContext(UserContext);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     const [dialogMode, setDialogMode] = useState<DialogMode>('add');
     const [selectedDoc, setSelectedDoc] = useState<Document | null>(null);
+    const [viewingDoc, setViewingDoc] = useState<Document | null>(null);
     const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
     const [capturedImage, setCapturedImage] = useState<string | null>(null);
     const [videoDevices, setVideoDevices] = useState<MediaDeviceInfo[]>([]);
@@ -311,6 +401,7 @@ export function DocumentList() {
                             <TableHead>Nombre</TableHead>
                             <TableHead>Categoría</TableHead>
                             <TableHead>Subido</TableHead>
+                            <TableHead>Estado IA</TableHead>
                             <TableHead className="text-right">Acciones</TableHead>
                         </TableRow>
                     </TableHeader>
@@ -322,6 +413,7 @@ export function DocumentList() {
                                     <Badge variant="secondary">{getCategoryLabel(doc.category)}</Badge>
                                 </TableCell>
                                 <TableCell>{format(doc.uploadedAt, 'PP', { locale: es })}</TableCell>
+                                <TableCell><IdpStatusBadge status={doc.idpStatus} /></TableCell>
                                 <TableCell className="text-right">
                                     <DropdownMenu>
                                         <DropdownMenuTrigger asChild>
@@ -330,7 +422,12 @@ export function DocumentList() {
                                             </Button>
                                         </DropdownMenuTrigger>
                                         <DropdownMenuContent align="end">
-                                            <DropdownMenuItem><View className="mr-2 h-4 w-4" /> Ver</DropdownMenuItem>
+                                            <DropdownMenuItem
+                                                onClick={() => setViewingDoc(doc)}
+                                                disabled={!doc.idpStatus || doc.idpStatus === 'pending' || doc.idpStatus === 'processing'}
+                                            >
+                                                <Eye className="mr-2 h-4 w-4" /> Ver Resultados IA
+                                            </DropdownMenuItem>
                                             <DropdownMenuItem onClick={() => handleOpenDialog('edit', doc)}><FilePenLine className="mr-2 h-4 w-4" /> Editar</DropdownMenuItem>
                                             <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(doc.id)}>
                                                 <Trash2 className="mr-2 h-4 w-4" /> Eliminar
@@ -343,6 +440,9 @@ export function DocumentList() {
                     </TableBody>
                 </Table>
             </CardContent>
+            {/* Dialog de resultados IDP */}
+            <IdpResultsDialog doc={viewingDoc} open={!!viewingDoc} onOpenChange={(v) => { if (!v) setViewingDoc(null); }} />
+
             <CardFooter>
                 <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                     <DialogTrigger asChild>
