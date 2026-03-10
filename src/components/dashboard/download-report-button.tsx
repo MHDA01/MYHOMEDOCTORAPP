@@ -8,8 +8,38 @@ import { format, differenceInYears, isValid } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { UserContext } from '@/context/user-context';
 import { Button } from '@/components/ui/button';
-import { FileDown, Loader2 } from 'lucide-react';
-import type { Appointment, Document, Medication, EmergencyContact, HealthInfo, PersonalInfo } from '@/lib/types';
+import {
+    collection,
+    doc,
+    getDoc,
+    getDocs,
+    query,
+    orderBy,
+    Timestamp,
+} from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import {
+    COLECCION_TUTOR,
+    SUBCOLECCION_INTEGRANTES,
+    SUBCOLECCION_HISTORIAL,
+    DOC_HISTORIAL,
+} from '@/lib/constants';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Badge } from '@/components/ui/badge';
+import { FileDown, Loader2, UserRound } from 'lucide-react';
+import type { Appointment, Document, HealthInfo, Medication, PersonalInfo, FamilyProfile, FamilyProfileMedical } from '@/lib/types';
+
+type ReportProfile = FamilyProfile & {
+    isSyntheticTitular?: boolean;
+};
+
+type ReportPayload = {
+    personalInfo: PersonalInfo;
+    healthInfo: HealthInfo;
+    appointments: Appointment[];
+    documents: Document[];
+    medications: Medication[];
+};
 
 const calculateAge = (dob: Date | undefined): string => {
     if (!dob || !isValid(dob)) return 'N/A';
@@ -21,17 +51,169 @@ const formatDate = (date: Date | undefined): string => {
     return format(date, "d 'de' MMMM 'de' yyyy", { locale: es });
 }
 
+function toDate(value: Timestamp | Date | string | null | undefined): Date {
+    if (!value) return new Date();
+    if (value instanceof Timestamp) return value.toDate();
+    if (value instanceof Date) return value;
+    const parsed = new Date(value);
+    return isNaN(parsed.getTime()) ? new Date() : parsed;
+}
+
 export function DownloadReportButton() {
     const context = useContext(UserContext);
+    const userId = context?.user?.uid;
     const [isGenerating, setIsGenerating] = React.useState(false);
+    const [dialogOpen, setDialogOpen] = React.useState(false);
+    const [profiles, setProfiles] = React.useState<ReportProfile[]>([]);
+    const [loadingProfiles, setLoadingProfiles] = React.useState(false);
+    const [selectedProfileId, setSelectedProfileId] = React.useState<string | null>(null);
 
-    const generatePdf = () => {
-        if (!context || !context.personalInfo || !context.healthInfo) return;
+    const selectedProfile = React.useMemo(
+        () => profiles.find((p) => p.id === selectedProfileId) ?? null,
+        [profiles, selectedProfileId]
+    );
+
+    const loadProfiles = React.useCallback(async () => {
+        if (!context || !context.personalInfo || !userId) return;
+
+        setLoadingProfiles(true);
+        try {
+            const ref = collection(db, COLECCION_TUTOR, userId, SUBCOLECCION_INTEGRANTES);
+            const snapshot = await getDocs(ref);
+            const data: ReportProfile[] = snapshot.docs.map((d) => ({
+                id: d.id,
+                ...(d.data() as Omit<FamilyProfile, 'id'>),
+            }));
+
+            const tutorFirstName = (context.personalInfo.firstName || '').trim().toLowerCase();
+            const tutorLastName = (context.personalInfo.lastName || '').trim().toLowerCase();
+            const hasTitular = data.some((p) =>
+                p.esTitular ||
+                p.relationship === 'Titular' ||
+                (
+                    (p.firstName || '').trim().toLowerCase() === tutorFirstName &&
+                    (p.lastName || '').trim().toLowerCase() === tutorLastName
+                )
+            );
+
+            if (!hasTitular) {
+                const dob = context.personalInfo.dateOfBirth instanceof Date
+                    ? context.personalInfo.dateOfBirth.toISOString().split('T')[0]
+                    : '';
+
+                data.unshift({
+                    id: '__tutor__',
+                    userId,
+                    firstName: context.personalInfo.firstName,
+                    lastName: context.personalInfo.lastName,
+                    sex: context.personalInfo.sex,
+                    dateOfBirth: dob,
+                    relationship: 'Titular',
+                    esTitular: true,
+                    country: context.personalInfo.country,
+                    insuranceProvider: context.personalInfo.insuranceProvider,
+                    insuranceProviderName: context.personalInfo.insuranceProviderName,
+                    allergies: context.healthInfo?.allergies || [],
+                    medications: context.healthInfo?.medications || [],
+                    isSyntheticTitular: true,
+                });
+            }
+
+            data.sort((a, b) => Number(b.esTitular || b.relationship === 'Titular') - Number(a.esTitular || a.relationship === 'Titular'));
+            setProfiles(data);
+            setSelectedProfileId((prev) => prev ?? data[0]?.id ?? null);
+        } finally {
+            setLoadingProfiles(false);
+        }
+    }, [context, userId]);
+
+    const buildPayloadForProfile = React.useCallback(async (profile: ReportProfile): Promise<ReportPayload | null> => {
+        if (!context || !context.personalInfo || !context.healthInfo || !userId) return null;
+
+        const isTitular = profile.esTitular || profile.relationship === 'Titular' || profile.id === '__tutor__';
+
+        if (isTitular) {
+            return {
+                personalInfo: context.personalInfo,
+                healthInfo: context.healthInfo,
+                appointments: context.appointments,
+                documents: context.documents,
+                medications: context.medications,
+            };
+        }
+
+        const medicalRef = doc(
+            db,
+            COLECCION_TUTOR, userId,
+            SUBCOLECCION_INTEGRANTES, profile.id,
+            SUBCOLECCION_HISTORIAL, DOC_HISTORIAL,
+        );
+
+        let medical: FamilyProfileMedical = {};
+        const medicalSnap = await getDoc(medicalRef);
+        if (medicalSnap.exists()) {
+            medical = medicalSnap.data() as FamilyProfileMedical;
+        }
+
+        const docsQuery = query(
+            collection(db, COLECCION_TUTOR, userId, SUBCOLECCION_INTEGRANTES, profile.id, 'Documentos'),
+            orderBy('uploadedAt', 'desc')
+        );
+        const docsSnap = await getDocs(docsQuery);
+        const memberDocs: Document[] = docsSnap.docs.map((d) => {
+            const raw = d.data() as any;
+            return {
+                id: d.id,
+                name: raw.name,
+                category: raw.category,
+                uploadedAt: toDate(raw.uploadedAt),
+                url: raw.url,
+                storagePath: raw.storagePath,
+                idpStatus: raw.idpStatus,
+                idpExtracted: raw.idpExtracted,
+                idpError: raw.idpError,
+            };
+        });
+
+        const personalInfo: PersonalInfo = {
+            firstName: profile.firstName,
+            lastName: profile.lastName,
+            sex: profile.sex,
+            dateOfBirth: toDate(profile.dateOfBirth),
+            country: profile.country ?? context.personalInfo.country,
+            insuranceProvider: profile.insuranceProvider || '',
+            insuranceProviderName: profile.insuranceProviderName || '',
+        };
+
+        const healthInfo: HealthInfo = {
+            allergies: profile.allergies || [],
+            medications: profile.medications || [],
+            pathologicalHistory: medical.pathologicalHistory || '',
+            surgicalHistory: medical.surgicalHistory || '',
+            gynecologicalHistory: medical.gynecologicalHistory || '',
+            emergencyContacts: [],
+        };
+
+        return {
+            personalInfo,
+            healthInfo,
+            appointments: [],
+            documents: memberDocs,
+            medications: [],
+        };
+    }, [context, userId]);
+
+    const generatePdf = async () => {
+        if (!selectedProfile) return;
+
         setIsGenerating(true);
+        try {
+            const payload = await buildPayloadForProfile(selectedProfile);
+            if (!payload) return;
 
-        const { personalInfo, healthInfo, appointments, documents, medications } = context;
+            const { personalInfo, healthInfo, appointments, documents, medications } = payload;
 
-        const doc = new jsPDF();
+            const doc = new jsPDF();
 
         // Title
         doc.setFont('helvetica', 'bold');
@@ -68,19 +250,21 @@ export function DownloadReportButton() {
         y = (doc as any).lastAutoTable.finalY + 10;
 
 
-        // Emergency Contacts
-        doc.setFontSize(16);
-        doc.setFont('helvetica', 'bold');
-        doc.text('2. Contactos de Emergencia', 14, y);
-        y += 8;
-        autoTable(doc, {
-            startY: y,
-            head: [['Nombre', 'Relación', 'Teléfono']],
-            body: healthInfo.emergencyContacts.map(c => [c.name, c.relationship, c.phone]),
-            theme: 'striped',
-            headStyles: { fillColor: [35, 87, 124] },
-        });
-        y = (doc as any).lastAutoTable.finalY + 10;
+            // Emergency Contacts
+            if (healthInfo.emergencyContacts.length > 0) {
+                doc.setFontSize(16);
+                doc.setFont('helvetica', 'bold');
+                doc.text('2. Contactos de Emergencia', 14, y);
+                y += 8;
+                autoTable(doc, {
+                    startY: y,
+                    head: [['Nombre', 'Relación', 'Teléfono']],
+                    body: healthInfo.emergencyContacts.map(c => [c.name, c.relationship, c.phone]),
+                    theme: 'striped',
+                    headStyles: { fillColor: [35, 87, 124] },
+                });
+                y = (doc as any).lastAutoTable.finalY + 10;
+            }
         
         // Health Record
         doc.setFontSize(16);
@@ -110,7 +294,7 @@ export function DownloadReportButton() {
              addSection('Antecedentes Gineco-Obstétricos:', healthInfo.gynecologicalHistory);
         }
         
-        y = (doc as any).lastAutoTable.finalY + 10 > y ? (doc as any).lastAutoTable.finalY + 10 : y;
+            y = (doc as any).lastAutoTable?.finalY + 10 > y ? (doc as any).lastAutoTable.finalY + 10 : y;
 
         // Appointments
         if(appointments.length > 0) {
@@ -178,21 +362,83 @@ export function DownloadReportButton() {
             });
         }
         
-        doc.save(`resumen_salud_${personalInfo.firstName.toLowerCase()}_${personalInfo.lastName.toLowerCase()}.pdf`);
-        setIsGenerating(false);
+            doc.save(`resumen_salud_${personalInfo.firstName.toLowerCase()}_${personalInfo.lastName.toLowerCase()}.pdf`);
+            setDialogOpen(false);
+        } finally {
+            setIsGenerating(false);
+        }
     };
 
 
     return (
-        <Button
-            variant="ghost"
-            className="w-full justify-start gap-2 p-2"
-            onClick={generatePdf}
-            disabled={isGenerating}
-        >
-            {isGenerating ? <Loader2 className="animate-spin" /> : <FileDown />}
-            <span>{isGenerating ? 'Generando...' : 'Generar Informe'}</span>
-        </Button>
+        <>
+            <Button
+                variant="ghost"
+                className="w-full justify-start gap-2 p-2"
+                onClick={async () => {
+                    setDialogOpen(true);
+                    await loadProfiles();
+                }}
+                disabled={isGenerating || !userId}
+            >
+                {isGenerating ? <Loader2 className="animate-spin" /> : <FileDown />}
+                <span>{isGenerating ? 'Generando...' : 'Generar Informe'}</span>
+            </Button>
+
+            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Generar Informe de Salud</DialogTitle>
+                        <DialogDescription>
+                            Selecciona el integrante del grupo familiar para generar su informe.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="space-y-2 max-h-72 overflow-y-auto">
+                        {loadingProfiles ? (
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                                Cargando integrantes...
+                            </div>
+                        ) : (
+                            profiles.map((profile) => {
+                                const fullName = `${profile.firstName} ${profile.lastName}`.trim();
+                                const selected = selectedProfileId === profile.id;
+                                return (
+                                    <button
+                                        key={profile.id}
+                                        type="button"
+                                        className={`w-full border rounded-lg px-3 py-2 text-left transition-colors ${selected ? 'border-primary bg-primary/5' : 'hover:bg-muted/40'}`}
+                                        onClick={() => setSelectedProfileId(profile.id)}
+                                    >
+                                        <div className="flex items-center justify-between gap-3">
+                                            <div className="flex items-center gap-2 min-w-0">
+                                                <UserRound className="h-4 w-4 text-muted-foreground shrink-0" />
+                                                <span className="font-medium truncate">{fullName || 'Sin nombre'}</span>
+                                            </div>
+                                            {profile.relationship && (
+                                                <Badge variant="secondary">{profile.relationship}</Badge>
+                                            )}
+                                        </div>
+                                    </button>
+                                );
+                            })
+                        )}
+                    </div>
+
+                    <DialogFooter>
+                        <Button
+                            type="button"
+                            onClick={generatePdf}
+                            disabled={!selectedProfile || isGenerating || loadingProfiles}
+                        >
+                            {isGenerating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            {isGenerating ? 'Generando...' : 'Generar Informe'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+        </>
     )
 
 }
