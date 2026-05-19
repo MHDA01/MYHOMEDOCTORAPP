@@ -36,7 +36,7 @@ export default function RootLayout({
         <meta name="format-detection" content="telephone=no" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="theme-color" content="#3B82F6" />
-        <link rel="apple-touch-icon" href="https://i.postimg.cc/SsRdwdzD/LOGO-1-transparent.png" />
+        <link rel="apple-touch-icon" href="/images/logo.webp" />
       </head>
       <body className="font-body antialiased">
         {children}

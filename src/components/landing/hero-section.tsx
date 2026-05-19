@@ -8,7 +8,7 @@ export default function HeroSection() {
       <section className="pt-20 pb-8 px-4 sm:px-6 lg:px-8 bg-white">
         <div className="max-w-7xl mx-auto flex justify-center">
           <Image
-            src="https://i.postimg.cc/SsRdwdzD/LOGO-1-transparent.png"
+            src="/images/logo.webp"
             alt="MyHomeDoctorApp Logo"
             width={384}
             height={384}

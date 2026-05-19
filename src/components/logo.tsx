@@ -4,7 +4,7 @@ export function Logo({ className }: { className?: string }) {
   return (
     <div className={`flex items-center justify-center px-2 py-1 ${className ?? ''}`}>
       <Image 
-        src="https://i.postimg.cc/SsRdwdzD/LOGO-1-transparent.png" 
+        src="/images/logo.webp" 
         alt="MiDoctorDeCasaApp Logo" 
         width={200} 
         height={150} 

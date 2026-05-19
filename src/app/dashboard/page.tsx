@@ -2,13 +2,11 @@
 
 import { DashboardHeader } from "@/components/dashboard/header";
 import { PersonalInfo } from "@/components/dashboard/personal-info";
-import { HealthRecordCard } from "@/components/dashboard/health-record-card";
 import { FamilyProfiles } from "@/components/dashboard/family-profiles";
-import { EmergencyContactsCard } from "@/components/dashboard/emergency-card";
 import {
   Accordion, AccordionContent, AccordionItem, AccordionTrigger
 } from "@/components/ui/accordion";
-import { User, ShieldAlert, Users, Phone } from "lucide-react";
+import { User, Users } from "lucide-react";
 
 const sections = [
   {
@@ -20,15 +18,7 @@ const sections = [
     description: 'Datos personales y previsión de salud del titular',
     content: <PersonalInfo />,
   },
-  {
-    value: 'health-record',
-    icon: ShieldAlert,
-    iconBg: 'bg-destructive/10',
-    iconColor: 'text-destructive',
-    title: 'Historial Médico',
-    description: 'Antecedentes, alergias, medicamentos y cirugías',
-    content: <HealthRecordCard />,
-  },
+
   {
     value: 'familia',
     icon: Users,
@@ -38,15 +28,7 @@ const sections = [
     description: 'Perfiles médicos de todos los integrantes de la familia',
     content: <FamilyProfiles />,
   },
-  {
-    value: 'emergency-contacts',
-    icon: Phone,
-    iconBg: 'bg-destructive/10',
-    iconColor: 'text-destructive',
-    title: 'Contactos de Emergencia',
-    description: 'Personas a contactar en caso de urgencia médica',
-    content: <EmergencyContactsCard />,
-  },
+
 ];
 
 export default function DashboardPage() {

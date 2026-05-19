@@ -250,26 +250,9 @@ export function DownloadReportButton() {
         y = (doc as any).lastAutoTable.finalY + 10;
 
 
-            // Emergency Contacts
-            if (healthInfo.emergencyContacts.length > 0) {
-                doc.setFontSize(16);
-                doc.setFont('helvetica', 'bold');
-                doc.text('2. Contactos de Emergencia', 14, y);
-                y += 8;
-                autoTable(doc, {
-                    startY: y,
-                    head: [['Nombre', 'Relación', 'Teléfono']],
-                    body: healthInfo.emergencyContacts.map(c => [c.name, c.relationship, c.phone]),
-                    theme: 'striped',
-                    headStyles: { fillColor: [35, 87, 124] },
-                });
-                y = (doc as any).lastAutoTable.finalY + 10;
-            }
-        
-        // Health Record
         doc.setFontSize(16);
         doc.setFont('helvetica', 'bold');
-        doc.text('3. Historial Médico', 14, y);
+        doc.text('2. Resumen Clínico', 14, y);
         y += 8;
         doc.setFontSize(11);
         doc.setFont('helvetica', 'bold');
@@ -302,7 +285,7 @@ export function DownloadReportButton() {
             y = 20;
             doc.setFontSize(16);
             doc.setFont('helvetica', 'bold');
-            doc.text('4. Citas Médicas', 14, y);
+            doc.text('3. Citas Médicas', 14, y);
             y += 8;
             const sortedAppointments = [...appointments].sort((a,b) => b.date.getTime() - a.date.getTime());
             autoTable(doc, {
@@ -325,7 +308,7 @@ export function DownloadReportButton() {
             if(y > 250) { doc.addPage(); y = 20; }
             doc.setFontSize(16);
             doc.setFont('helvetica', 'bold');
-            doc.text('5. Medicamentos y Recordatorios', 14, y);
+            doc.text('4. Medicamentos y Recordatorios', 14, y);
             y += 8;
             autoTable(doc, {
                 startY: y,
@@ -347,7 +330,7 @@ export function DownloadReportButton() {
             if(y > 250) { doc.addPage(); y = 20; }
             doc.setFontSize(16);
             doc.setFont('helvetica', 'bold');
-            doc.text('6. Documentos', 14, y);
+            doc.text('5. Documentos', 14, y);
             y += 8;
             autoTable(doc, {
                 startY: y,
