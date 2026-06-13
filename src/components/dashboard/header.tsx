@@ -8,13 +8,12 @@ export function DashboardHeader() {
   const getTitle = () => {
     switch (pathname) {
       case '/dashboard':
-        return 'Mi Salud y la de mi Familia';
-      case '/dashboard/teleconsulta':
-        return 'Teleconsulta';
-      case '/dashboard/urgencias':
-        return 'Urgencias y Domicilio';
+      case '/dashboard/teleorientacion':
+        return 'Teleorientación';
+      case '/dashboard/reportes':
+        return 'Mis Reportes PDF';
       default:
-        return 'Mi Salud y la de mi Familia';
+        return 'Teleorientación';
     }
   }
 

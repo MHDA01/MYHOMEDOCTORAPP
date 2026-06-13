@@ -1,12 +1,8 @@
-
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // ─────────────────────────────────────────────────────────
-    // HELPERS
-    // ─────────────────────────────────────────────────────────
     function isSignedIn() {
       return request.auth != null;
     }
@@ -15,52 +11,85 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == uid;
     }
 
-    // ─────────────────────────────────────────────────────────
-    // ESTRUCTURA PRINCIPAL: Cuentas_Tutor
-    // Cada tutor sólo puede leer/escribir su propio documento
-    // y TODAS sus subcolecciones (Integrantes, historial,
-    // Documentos, appointments, documents, medications).
-    // ─────────────────────────────────────────────────────────
     match /Cuentas_Tutor/{tutorId} {
       allow read, write: if isOwner(tutorId);
+      
+      // Permitir la creación inicial del documento del tutor durante el registro
+      // si el documento aún no existe.
+      allow create: if isSignedIn() && request.auth.uid == tutorId && !exists(/databases/$(database)/documents/Cuentas_Tutor/$(tutorId));
 
-      // Subcolecciones directas del tutor — profundidad 1
-      // (appointments, documents, medications, etc.)
-      match /{subcol}/{docId} {
-        allow read, write, delete: if isOwner(tutorId);
-      }
+      match /conversaciones/{convId} {
+        allow read, write: if isOwner(tutorId);
 
-      // Perfiles familiares
-      match /Integrantes/{integranteId} {
-        allow read, write, delete: if isOwner(tutorId);
-
-        // Cualquier sub-subcolección bajo un Integrante, a cualquier profundidad:
-        //   historial/registro
-        //   Documentos/{docId}
-        //   orientaciones/{sessionId}
-        //   orientaciones/{sessionId}/mensajes/{msgId}   ← nuevo
-        match /{path=**} {
-          allow read, write, delete: if isOwner(tutorId);
+        match /mensajes/{messageId} {
+          allow read, write: if isOwner(tutorId);
         }
       }
-    }
 
-    // ─────────────────────────────────────────────────────────
-    // COLECCIONES LEGACY (solo compatibilidad transitoria)
-    // Mantener hasta que se complete la migración de datos a
-    // Cuentas_Tutor. Eliminar en la próxima versión mayor.
-    // ─────────────────────────────────────────────────────────
-    match /users/{userId} {
-      allow read, write: if isOwner(userId);
+      match /Integrantes/{integranteId} {
+        allow read, write: if isOwner(tutorId);
 
-      match /{collection}/{docId} {
-        allow read, write, delete: if isOwner(userId);
+        match /historial/{docId} {
+          allow read, write: if isOwner(tutorId);
+        }
+
+        match /Documentos/{docId} {
+          allow read, write: if isOwner(tutorId);
+        }
+
+        match /orientaciones/{sessionId} {
+          allow read, write: if isOwner(tutorId);
+        }
+
+        match /orientaciones/{sessionId}/mensajes/{messageId} {
+          allow read, write: if isOwner(tutorId);
+        }
+
+        match /episodes/{episodeId} {
+          allow read, write: if isOwner(tutorId);
+        }
+
+        match /episodes/{episodeId}/events/{eventId} {
+          allow read, write: if isOwner(tutorId);
+        }
+
+        match /episodes/{episodeId}/facts/{factId} {
+          allow read, write: if isOwner(tutorId);
+        }
+
+        match /clinicalProfile/{profileId} {
+          allow read, write: if isOwner(tutorId);
+        }
+
+        match /{path=**} {
+          allow read, write: if isOwner(tutorId);
+        }
+      }
+
+      match /limits/{limitId} {
+        allow read, write: if isOwner(tutorId);
+      }
+
+      match /reports/{reportId} {
+        allow read, write: if isOwner(tutorId);
+      }
+
+      match /documents/{docId} {
+        allow read, write: if isOwner(tutorId);
+      }
+
+      match /{subcol}/{docId} {
+        allow read, write: if isOwner(tutorId);
       }
     }
 
-    // ─────────────────────────────────────────────────────────
-    // SESIONES DE TRIAJE
-    // ─────────────────────────────────────────────────────────
+    match /users/{userId} {
+      allow read, write: if false;
+      match /{document=**} {
+        allow read, write: if false;
+      }
+    }
+
     match /app_triage_sessions/{sessionId} {
       allow read, write, delete: if isSignedIn() &&
         (resource == null || resource.data.userId == request.auth.uid);
@@ -68,27 +97,17 @@ service cloud.firestore {
         request.resource.data.userId == request.auth.uid;
     }
 
-    // ─────────────────────────────────────────────────────────
-    // LOGS DE TRIAJE — solo Cloud Functions vía Admin SDK
-    // ─────────────────────────────────────────────────────────
     match /triage_logs/{logId} {
       allow create: if isSignedIn();
       allow read, write, delete: if false;
     }
 
-    // ─────────────────────────────────────────────────────────
-    // ALARMAS DE NOTIFICACIÓN — solo Cloud Functions vía Admin SDK
-    // ─────────────────────────────────────────────────────────
     match /alarms/{alarmId} {
       allow create: if isSignedIn() &&
         request.resource.data.userId == request.auth.uid;
       allow read, delete: if false;
     }
 
-    // ─────────────────────────────────────────────────────────
-    // DENY ALL — bloque explícito de seguridad
-    // Cualquier ruta no listada arriba queda DENEGADA.
-    // ─────────────────────────────────────────────────────────
     match /{document=**} {
       allow read, write: if false;
     }

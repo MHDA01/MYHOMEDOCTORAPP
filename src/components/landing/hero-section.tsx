@@ -8,11 +8,11 @@ export default function HeroSection() {
       <section className="pt-20 pb-8 px-4 sm:px-6 lg:px-8 bg-white">
         <div className="max-w-7xl mx-auto flex justify-center">
           <Image
-            src="/images/logo.webp"
+            src="/images/LOGO_1_transparent.png"
             alt="MyHomeDoctorApp Logo"
             width={384}
             height={384}
-            className="w-64 h-64 sm:w-80 sm:h-80 lg:w-96 lg:h-96 object-contain drop-shadow-lg"
+            className="w-64 h-64 sm:w-80 sm:h-80 lg:w-96 lg:h-96 object-contain"
             priority
           />
         </div>

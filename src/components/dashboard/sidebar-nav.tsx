@@ -18,25 +18,19 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
 import {
-  HeartPulse,
-  Settings,
   LogOut,
-  User,
-  Video,
-  Siren,
   Loader2,
   MoreVertical,
   MessageCircleHeart,
+  FileText,
 } from 'lucide-react';
 import { UserContext } from '@/context/user-context';
 import { Skeleton } from '../ui/skeleton';
-import { DownloadReportButton } from './download-report-button';
+
 
 const mainNavItems = [
-  { href: '/dashboard', icon: HeartPulse, label: 'Mi Salud y la de mi Familia' },
   { href: '/dashboard/teleorientacion', icon: MessageCircleHeart, label: 'Teleorientación' },
-  { href: '/dashboard/teleconsulta', icon: Video, label: 'Teleconsulta' },
-  { href: '/dashboard/urgencias', icon: Siren, label: 'Urgencias y Domicilio' },
+  { href: '/dashboard/reportes', icon: FileText, label: 'Mis Reportes PDF' },
 ];
 
 export function SidebarNav() {
@@ -98,9 +92,7 @@ export function SidebarNav() {
               </SidebarMenuButton>
             </SidebarMenuItem>
           ))}
-           <SidebarMenuItem>
-             <DownloadReportButton />
-           </SidebarMenuItem>
+
         </SidebarMenu>
       </SidebarContent>
       <SidebarFooter>
@@ -128,15 +120,7 @@ export function SidebarNav() {
                     </p>
                 </div>
                 </DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem disabled>
-                    <User className="mr-2 h-4 w-4" />
-                    <span>Perfil</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem disabled>
-                    <Settings className="mr-2 h-4 w-4" />
-                    <span>Configuración</span>
-                </DropdownMenuItem>
+
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleLogout}>
                     <LogOut className="mr-2 h-4 w-4" />

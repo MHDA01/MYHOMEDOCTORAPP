@@ -58,6 +58,8 @@ export type Appointment = {
   status: 'Upcoming' | 'Past';
   reminder?: string;
   notified?: boolean;
+  episodeId?: string;
+  outcomeNotes?: string;
 };
 
 export type Medication = {
@@ -90,6 +92,7 @@ export type HealthInfo = {
   surgicalHistory: string;
   gynecologicalHistory: string;
   emergencyContacts: EmergencyContact[];
+  isEncrypted?: boolean;
 };
 
 export type PersonalInfo = {

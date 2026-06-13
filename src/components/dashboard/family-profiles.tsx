@@ -1,11 +1,16 @@
-﻿'use client';
+'use client';
 
-import { useState, useEffect, useContext, useMemo } from 'react';
+import { useState, useEffect, useContext, useMemo, useCallback } from 'react';
 import {
-  collection, doc, onSnapshot, setDoc, addDoc, deleteDoc,
-  getDoc, serverTimestamp
+  doc, deleteDoc
 } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { auth, db } from '@/lib/firebase';
+import { 
+  saveFamilyMember, 
+  getSecureFamilyMembers, 
+  getSecureMemberMedicalHistory 
+} from '@/app/actions/family';
+
 import { UserContext } from '@/context/user-context';
 import type { FamilyProfile, FamilyProfileMedical } from '@/lib/types';
 import { COLECCION_TUTOR, SUBCOLECCION_INTEGRANTES, SUBCOLECCION_HISTORIAL, DOC_HISTORIAL } from '@/lib/constants';
@@ -42,7 +47,7 @@ import { MemberDocumentList } from '@/components/dashboard/member-document-list'
 // Las rutas canónicas de Firestore están centralizadas en @/lib/constants
 
 const RELATIONSHIPS = [
-  'Titular', 'C�nyuge / Pareja', 'Hijo/a', 'Padre', 'Madre',
+  'Titular', 'Cónyuge / Pareja', 'Hijo/a', 'Padre', 'Madre',
   'Hermano/a', 'Abuelo/a', 'Nieto/a', 'Otro familiar'
 ];
 
@@ -54,7 +59,7 @@ const countryHealthData: Record<string, {
 }> = {
   argentina: {
     label: 'Obra Social',
-    options: ['No tengo', 'Obra Social Sindical', 'Obra Social de Direcci�n', 'PAMI', 'Medicina Prepaga'],
+    options: ['No tengo', 'Obra Social Sindical', 'Obra Social de Dirección', 'PAMI', 'Medicina Prepaga'],
     requiresInputFor: ['PAMI', 'Medicina Prepaga'],
     inputLabel: (opt) => `Nombre de la ${opt}`
   },
@@ -62,10 +67,10 @@ const countryHealthData: Record<string, {
     label: 'Seguridad Social',
     options: ['No tengo', 'EPS contributiva', 'EPS subsidiada', 'Medicina Prepagada'],
     requiresInputFor: ['EPS contributiva', 'EPS subsidiada', 'Medicina Prepagada'],
-    inputLabel: () => `�A qu� EPS o prepagada est� adscrito?`
+    inputLabel: () => `¿A qué EPS o prepagada está adscrito?`
   },
   chile: {
-    label: 'Previsi�n',
+    label: 'Previsión',
     options: ['Fonasa', 'Isapre', 'Particular'],
     requiresInputFor: ['Isapre'],
     inputLabel: () => `Nombre de la Isapre`
@@ -146,7 +151,7 @@ export function FamilyProfiles() {
     const fName = (personalInfo.firstName || '').trim().toLowerCase();
     const lName = (personalInfo.lastName || '').trim().toLowerCase();
 
-    // Buscar por: esTitular/Titular ─ o ─ mismo nombre+apellido que el tutor
+    // Buscar por: esTitular/Titular — o — mismo nombre+apellido que el tutor
     const titularIdx = profiles.findIndex(p =>
       p.esTitular ||
       p.relationship === 'Titular' ||
@@ -182,30 +187,37 @@ export function FamilyProfiles() {
     return [titularCard, ...otherProfiles];
   }, [profiles, personalInfo, healthInfo, userId]);
 
-  useEffect(() => {
+  const loadProfiles = useCallback(async () => {
     if (!userId) return;
-    const ref = collection(db, COLECCION_TUTOR, userId, SUBCOLECCION_INTEGRANTES);
-    const unsub = onSnapshot(ref, (snap) => {
-      const data: FamilyProfile[] = snap.docs.map(d => ({
-        id: d.id,
-        ...(d.data() as Omit<FamilyProfile, 'id'>)
-      }));
-      data.sort((a, b) => {
+    setLoading(true);
+    try {
+      const idToken = await auth.currentUser?.getIdToken();
+      if (!idToken) return;
+      const data = await getSecureFamilyMembers(idToken);
+      
+      const sortedData = [...data].sort((a: any, b: any) => {
         const aT = a.esTitular || a.relationship === 'Titular';
         const bT = b.esTitular || b.relationship === 'Titular';
         if (aT && !bT) return -1;
         if (!aT && bT) return 1;
         return 0;
       });
-      setProfiles(data);
+      setProfiles(sortedData as FamilyProfile[]);
+    } catch (err) {
+      console.error('Error loading profiles:', err);
+    } finally {
       setLoading(false);
-    }, () => setLoading(false));
-    return () => unsub();
+    }
   }, [userId]);
 
   useEffect(() => {
+    loadProfiles();
+  }, [loadProfiles]);
+
+
+  useEffect(() => {
     if (form.dateOfBirth) {
-      setAgeDisplay(`${calcAge(form.dateOfBirth)} a�os`);
+      setAgeDisplay(`${calcAge(form.dateOfBirth)} años`);
     } else {
       setAgeDisplay('');
     }
@@ -239,7 +251,7 @@ export function FamilyProfiles() {
     });
     setAllergiesText((profile.allergies || []).join(', '));
     setMedicationsText((profile.medications || []).join(', '));
-    setAgeDisplay(profile.dateOfBirth ? `${calcAge(profile.dateOfBirth)} a�os` : '');
+    setAgeDisplay(profile.dateOfBirth ? `${calcAge(profile.dateOfBirth)} años` : '');
     setSheetOpen(true);
 
     // Tarjeta del Titular: siempre carga historial desde el contexto (fuente de verdad)
@@ -263,15 +275,10 @@ export function FamilyProfiles() {
     // Carga diferida: leer historial clínico pesado sólo al abrir el editor
     setLoadingMedical(true);
     try {
-      const historialRef = doc(
-        db,
-        COLECCION_TUTOR, userId!,
-        SUBCOLECCION_INTEGRANTES, profile.id,
-        SUBCOLECCION_HISTORIAL, DOC_HISTORIAL
-      );
-      const snap = await getDoc(historialRef);
-      if (snap.exists()) {
-        const data = snap.data() as FamilyProfileMedical;
+      const idToken = await auth.currentUser?.getIdToken();
+      if (!idToken) return;
+      const data = await getSecureMemberMedicalHistory(idToken, profile.id);
+      if (data) {
         setForm(prev => ({
           ...prev,
           pathologicalHistory: data.pathologicalHistory || '',
@@ -292,7 +299,8 @@ export function FamilyProfiles() {
     setViewDialogOpen(true);
 
     const isTitular = profile.esTitular || profile.relationship === 'Titular';
-    if (isTitular) {
+    // Para el titular, intentamos cargar del contexto primero (si ya está descifrado)
+    if (isTitular && healthInfo && !healthInfo.isEncrypted) {
       setViewMedical({
         pathologicalHistory: healthInfo?.pathologicalHistory || '',
         surgicalHistory: healthInfo?.surgicalHistory || '',
@@ -303,15 +311,11 @@ export function FamilyProfiles() {
 
     setLoadingView(true);
     try {
-      const historialRef = doc(
-        db,
-        COLECCION_TUTOR, userId!,
-        SUBCOLECCION_INTEGRANTES, profile.id,
-        SUBCOLECCION_HISTORIAL, DOC_HISTORIAL
-      );
-      const snap = await getDoc(historialRef);
-      if (snap.exists()) {
-        setViewMedical(snap.data() as FamilyProfileMedical);
+      const idToken = await auth.currentUser?.getIdToken();
+      if (!idToken) return;
+      const data = await getSecureMemberMedicalHistory(idToken, profile.id);
+      if (data) {
+        setViewMedical(data);
       } else {
         setViewMedical({ pathologicalHistory: '', surgicalHistory: '', gynecologicalHistory: '' });
       }
@@ -322,6 +326,7 @@ export function FamilyProfiles() {
       setLoadingView(false);
     }
   };
+
 
   const handleSave = async () => {
     if (!userId) return;
@@ -347,51 +352,27 @@ export function FamilyProfiles() {
       allergies: allergiesText.split(',').map(s => s.trim()).filter(Boolean),
       medications: medicationsText.split(',').map(s => s.trim()).filter(Boolean),
       hasHistory: !!(form.pathologicalHistory || form.surgicalHistory || (form.sex === 'female' && form.gynecologicalHistory)),
-      updatedAt: serverTimestamp(),
-    };
-    // Solo incluir campos opcionales si tienen valor (evitar undefined en Firestore)
-    if (form.weight) summaryData.weight = Number(form.weight);
-    if (form.country) summaryData.country = form.country;
-
-    // Subcolección historial/registro: texto clínico pesado — sólo se lee al editar
-    const medicalData: FamilyProfileMedical = {
+      // Incluir campos médicos para que la Server Action los cifre y guarde en la subcolección
       pathologicalHistory: form.pathologicalHistory || '',
       surgicalHistory: form.surgicalHistory || '',
       gynecologicalHistory: form.sex === 'female' ? (form.gynecologicalHistory || '') : '',
-      updatedAt: serverTimestamp(),
     };
 
+    if (form.weight) summaryData.weight = Number(form.weight);
+    if (form.country) summaryData.country = form.country;
+
     try {
-      let docIdToUpdate = editingId;
-      if (!docIdToUpdate) {
-        // Buscar coincidencia por nombre (case-insensitive) para evitar duplicados
-        const fName = form.firstName.trim().toLowerCase();
-        const lName = form.lastName.trim().toLowerCase();
-        const existing = profiles.find(p =>
-          (p.firstName || '').trim().toLowerCase() === fName &&
-          (p.lastName || '').trim().toLowerCase() === lName
-        );
-        if (existing) docIdToUpdate = existing.id;
+      const idToken = await auth.currentUser?.getIdToken();
+      if (!idToken) throw new Error('No se pudo obtener el token de autenticación');
+
+      const result = await saveFamilyMember(idToken, editingId, summaryData);
+
+      
+      if (!result.success) {
+        throw new Error(result.error);
       }
 
-      if (docIdToUpdate) {
-        const profileDocRef = doc(db, COLECCION_TUTOR, userId, SUBCOLECCION_INTEGRANTES, docIdToUpdate);
-        const medicalDocRef = doc(db, COLECCION_TUTOR, userId, SUBCOLECCION_INTEGRANTES, docIdToUpdate, SUBCOLECCION_HISTORIAL, DOC_HISTORIAL);
-        // Escritura paralela: ambos docs en una sola operación lógica
-        await Promise.all([
-          setDoc(profileDocRef, summaryData, { merge: true }),
-          setDoc(medicalDocRef, medicalData, { merge: true }),
-        ]);
-      } else {
-        const newRef = await addDoc(
-          collection(db, COLECCION_TUTOR, userId, SUBCOLECCION_INTEGRANTES),
-          { ...summaryData, createdAt: serverTimestamp() }
-        );
-        await setDoc(
-          doc(db, COLECCION_TUTOR, userId, SUBCOLECCION_INTEGRANTES, newRef.id, SUBCOLECCION_HISTORIAL, DOC_HISTORIAL),
-          medicalData
-        );
-      }
+      await loadProfiles();
       setSheetOpen(false);
     } catch (e: any) {
       alert(`Error al guardar: ${e.message}`);
@@ -399,6 +380,7 @@ export function FamilyProfiles() {
       setSaving(false);
     }
   };
+
 
   const handleDelete = async (profileId: string) => {
     if (!userId) return;
@@ -446,7 +428,7 @@ export function FamilyProfiles() {
         <Card className="border-dashed">
           <CardContent className="flex flex-col items-center justify-center py-16 text-center">
             <Users className="h-12 w-12 text-muted-foreground/40 mb-4" />
-            <p className="text-muted-foreground font-medium">No hay perfiles familiares a�n</p>
+            <p className="text-muted-foreground font-medium">No hay perfiles familiares aún</p>
             <p className="text-sm text-muted-foreground mt-1">Agrega el perfil del Titular y de tus familiares para comenzar</p>
             <Button onClick={openNew} variant="outline" className="mt-4 gap-2">
               <UserPlus className="h-4 w-4" />
@@ -509,9 +491,9 @@ export function FamilyProfiles() {
                           </AlertDialogTrigger>
                           <AlertDialogContent>
                             <AlertDialogHeader>
-                              <AlertDialogTitle>�Eliminar perfil?</AlertDialogTitle>
+                              <AlertDialogTitle>¿Eliminar perfil?</AlertDialogTitle>
                               <AlertDialogDescription>
-                                Esta acci�n elimina permanentemente el perfil de <strong>{fullName}</strong>.
+                                Esta acción elimina permanentemente el perfil de <strong>{fullName}</strong>.
                               </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
@@ -532,14 +514,14 @@ export function FamilyProfiles() {
                 <CardContent className="pt-0 space-y-2 text-sm">
                   <div className="flex flex-wrap gap-3 text-muted-foreground">
                     <span className="flex items-center gap-1"><User className="h-3 w-3" />{sexLabel(profile.sex)}</span>
-                    {age !== undefined && <span>{age} a�os</span>}
+                    {age !== undefined && <span>{age} años</span>}
                     {profile.weight && <span>{profile.weight} kg</span>}
                     {profile.country && <span className="capitalize flex items-center gap-1"><MapPin className="h-3 w-3" />{profile.country}</span>}
                   </div>
                   {profile.insuranceProvider && (
                     <p className="text-xs text-muted-foreground flex items-center gap-1">
                       <Shield className="h-3 w-3 text-primary" />
-                      {profile.insuranceProvider}{profile.insuranceProviderName ? ` � ${profile.insuranceProviderName}` : ''}
+                      {profile.insuranceProvider}{profile.insuranceProviderName ? ` · ${profile.insuranceProviderName}` : ''}
                     </p>
                   )}
                   <div className="border-t pt-2 space-y-1">
@@ -580,240 +562,242 @@ export function FamilyProfiles() {
           </SheetHeader>
 
           <Tabs defaultValue="personal" className="w-full">
-            <TabsList className="w-full mb-4">
-              <TabsTrigger value="personal" className="flex-1">
-                <User className="h-4 w-4 mr-1" /> Info Personal
-              </TabsTrigger>
-              <TabsTrigger value="historial" className="flex-1">
-                <HeartPulse className="h-4 w-4 mr-1" /> Historial M�dico
-              </TabsTrigger>              <TabsTrigger value="documentos" className="flex-1">
-                <FileText className="h-4 w-4 mr-1" /> Documentos
-              </TabsTrigger>            </TabsList>
+              <TabsList className="w-full mb-4">
+                <TabsTrigger value="personal" className="flex-1">
+                  <User className="h-4 w-4 mr-1" /> Info Personal
+                </TabsTrigger>
+                <TabsTrigger value="historial" className="flex-1">
+                  <HeartPulse className="h-4 w-4 mr-1" /> Historial Médico
+                </TabsTrigger>
+                <TabsTrigger value="documentos" className="flex-1">
+                  <FileText className="h-4 w-4 mr-1" /> Documentos
+                </TabsTrigger>
+              </TabsList>
 
-            {/* Tab: Informaci�n Personal */}
-            <TabsContent value="personal" className="space-y-4">
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <Label htmlFor="fp-firstName">Nombres *</Label>
-                  <Input
-                    id="fp-firstName"
-                    value={form.firstName}
-                    onChange={e => setForm(f => ({ ...f, firstName: e.target.value }))}
-                    placeholder="Ej: Mar�a"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label htmlFor="fp-lastName">Apellidos *</Label>
-                  <Input
-                    id="fp-lastName"
-                    value={form.lastName}
-                    onChange={e => setForm(f => ({ ...f, lastName: e.target.value }))}
-                    placeholder="Ej: Gonz�lez"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-1">
-                <Label>Parentesco *</Label>
-                <Select
-                  value={form.relationship}
-                  onValueChange={v => setForm(f => ({ ...f, relationship: v, esTitular: v === 'Titular' }))}
-                >
-                  <SelectTrigger><SelectValue placeholder="Selecciona el parentesco" /></SelectTrigger>
-                  <SelectContent>
-                    {RELATIONSHIPS.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Sexo *</Label>
-                <RadioGroup
-                  value={form.sex}
-                  onValueChange={v => setForm(f => ({ ...f, sex: v as FamilyProfile['sex'] }))}
-                  className="flex gap-4"
-                >
-                  <div className="flex items-center gap-2">
-                    <RadioGroupItem value="male" id="fp-male" />
-                    <Label htmlFor="fp-male">Masculino</Label>
+              {/* Tab: Información Personal */}
+              <TabsContent value="personal" className="space-y-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label htmlFor="fp-firstName">Nombres *</Label>
+                    <Input
+                      id="fp-firstName"
+                      value={form.firstName}
+                      onChange={e => setForm(f => ({ ...f, firstName: e.target.value }))}
+                      placeholder="Ej: María"
+                    />
                   </div>
-                  <div className="flex items-center gap-2">
-                    <RadioGroupItem value="female" id="fp-female" />
-                    <Label htmlFor="fp-female">Femenino</Label>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <RadioGroupItem value="other" id="fp-other" />
-                    <Label htmlFor="fp-other">Indeterminado</Label>
-                  </div>
-                </RadioGroup>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <Label htmlFor="fp-dob">Fecha de Nacimiento *</Label>
-                  <Input
-                    id="fp-dob" type="date"
-                    value={form.dateOfBirth}
-                    onChange={e => setForm(f => ({ ...f, dateOfBirth: e.target.value }))}
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label>Edad calculada</Label>
-                  <div className="flex items-center h-9 px-3 rounded-md border bg-muted text-sm text-muted-foreground">
-                    {ageDisplay || '�'}
+                  <div className="space-y-1">
+                    <Label htmlFor="fp-lastName">Apellidos *</Label>
+                    <Input
+                      id="fp-lastName"
+                      value={form.lastName}
+                      onChange={e => setForm(f => ({ ...f, lastName: e.target.value }))}
+                      placeholder="Ej: González"
+                    />
                   </div>
                 </div>
-              </div>
 
-              <div className="space-y-1">
-                <Label htmlFor="fp-weight">Peso (kg)</Label>
-                <Input
-                  id="fp-weight" type="number" min="1" max="300"
-                  value={form.weight ?? ''}
-                  onChange={e => setForm(f => ({ ...f, weight: e.target.value ? Number(e.target.value) : undefined }))}
-                  placeholder="Ej: 70"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <Label>Pa�s de Residencia</Label>
-                <Select
-                  value={form.country ?? ''}
-                  onValueChange={v => setForm(f => ({
-                    ...f,
-                    country: v as FamilyProfile['country'],
-                    insuranceProvider: '',
-                    insuranceProviderName: ''
-                  }))}
-                >
-                  <SelectTrigger><SelectValue placeholder="Selecciona un pa�s" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="chile">
-                      <div className="flex items-center gap-2"><MapPin className="h-3 w-3" /> Chile</div>
-                    </SelectItem>
-                    <SelectItem value="argentina">
-                      <div className="flex items-center gap-2"><MapPin className="h-3 w-3" /> Argentina</div>
-                    </SelectItem>
-                    <SelectItem value="colombia">
-                      <div className="flex items-center gap-2"><MapPin className="h-3 w-3" /> Colombia</div>
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {selectedCountryData && (
                 <div className="space-y-1">
-                  <Label>{selectedCountryData.label}</Label>
+                  <Label>Parentesco *</Label>
                   <Select
-                    value={form.insuranceProvider ?? ''}
-                    onValueChange={v => setForm(f => ({ ...f, insuranceProvider: v, insuranceProviderName: '' }))}
+                    value={form.relationship}
+                    onValueChange={v => setForm(f => ({ ...f, relationship: v, esTitular: v === 'Titular' }))}
                   >
-                    <SelectTrigger>
-                      <SelectValue placeholder={`Selecciona ${selectedCountryData.label.toLowerCase()}`} />
-                    </SelectTrigger>
+                    <SelectTrigger><SelectValue placeholder="Selecciona el parentesco" /></SelectTrigger>
                     <SelectContent>
-                      {selectedCountryData.options.map(opt => <SelectItem key={opt} value={opt}>{opt}</SelectItem>)}
+                      {RELATIONSHIPS.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
-              )}
 
-              {selectedCountryData && form.insuranceProvider &&
-                selectedCountryData.requiresInputFor.includes(form.insuranceProvider) && (
+                <div className="space-y-2">
+                  <Label>Sexo *</Label>
+                  <RadioGroup
+                    value={form.sex}
+                    onValueChange={v => setForm(f => ({ ...f, sex: v as FamilyProfile['sex'] }))}
+                    className="flex gap-4"
+                  >
+                    <div className="flex items-center gap-2">
+                      <RadioGroupItem value="male" id="fp-male" />
+                      <Label htmlFor="fp-male">Masculino</Label>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <RadioGroupItem value="female" id="fp-female" />
+                      <Label htmlFor="fp-female">Femenino</Label>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <RadioGroupItem value="other" id="fp-other" />
+                      <Label htmlFor="fp-other">Indeterminado</Label>
+                    </div>
+                  </RadioGroup>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1">
-                    <Label htmlFor="fp-insurance-name">
-                      {selectedCountryData.inputLabel(form.insuranceProvider)}
-                    </Label>
+                    <Label htmlFor="fp-dob">Fecha de Nacimiento *</Label>
                     <Input
-                      id="fp-insurance-name"
-                      value={form.insuranceProviderName ?? ''}
-                      onChange={e => setForm(f => ({ ...f, insuranceProviderName: e.target.value }))}
+                      id="fp-dob" type="date"
+                      value={form.dateOfBirth}
+                      onChange={e => setForm(f => ({ ...f, dateOfBirth: e.target.value }))}
                     />
+                  </div>
+                  <div className="space-y-1">
+                    <Label>Edad calculada</Label>
+                    <div className="flex items-center h-9 px-3 rounded-md border bg-muted text-sm text-muted-foreground">
+                      {ageDisplay || '—'}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <Label htmlFor="fp-weight">Peso (kg)</Label>
+                  <Input
+                    id="fp-weight" type="number" min="1" max="300"
+                    value={form.weight ?? ''}
+                    onChange={e => setForm(f => ({ ...f, weight: e.target.value ? Number(e.target.value) : undefined }))}
+                    placeholder="Ej: 70"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <Label>País de Residencia</Label>
+                  <Select
+                    value={form.country ?? ''}
+                    onValueChange={v => setForm(f => ({
+                      ...f,
+                      country: v as FamilyProfile['country'],
+                      insuranceProvider: '',
+                      insuranceProviderName: ''
+                    }))}
+                  >
+                    <SelectTrigger><SelectValue placeholder="Selecciona un país" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="chile">
+                        <div className="flex items-center gap-2"><MapPin className="h-3 w-3" /> Chile</div>
+                      </SelectItem>
+                      <SelectItem value="argentina">
+                        <div className="flex items-center gap-2"><MapPin className="h-3 w-3" /> Argentina</div>
+                      </SelectItem>
+                      <SelectItem value="colombia">
+                        <div className="flex items-center gap-2"><MapPin className="h-3 w-3" /> Colombia</div>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {selectedCountryData && (
+                  <div className="space-y-1">
+                    <Label>{selectedCountryData.label}</Label>
+                    <Select
+                      value={form.insuranceProvider ?? ''}
+                      onValueChange={v => setForm(f => ({ ...f, insuranceProvider: v, insuranceProviderName: '' }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder={`Selecciona ${selectedCountryData.label.toLowerCase()}`} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {selectedCountryData.options.map(opt => <SelectItem key={opt} value={opt}>{opt}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
                   </div>
                 )}
-            </TabsContent>
 
-            {/* Tab: Historial Médico */}
-            <TabsContent value="historial" className="space-y-4">
-
-              {/* Alergias y medicamentos: vienen del doc padre, disponibles de inmediato */}
-              <div className="space-y-1">
-                <Label htmlFor="fp-allergies" className="flex items-center gap-1">
-                  <AlertCircle className="h-4 w-4 text-orange-400" /> Alergias (separadas por comas)
-                </Label>
-                <Textarea
-                  id="fp-allergies" rows={2}
-                  value={allergiesText}
-                  onChange={e => setAllergiesText(e.target.value)}
-                  placeholder="Ej: Penicilina, Mariscos, Látex"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <Label htmlFor="fp-medications" className="flex items-center gap-1">
-                  <Pill className="h-4 w-4 text-accent" /> Medicamentos Frecuentes (separados por comas)
-                </Label>
-                <Textarea
-                  id="fp-medications" rows={2}
-                  value={medicationsText}
-                  onChange={e => setMedicationsText(e.target.value)}
-                  placeholder="Ej: Metformina 850mg, Losartán 50mg"
-                />
-              </div>
-
-              {/* Historial clínico pesado: cargado bajo demanda desde historial/registro */}
-              {loadingMedical ? (
-                <div className="flex items-center justify-center py-8 gap-3 text-muted-foreground">
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                  <span className="text-sm">Cargando historial clínico...</span>
-                </div>
-              ) : (
-                <>
-                  <div className="space-y-1">
-                    <Label htmlFor="fp-pathological" className="flex items-center gap-1">
-                      <HeartPulse className="h-4 w-4 text-red-400" /> Antecedentes Patológicos
-                    </Label>
-                    <Textarea
-                      id="fp-pathological" rows={3}
-                      value={form.pathologicalHistory ?? ''}
-                      onChange={e => setForm(f => ({ ...f, pathologicalHistory: e.target.value }))}
-                      placeholder="Ej: Hipertensión diagnosticada en 2010, Diabetes tipo 2..."
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <Label htmlFor="fp-surgical" className="flex items-center gap-1">
-                      <Stethoscope className="h-4 w-4 text-purple-400" /> Antecedentes Quirúrgicos
-                    </Label>
-                    <Textarea
-                      id="fp-surgical" rows={3}
-                      value={form.surgicalHistory ?? ''}
-                      onChange={e => setForm(f => ({ ...f, surgicalHistory: e.target.value }))}
-                      placeholder="Ej: Apendicectomía en 2005, Cesárea en 2012..."
-                    />
-                  </div>
-
-                  {form.sex === 'female' && (
+                {selectedCountryData && form.insuranceProvider &&
+                  selectedCountryData.requiresInputFor.includes(form.insuranceProvider) && (
                     <div className="space-y-1">
-                      <Label htmlFor="fp-gyneco" className="flex items-center gap-1">
-                        <Baby className="h-4 w-4 text-pink-400" /> Antecedentes Gineco-Obstétricos
+                      <Label htmlFor="fp-insurance-name">
+                        {selectedCountryData.inputLabel(form.insuranceProvider)}
                       </Label>
-                      <Textarea
-                        id="fp-gyneco" rows={3}
-                        value={form.gynecologicalHistory ?? ''}
-                        onChange={e => setForm(f => ({ ...f, gynecologicalHistory: e.target.value }))}
-                        placeholder="Ej: G2P1A1, FUM: enero 2025..."
+                      <Input
+                        id="fp-insurance-name"
+                        value={form.insuranceProviderName ?? ''}
+                        onChange={e => setForm(f => ({ ...f, insuranceProviderName: e.target.value }))}
                       />
                     </div>
                   )}
-                </>
-              )}
-            </TabsContent>
+              </TabsContent>
 
-            {/* Tab: Documentos Médicos */}
-            <TabsContent value="documentos" className="space-y-4">
-              <MemberDocumentList userId={userId!} profileId={editingId} />
-            </TabsContent>
+              {/* Tab: Historial Médico */}
+              <TabsContent value="historial" className="space-y-4">
+
+                {/* Alergias y medicamentos: vienen del doc padre, disponibles de inmediato */}
+                <div className="space-y-1">
+                  <Label htmlFor="fp-allergies" className="flex items-center gap-1">
+                    <AlertCircle className="h-4 w-4 text-orange-400" /> Alergias (separadas por comas)
+                  </Label>
+                  <Textarea
+                    id="fp-allergies" rows={2}
+                    value={allergiesText}
+                    onChange={e => setAllergiesText(e.target.value)}
+                    placeholder="Ej: Penicilina, Mariscos, Látex"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <Label htmlFor="fp-medications" className="flex items-center gap-1">
+                    <Pill className="h-4 w-4 text-accent" /> Medicamentos Frecuentes (separados por comas)
+                  </Label>
+                  <Textarea
+                    id="fp-medications" rows={2}
+                    value={medicationsText}
+                    onChange={e => setMedicationsText(e.target.value)}
+                    placeholder="Ej: Metformina 850mg, Losartán 50mg"
+                  />
+                </div>
+
+                {/* Historial clínico pesado: cargado bajo demanda desde historial/registro */}
+                {loadingMedical ? (
+                  <div className="flex items-center justify-center py-8 gap-3 text-muted-foreground">
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                    <span className="text-sm">Cargando historial clínico...</span>
+                  </div>
+                ) : (
+                  <>
+                    <div className="space-y-1">
+                      <Label htmlFor="fp-pathological" className="flex items-center gap-1">
+                        <HeartPulse className="h-4 w-4 text-red-400" /> Antecedentes Patológicos
+                      </Label>
+                      <Textarea
+                        id="fp-pathological" rows={3}
+                        value={form.pathologicalHistory ?? ''}
+                        onChange={e => setForm(f => ({ ...f, pathologicalHistory: e.target.value }))}
+                        placeholder="Ej: Hipertensión diagnosticada en 2010, Diabetes tipo 2..."
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <Label htmlFor="fp-surgical" className="flex items-center gap-1">
+                        <Stethoscope className="h-4 w-4 text-purple-400" /> Antecedentes Quirúrgicos
+                      </Label>
+                      <Textarea
+                        id="fp-surgical" rows={3}
+                        value={form.surgicalHistory ?? ''}
+                        onChange={e => setForm(f => ({ ...f, surgicalHistory: e.target.value }))}
+                        placeholder="Ej: Apendicectomía en 2005, Cesárea en 2012..."
+                      />
+                    </div>
+
+                    {form.sex === 'female' && (
+                      <div className="space-y-1">
+                        <Label htmlFor="fp-gyneco" className="flex items-center gap-1">
+                          <Baby className="h-4 w-4 text-pink-400" /> Antecedentes Gineco-Obstétricos
+                        </Label>
+                        <Textarea
+                          id="fp-gyneco" rows={3}
+                          value={form.gynecologicalHistory ?? ''}
+                          onChange={e => setForm(f => ({ ...f, gynecologicalHistory: e.target.value }))}
+                          placeholder="Ej: G2P1A1, FUM: enero 2025..."
+                        />
+                      </div>
+                    )}
+                  </>
+                )}
+              </TabsContent>
+
+              {/* Tab: Documentos Médicos */}
+              <TabsContent value="documentos" className="space-y-4">
+                <MemberDocumentList userId={userId!} profileId={editingId} />
+              </TabsContent>
 
           </Tabs>
 
@@ -915,3 +899,4 @@ export function FamilyProfiles() {
     </div>
   );
 }
+

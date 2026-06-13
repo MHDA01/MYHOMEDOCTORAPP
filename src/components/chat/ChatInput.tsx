@@ -5,9 +5,10 @@
 
 import { useState, useEffect, useRef, FormEvent } from 'react';
 import { useSpeechRecognition } from '@/hooks/useSpeechRecognition';
+import { Camera } from 'lucide-react';
 
 interface ChatInputProps {
-  onSend: (message: string) => void;
+  onSend: (message: string, images?: File[]) => void;
   disabled?: boolean;
   placeholder?: string;
   memberName?: string;
@@ -20,17 +21,22 @@ export default function ChatInput({
   memberName = '',
 }: ChatInputProps) {
   const [text, setText] = useState('');
+  const [selectedImages, setSelectedImages] = useState<File[]>([]);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
   const {
     transcript,
     interimTranscript,
     isListening,
     isSupported,
+    hasPermission,
     toggleListening,
     stopListening,
     resetTranscript,
+    clearError,
     error: speechError,
   } = useSpeechRecognition();
+  const [micErrorFx, setMicErrorFx] = useState(false);
 
   useEffect(() => {
     const mergedTranscript = `${transcript} ${interimTranscript}`.trim();
@@ -39,7 +45,17 @@ export default function ChatInput({
     }
   }, [transcript, interimTranscript]);
 
-  // Auto-resize del textarea
+  useEffect(() => {
+    if (!speechError) return;
+    setMicErrorFx(true);
+    const fxTimer = window.setTimeout(() => setMicErrorFx(false), 450);
+    const clearTimer = window.setTimeout(() => clearError(), 3000);
+    return () => {
+      window.clearTimeout(fxTimer);
+      window.clearTimeout(clearTimer);
+    };
+  }, [speechError, clearError]);
+
   useEffect(() => {
     const ta = textareaRef.current;
     if (ta) {
@@ -51,14 +67,14 @@ export default function ChatInput({
   const handleSubmit = (e?: FormEvent) => {
     e?.preventDefault();
     const trimmed = text.trim();
-    if (!trimmed || disabled) return;
+    if ((!trimmed && selectedImages.length === 0) || disabled) return;
 
     if (isListening) stopListening();
-    onSend(trimmed);
+    onSend(trimmed || 'Adjunto imágenes para orientación clínica.', selectedImages);
     setText('');
+    setSelectedImages([]);
     resetTranscript();
 
-    // Re-focus
     setTimeout(() => textareaRef.current?.focus(), 50);
   };
 
@@ -69,6 +85,27 @@ export default function ChatInput({
     }
   };
 
+  const handleMicClick = async () => {
+    if (disabled) return;
+    await toggleListening();
+  };
+
+  const handleCameraClick = () => {
+    if (disabled) return;
+    imageInputRef.current?.click();
+  };
+
+  const handleImageSelection = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []).filter((file) => /image\/(jpeg|jpg|png)/i.test(file.type));
+    if (!files.length) return;
+    setSelectedImages((prev) => [...prev, ...files].slice(0, 4));
+    e.target.value = '';
+  };
+
+  const removeSelectedImage = (index: number) => {
+    setSelectedImages((prev) => prev.filter((_, i) => i !== index));
+  };
+
   const defaultPlaceholder = memberName
     ? `Escribe tu consulta sobre ${memberName}...`
     : 'Escribe tu consulta...';
@@ -76,7 +113,7 @@ export default function ChatInput({
   return (
     <div className="sticky bottom-0 z-20 border-t border-slate-200 bg-white/95 px-3 pb-[max(12px,env(safe-area-inset-bottom))] pt-3 backdrop-blur md:px-6">
       {speechError && (
-        <div className="mb-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
+        <div className="mb-2 px-1 text-xs text-red-600">
           {speechError}
         </div>
       )}
@@ -93,10 +130,30 @@ export default function ChatInput({
         </div>
       )}
 
+      {selectedImages.length > 0 && (
+        <div className="mb-2 flex flex-wrap gap-2 rounded-lg border border-blue-100 bg-blue-50 p-2">
+          {selectedImages.map((file, index) => (
+            <div key={`${file.name}-${index}`} className="flex items-center gap-2 rounded-md bg-white px-2 py-1 text-xs text-slate-700">
+              <span className="max-w-[140px] truncate">{file.name}</span>
+              <button
+                type="button"
+                onClick={() => removeSelectedImage(index)}
+                className="text-slate-400 hover:text-slate-700"
+                aria-label="Quitar imagen"
+              >
+                ×
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
       <form onSubmit={handleSubmit} className="flex items-end gap-2 rounded-2xl border border-slate-200 bg-white p-2">
         {/* Textarea */}
         <div className="relative flex-1">
           <textarea
+            id="chat-message-input"
+            name="chat-message"
             ref={textareaRef}
             value={text}
             onChange={(e) => setText(e.target.value)}
@@ -108,18 +165,41 @@ export default function ChatInput({
           />
         </div>
 
+        <input
+          id="chat-image-upload"
+          name="chat-image-upload"
+          ref={imageInputRef}
+          type="file"
+          accept="image/jpeg,image/jpg,image/png"
+          capture="environment"
+          multiple
+          className="hidden"
+          onChange={handleImageSelection}
+          aria-label="Subir imagen clínica"
+        />
+
+        <button
+          type="button"
+          onClick={handleCameraClick}
+          disabled={disabled}
+          aria-label="Tomar o subir foto"
+          className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-blue-500 bg-blue-50 text-blue-600 transition-all duration-200 hover:bg-blue-100 disabled:opacity-50"
+        >
+          <Camera className="h-5 w-5" />
+        </button>
+
         {/* Botón de micrófono */}
-        {isSupported && (
+        {isSupported ? (
           <button
             type="button"
-            onClick={toggleListening}
+            onClick={handleMicClick}
             disabled={disabled}
             aria-label={isListening ? 'Detener micrófono' : 'Activar micrófono'}
             className={`relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full border transition-all duration-200 ${
-              isListening
+              isListening && hasPermission
                 ? 'border-red-400 bg-red-500 text-white animate-pulse-ring'
-                : 'border-slate-300 bg-white text-slate-600 hover:bg-slate-50'
-            } disabled:opacity-50`}
+                : 'border-teal-500 bg-teal-50 text-teal-600 hover:bg-teal-100'
+            } ${micErrorFx ? 'animate-shake-x' : ''} disabled:opacity-50`}
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -127,19 +207,21 @@ export default function ChatInput({
               fill="currentColor"
               className="h-5 w-5"
             >
-              {isListening ? (
+              {isListening && hasPermission ? (
                 <path d="M6 6h12v12H6z" />
               ) : (
                 <path d="M12 14a3 3 0 003-3V5a3 3 0 10-6 0v6a3 3 0 003 3zm5-3a5 5 0 01-10 0H5a7 7 0 0014 0h-2zm-5 9a1 1 0 01-1-1v-1.07A7.007 7.007 0 015 11H3a9.009 9.009 0 008 8.93V20a1 1 0 011-1h0a1 1 0 011 1v0z" />
               )}
             </svg>
           </button>
+        ) : (
+          <p className="px-2 text-[11px] text-slate-500">Tu navegador no soporta el micrófono. Usa Chrome.</p>
         )}
 
-        {/* Botón de enviar */}
+        {/* Botón de enviar — siempre visible */}
         <button
           type="submit"
-          disabled={disabled || !text.trim()}
+          disabled={disabled && !text.trim() && selectedImages.length === 0}
           aria-label="Enviar mensaje"
           className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-slate-900 text-white transition-all duration-200 hover:bg-slate-700 disabled:opacity-40 disabled:hover:bg-slate-900"
         >

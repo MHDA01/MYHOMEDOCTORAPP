@@ -11,12 +11,50 @@ export default function RootLayout({
 }>) {
 
   useEffect(() => {
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker
-        .register('/sw.js')
-        .then((registration) => console.log('Service Worker registrado con éxito:', registration))
-        .catch((error) => console.log('Error en el registro del Service Worker:', error));
+    if (!('serviceWorker' in navigator)) {
+      return;
     }
+
+    let isRefreshing = false;
+    const hadController = Boolean(navigator.serviceWorker.controller);
+
+    const handleControllerChange = () => {
+      if (!hadController || isRefreshing) {
+        return;
+      }
+      isRefreshing = true;
+      window.location.reload();
+    };
+
+    navigator.serviceWorker.addEventListener('controllerchange', handleControllerChange);
+
+    navigator.serviceWorker
+      .register('/sw.js')
+      .then((registration) => {
+        if (registration.waiting) {
+          registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+        }
+
+        registration.addEventListener('updatefound', () => {
+          const installingWorker = registration.installing;
+          if (!installingWorker) {
+            return;
+          }
+
+          installingWorker.addEventListener('statechange', () => {
+            if (installingWorker.state === 'installed' && navigator.serviceWorker.controller && registration.waiting) {
+              registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+            }
+          });
+        });
+
+        return registration.update();
+      })
+      .catch(() => undefined);
+
+    return () => {
+      navigator.serviceWorker.removeEventListener('controllerchange', handleControllerChange);
+    };
   }, []);
 
   return (
@@ -36,7 +74,7 @@ export default function RootLayout({
         <meta name="format-detection" content="telephone=no" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="theme-color" content="#3B82F6" />
-        <link rel="apple-touch-icon" href="/images/logo.webp" />
+        <link rel="apple-touch-icon" href="/images/LOGO_1_transparent.png" />
       </head>
       <body className="font-body antialiased">
         {children}

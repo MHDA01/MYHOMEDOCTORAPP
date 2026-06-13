@@ -32,11 +32,11 @@ export default function ChatHeader({
         </svg>
       </button>
 
-      <div className="flex min-w-0 flex-1 items-center gap-3">
-        <DraHildaAvatar size="md" showStatus />
+      <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
+        <DraHildaAvatar size="sm" showStatus className="sm:[&>img]:h-10 sm:[&>img]:w-10" />
         <div className="min-w-0 flex-1">
-          <h1 className="truncate text-sm font-semibold text-slate-900">Dra. Hilda</h1>
-          <p className="truncate text-xs text-slate-500">
+          <h1 className="truncate text-lg font-semibold text-slate-900 md:text-3xl">Dra. Hilda AI</h1>
+          <p className="truncate text-xs text-slate-500 sm:text-sm">
             {memberName ? `Teleorientación para ${memberName}` : 'Asistente médico en línea'}
             {memberAge ? ` · ${memberAge} años` : ''}
             {memberSex ? ` · ${memberSex}` : ''}

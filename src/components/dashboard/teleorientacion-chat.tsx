@@ -1,671 +1,806 @@
+// ============================================================
+// components/dashboard/teleorientacion-chat.tsx
+// Pagina completa de Teleorientacion con Dra. Hilda AI.
+// Sidebar estilo ChatGPT con historial de conversaciones.
+// ============================================================
 'use client';
 
-/**
- * TeleorientacionChatPage
- * ──────────────────────────────────────────────────────────────────────────
- * Orientación Médica Familiar Empática — powered by Gemini 1.5 Pro
- *
- * Flujo:
- * 1. Selector de integrante familiar (oncSnapshot en Firestore).
- * 2. Al seleccionar, carga contexto médico completo:
- *    - Datos base del perfil (alergias, medicamentos, peso…)
- *    - Historial clínico completo (subcolección historial/registro)
- *    - Últimos laboratorios procesados por IDP (idpStatus === 'done')
- * 3. El chat inyecta un bloque [CONTEXTO DEL PACIENTE] oculto en cada turno.
- * 4. El modelo (Gemini 1.5 Pro) responde con orientación personalizada.
- * 5. Cambiar de integrante limpia el chat y actualiza el contexto instntáneamente.
- */
-
-import {
-  useState, useEffect, useRef, useContext, useCallback,
-} from 'react';
-import {
-  collection, onSnapshot, doc, getDoc, getDocs, query, where,
-  addDoc, setDoc, serverTimestamp, orderBy, limit, Timestamp,
-} from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { useState, useEffect, useContext, useCallback, useRef } from 'react';
 import { UserContext } from '@/context/user-context';
-import type { FamilyProfile, FamilyProfileMedical } from '@/lib/types';
+import { auth, db } from '@/lib/firebase';
+import { 
+  collection, 
+  query, 
+  orderBy, 
+  getDocs, 
+  doc, 
+  getDoc, 
+  addDoc, 
+  deleteDoc, 
+  serverTimestamp,
+  Timestamp 
+} from 'firebase/firestore';
 import {
-  COLECCION_TUTOR, SUBCOLECCION_INTEGRANTES,
-  SUBCOLECCION_HISTORIAL, DOC_HISTORIAL,
-} from '@/lib/constants';
-import {
-  sendOrientacionMessage,
+  sendTeleorientacionMessage,
+  persistSecureMessage,
+  getSecureMessages,
   type TeleorientacionMessage,
-  type TeleorientacionPatientContext,
-  type LabResult,
+  type PatientStructuredContext,
 } from '@/app/actions/teleorientacion';
-import { DashboardHeader } from '@/components/dashboard/header';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { 
+  saveFamilyMember,
+  getSecureFamilyMembers 
+} from '@/app/actions/family';
+import { storage } from '@/lib/firebase';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+
+import type { ChatMessage, Conversation } from '@/types/chat';
+import type { FamilyProfile } from '@/lib/types';
 import {
-  MessageCircleHeart, Send, ArrowLeft, User,
-  Loader2, Sparkles, FlaskConical, AlertCircle,
-  ShieldAlert, RotateCcw,
-} from 'lucide-react';
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
+import { MessageSquarePlus, Trash2 } from 'lucide-react';
+import ChatInterface from '@/components/chat/ChatInterface';
+import { 
+  COLECCION_TUTOR, 
+  SUBCOLECCION_INTEGRANTES, 
+  SUBCOLECCION_CONVERSACIONES 
+} from '@/lib/constants';
 
-// ── Constante ruta Firestore ─────────────────────────────────────────────────
-const SUB_ORIENTACIONES = 'orientaciones';
-const SUB_MENSAJES      = 'mensajes';
+/* ------------------------------------------------------------------ */
+/*  Helpers                                                            */
+/* ------------------------------------------------------------------ */
 
-// ── Tipos locales ────────────────────────────────────────────────────────────
-
-interface ChatEntry {
-  role: 'user' | 'model';
-  content: string;
-  timestamp: Date;
+function uid(): string {
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 }
 
-type View = 'select-member' | 'loading-context' | 'chat';
-
-// ── Helpers ──────────────────────────────────────────────────────────────────
-
-function calcAge(dob: string): number {
+function calcAge(dob: string | undefined): number | undefined {
+  if (!dob) return undefined;
   const birth = new Date(dob);
+  if (isNaN(birth.getTime())) return undefined;
   const today = new Date();
   let age = today.getFullYear() - birth.getFullYear();
   const m = today.getMonth() - birth.getMonth();
   if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
-  return age;
+  return age > 0 ? age : 0;
 }
 
-function initials(firstName: string, lastName: string): string {
-  return `${firstName?.[0] ?? ''}${lastName?.[0] ?? ''}`.toUpperCase();
+function sexLabel(sex: string | undefined): string {
+  if (!sex) return '';
+  const map: Record<string, string> = {
+    male: 'Masculino',
+    female: 'Femenino',
+    other: 'Otro',
+  };
+  return map[sex] ?? sex;
 }
 
-function sexLabel(sex?: string): string {
-  return sex === 'male' ? 'Masculino' : sex === 'female' ? 'Femenino' : 'Otro';
+function buildPatientContext(
+  member: FamilyProfile,
+  allergies?: string[]
+): PatientStructuredContext {
+  return {
+    firstName: member.firstName,
+    lastName: member.lastName,
+    age: calcAge(member.dateOfBirth),
+    sex: sexLabel(member.sex),
+    allergies: [...(member.allergies ?? []), ...(allergies ?? [])].filter(Boolean),
+    medications: member.medications ?? [],
+  };
 }
 
-function sexBadgeColor(sex?: string): string {
-  return sex === 'male'
-    ? 'bg-blue-100 text-blue-700 border-blue-200'
-    : sex === 'female'
-    ? 'bg-pink-100 text-pink-700 border-pink-200'
-    : 'bg-slate-100 text-slate-600 border-slate-200';
+interface StoredChatMessage {
+  role: 'user' | 'assistant';
+  content: string;
+  imageUrls?: string[];
+  timestamp?: Timestamp;
 }
 
-// Carga los últimos resultados IDP del integrante
-async function fetchLabResults(
-  userId: string,
-  profileId: string,
-  isTitular: boolean,
-): Promise<LabResult[]> {
-  try {
-    const collPath = isTitular
-      ? collection(db, COLECCION_TUTOR, userId, 'documents')
-      : collection(db, COLECCION_TUTOR, userId, SUBCOLECCION_INTEGRANTES, profileId, 'Documentos');
+function getConversationsCollectionRef(userUid: string) {
+  return collection(db, COLECCION_TUTOR, userUid, SUBCOLECCION_CONVERSACIONES);
+}
 
-    const q = query(collPath, where('idpStatus', '==', 'done'));
-    const snap = await getDocs(q);
-    return snap.docs
-      .map((d) => d.data().idpExtracted as LabResult)
-      .filter(Boolean);
-  } catch (e) {
-    console.warn('No se pudieron cargar resultados IDP:', e);
-    return [];
+function getConvMessagesCollectionRef(userUid: string, convId: string) {
+  return collection(db, COLECCION_TUTOR, userUid, SUBCOLECCION_CONVERSACIONES, convId, 'mensajes');
+}
+
+function getDayPeriodGreeting(): 'Buenos días' | 'Buenas tardes' | 'Buenas noches' {
+  const hour = new Date().getHours();
+  if (hour < 12) return 'Buenos días';
+  if (hour < 19) return 'Buenas tardes';
+  return 'Buenas noches';
+}
+
+function formatConvDate(date: Date): string {
+  return date.toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+type DateGroup = 'Hoy' | 'Ayer' | 'Últimos 7 días' | 'Últimos 30 días' | 'Anteriores';
+
+function getDateGroup(date: Date): DateGroup {
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const target = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const diffMs = today.getTime() - target.getTime();
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+  if (diffDays === 0) return 'Hoy';
+  if (diffDays === 1) return 'Ayer';
+  if (diffDays <= 7) return 'Últimos 7 días';
+  if (diffDays <= 30) return 'Últimos 30 días';
+  return 'Anteriores';
+}
+
+function groupConversations(convs: Conversation[]): Record<DateGroup, Conversation[]> {
+  const groups: Record<DateGroup, Conversation[]> = {
+    'Hoy': [],
+    'Ayer': [],
+    'Últimos 7 días': [],
+    'Últimos 30 días': [],
+    'Anteriores': [],
+  };
+  for (const c of convs) {
+    const group = getDateGroup(c.updatedAt);
+    groups[group].push(c);
   }
+  return groups;
 }
 
-// ── Componente ───────────────────────────────────────────────────────────────
+/* ------------------------------------------------------------------ */
+/*  Componente: Sidebar de conversaciones estilo ChatGPT               */
+/* ------------------------------------------------------------------ */
 
-export function TeleorientacionChatPage() {
-  const context = useContext(UserContext);
-  const userId  = context?.user?.uid;
+interface ConversationSidebarProps {
+  conversations: Conversation[];
+  selectedId: string | null;
+  onSelect: (conv: Conversation) => void;
+  onNewConversation: () => void;
+  onDelete: (convId: string) => void;
+  isOpen: boolean;
+  onClose: () => void;
+}
 
-  const [view, setView]                 = useState<View>('select-member');
-  const [profiles, setProfiles]         = useState<FamilyProfile[]>([]);
-  const [loadingProfiles, setLoadingProfiles] = useState(true);
-  const [selectedProfile, setSelectedProfile] = useState<FamilyProfile | null>(null);
-  const [patientContext, setPatientContext]    = useState<TeleorientacionPatientContext | null>(null);
-  const [messages, setMessages]         = useState<ChatEntry[]>([]);
-  const [history, setHistory]           = useState<TeleorientacionMessage[]>([]);
-  const [inputValue, setInputValue]     = useState('');
-  const [sending, setSending]           = useState(false);
-  const [aiError, setAiError]           = useState<string | null>(null);
-  const [loadingSession, setLoadingSession] = useState(false);
-
-  // sessionIdRef evita problemas de stale closure en las funciones de guardado
-  const sessionIdRef  = useRef<string | null>(null);
-  const scrollAreaRef = useRef<HTMLDivElement>(null);
-  const inputRef      = useRef<HTMLInputElement>(null);
-
-  // ── Helper: guardar un mensaje en Firestore ───────────────────────────────
-  const saveMsg = async (
-    profile: FamilyProfile,
-    role: 'user' | 'model',
-    content: string,
-  ) => {
-    if (!userId || !sessionIdRef.current) return;
-    try {
-      const msgsRef = collection(
-        db,
-        COLECCION_TUTOR, userId,
-        SUBCOLECCION_INTEGRANTES, profile.id,
-        SUB_ORIENTACIONES, sessionIdRef.current,
-        SUB_MENSAJES,
-      );
-      await addDoc(msgsRef, { role, content, timestamp: serverTimestamp() });
-    } catch (e) {
-      console.warn('No se pudo guardar mensaje en Firestore:', e);
-    }
-  };
-
-  // ── Cargar perfiles ───────────────────────────────────────────────────────
-  useEffect(() => {
-    if (!userId) return;
-    const ref = collection(db, COLECCION_TUTOR, userId, SUBCOLECCION_INTEGRANTES);
-    const unsub = onSnapshot(ref, (snap) => {
-      const data: FamilyProfile[] = snap.docs.map((d) => ({
-        id: d.id,
-        ...(d.data() as Omit<FamilyProfile, 'id'>),
-      }));
-      data.sort((a, b) => (b.esTitular ? 1 : 0) - (a.esTitular ? 1 : 0));
-      setProfiles(data);
-      setLoadingProfiles(false);
-    }, () => setLoadingProfiles(false));
-    return () => unsub();
-  }, [userId]);
-
-  // ── Auto-scroll ───────────────────────────────────────────────────────────
-  useEffect(() => {
-    const el = scrollAreaRef.current?.querySelector('[data-radix-scroll-area-viewport]');
-    if (el) el.scrollTop = el.scrollHeight;
-  }, [messages]);
-
-  // ── Seleccionar integrante ────────────────────────────────────────────────
-  const handleSelectProfile = useCallback(async (profile: FamilyProfile, forceNew = false) => {
-    if (!userId) return;
-    setMessages([]);
-    setHistory([]);
-    setInputValue('');
-    setAiError(null);
-    setSelectedProfile(profile);
-    setView('loading-context');
-    setLoadingSession(true);
-
-    // 1. Historial médico (subcolección historial/registro)
-    let medical: FamilyProfileMedical = {};
-    try {
-      const histRef = doc(
-        db, COLECCION_TUTOR, userId,
-        SUBCOLECCION_INTEGRANTES, profile.id,
-        SUBCOLECCION_HISTORIAL, DOC_HISTORIAL,
-      );
-      const snap = await getDoc(histRef);
-      if (snap.exists()) medical = snap.data() as FamilyProfileMedical;
-    } catch (e) {
-      console.warn('No se pudo cargar historial médico:', e);
-    }
-
-    // 2. Últimos resultados IDP
-    const labResults = await fetchLabResults(userId, profile.id, profile.esTitular ?? false);
-
-    const age = profile.age ?? (profile.dateOfBirth ? calcAge(profile.dateOfBirth) : undefined);
-
-    const ctx: TeleorientacionPatientContext = {
-      fullName: `${profile.firstName} ${profile.lastName}`,
-      age,
-      sex: profile.sex,
-      weight: profile.weight,
-      allergies: profile.allergies,
-      medications: profile.medications,
-      pathologicalHistory: medical.pathologicalHistory,
-      surgicalHistory: medical.surgicalHistory,
-      gynecologicalHistory: medical.gynecologicalHistory,
-      lastLabResults: labResults,
-    };
-    setPatientContext(ctx);
-
-    // 3. Intentar recuperar sesión del día de hoy (si no se fuerza nueva)
-    if (!forceNew) {
-      try {
-        const startOfToday = new Date();
-        startOfToday.setHours(0, 0, 0, 0);
-        const orientRef = collection(
-          db, COLECCION_TUTOR, userId,
-          SUBCOLECCION_INTEGRANTES, profile.id,
-          SUB_ORIENTACIONES,
-        );
-        const q = query(
-          orientRef,
-          where('createdAt', '>=', Timestamp.fromDate(startOfToday)),
-          orderBy('createdAt', 'desc'),
-          limit(1),
-        );
-        const sesionSnap = await getDocs(q);
-        if (!sesionSnap.empty) {
-          const sesionDoc = sesionSnap.docs[0];
-          sessionIdRef.current = sesionDoc.id;
-
-          // Cargar mensajes guardados
-          const msgsSnap = await getDocs(
-            query(
-              collection(sesionDoc.ref, SUB_MENSAJES),
-              orderBy('timestamp', 'asc'),
-            ),
-          );
-          if (!msgsSnap.empty) {
-            const recovered: ChatEntry[] = msgsSnap.docs.map((d) => {
-              const data = d.data();
-              const ts = data.timestamp instanceof Timestamp
-                ? data.timestamp.toDate()
-                : new Date();
-              return { role: data.role as 'user' | 'model', content: data.content, timestamp: ts };
-            });
-            // Gemini exige que el historial empiece siempre con 'user'.
-            // Eliminamos los mensajes 'model' iniciales (ej: mensaje de bienvenida).
-            const trimmed = [...recovered];
-            while (trimmed.length > 0 && trimmed[0].role === 'model') trimmed.shift();
-            const recoveredHistory = trimmed.map(m => ({ role: m.role, content: m.content }));
-            setMessages(recovered);
-            setHistory(recoveredHistory);
-            setLoadingSession(false);
-            setView('chat');
-            setTimeout(() => inputRef.current?.focus(), 100);
-            return; // sesión recuperada — no generar bienvenida nueva
-          }
-        }
-      } catch (e) {
-        console.warn('No se pudo recuperar sesión anterior:', e);
-      }
-    }
-
-    // 4. Crear nueva sesión en Firestore
-    const newSessionId = `sess_${Date.now()}`;
-    sessionIdRef.current = newSessionId;
-    try {
-      await setDoc(
-        doc(db, COLECCION_TUTOR, userId, SUBCOLECCION_INTEGRANTES, profile.id, SUB_ORIENTACIONES, newSessionId),
-        {
-          tutorId: userId,
-          pacienteId: profile.id,
-          pacienteName: `${profile.firstName} ${profile.lastName}`,
-          createdAt: serverTimestamp(),
-        },
-      );
-    } catch (e) {
-      console.warn('No se pudo crear sesión en Firestore:', e);
-    }
-
-    // 5. Mensaje de bienvenida empático generado por IA
-    const welcomeResult = await sendOrientacionMessage({
-      patientContext: ctx,
-      userMessage: `Hola, soy el familiar responsable de ${profile.firstName}. Tengo una consulta sobre su salud.`,
-      conversationHistory: [],
-    });
-
-    const welcomeText = welcomeResult.success
-      ? welcomeResult.response
-      : `Hola, estoy aquí para orientarte sobre la salud de ${profile.firstName} 💙. Cuéntame, ¿en qué puedo ayudarte hoy?`;
-
-    // Guardar bienvenida en Firestore (solo para display, NO entra al history de Gemini
-    // porque la API exige que el historial empiece con role 'user').
-    const welcomeEntry: ChatEntry = { role: 'model', content: welcomeText, timestamp: new Date() };
-    setMessages([welcomeEntry]);
-    setHistory([]); // Gemini history vacío: el primer turno real será del usuario
-    await saveMsg(profile, 'model', welcomeText);
-
-    setLoadingSession(false);
-    setView('chat');
-    setTimeout(() => inputRef.current?.focus(), 100);
-  }, [userId]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // ── Enviar mensaje ────────────────────────────────────────────────────────
-  const handleSend = async () => {
-    const text = inputValue.trim();
-    if (!text || !patientContext || sending) return;
-
-    setInputValue('');
-    setAiError(null);
-    setSending(true);
-
-    const userEntry: ChatEntry = { role: 'user', content: text, timestamp: new Date() };
-    const newHistory: TeleorientacionMessage[] = [...history, { role: 'user', content: text }];
-    setMessages((prev) => [...prev, userEntry]);
-
-    // Placeholder "pensando"
-    setMessages((prev) => [...prev, { role: 'model', content: '__thinking__', timestamp: new Date() }]);
-
-    // Guardar mensaje del usuario en Firestore
-    if (selectedProfile) await saveMsg(selectedProfile, 'user', text);
-
-    try {
-      const result = await sendOrientacionMessage({
-        patientContext,
-        userMessage: text,
-        conversationHistory: history,
-      });
-
-      const aiText = result.success
-        ? result.response
-        : '⚠️ No pude conectar con el asistente en este momento. Por favor, intenta de nuevo.';
-
-      if (!result.success) setAiError(result.error ?? null);
-
-      const aiEntry: ChatEntry = { role: 'model', content: aiText, timestamp: new Date() };
-      setMessages((prev) => [...prev.slice(0, -1), aiEntry]);
-      setHistory([...newHistory, { role: 'model', content: aiText }]);
-
-      // Guardar respuesta de IA en Firestore
-      if (selectedProfile) await saveMsg(selectedProfile, 'model', aiText);
-    } catch (e: any) {
-      setMessages((prev) => prev.slice(0, -1));
-      setAiError(e?.message ?? 'Error inesperado');
-    } finally {
-      setSending(false);
-      setTimeout(() => inputRef.current?.focus(), 50);
-    }
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); }
-  };
-
-  const handleReset = () => {
-    setView('select-member');
-    setSelectedProfile(null);
-    setPatientContext(null);
-    setMessages([]);
-    setHistory([]);
-    setInputValue('');
-    setAiError(null);
-    sessionIdRef.current = null;
-  };
-
-  // Nueva sesión para el mismo integrante
-  const handleNewSession = () => {
-    if (selectedProfile) {
-      handleSelectProfile(selectedProfile, true);
-    }
-  };
-
-  // ────────────────────────────────────────────────────────────────────────────
-  // RENDER
-  // ────────────────────────────────────────────────────────────────────────────
+function ConversationSidebar({
+  conversations,
+  selectedId,
+  onSelect,
+  onNewConversation,
+  onDelete,
+  isOpen,
+  onClose,
+}: ConversationSidebarProps) {
+  const grouped = groupConversations(conversations);
+  const groupOrder: DateGroup[] = ['Hoy', 'Ayer', 'Últimos 7 días', 'Últimos 30 días', 'Anteriores'];
 
   return (
-    <div className="flex flex-col h-full">
-      <DashboardHeader />
+    <>
+      {isOpen && (
+        <div
+          className="fixed inset-0 z-[9990] bg-black/50 lg:hidden"
+          onClick={onClose}
+          aria-hidden="true"
+        />
+      )}
 
-      <main className="flex-1 overflow-hidden flex flex-col p-4 md:p-6 lg:p-8">
-        <div className="mx-auto max-w-3xl w-full flex flex-col flex-1 min-h-0">
-
-          {/* ── STEP 1: Selección de integrante ──────────────────────────── */}
-          {view === 'select-member' && (
-            <div className="space-y-6">
-              {/* Encabezado */}
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-blue-100 rounded-xl">
-                  <MessageCircleHeart className="h-6 w-6 text-blue-600" />
-                </div>
-                <div>
-                  <h2 className="text-xl font-bold text-primary font-headline">
-                    Teleorientación Médica
-                  </h2>
-                  <p className="text-sm text-muted-foreground">
-                    ¿Sobre quién necesitas orientación hoy?
-                  </p>
-                </div>
-              </div>
-
-              {/* Aviso informativo */}
-              <Alert className="border-blue-200 bg-blue-50">
-                <Sparkles className="h-4 w-4 text-blue-600" />
-                <AlertDescription className="text-sm text-foreground/80">
-                  Nuestro Asistente de Orientación Médica conoce el historial clínico completo
-                  de cada integrante de tu familia y te brindará orientación{' '}
-                  <strong>personalizada y empática</strong>. No reemplaza la consulta médica presencial.
-                </AlertDescription>
-              </Alert>
-
-              {/* Grid de perfiles */}
-              {loadingProfiles ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {[1, 2, 3].map((i) => <Skeleton key={i} className="h-24 rounded-xl" />)}
-                </div>
-              ) : profiles.length === 0 ? (
-                <div className="text-center py-12 text-muted-foreground">
-                  <User className="h-10 w-10 mx-auto mb-3 opacity-40" />
-                  <p className="font-medium">No hay integrantes registrados</p>
-                  <p className="text-sm mt-1">Agrega tu perfil familiar en la sección "Mi Salud".</p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {profiles.map((profile) => {
-                    const age = profile.age ?? (profile.dateOfBirth ? calcAge(profile.dateOfBirth) : null);
-                    return (
-                      <button
-                        key={profile.id}
-                        onClick={() => handleSelectProfile(profile)}
-                        className="flex items-center gap-4 p-4 text-left rounded-xl border bg-card hover:bg-primary/5 hover:border-blue-300 hover:shadow-md transition-all duration-200 group"
-                      >
-                        <Avatar className="h-12 w-12 border-2 border-blue-100 group-hover:border-blue-300 transition-colors">
-                          <AvatarFallback className="bg-blue-50 text-blue-700 font-bold text-sm">
-                            {initials(profile.firstName, profile.lastName)}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-semibold text-foreground truncate">
-                            {profile.firstName} {profile.lastName}
-                          </p>
-                          <div className="flex items-center gap-2 mt-1 flex-wrap">
-                            {age !== null && (
-                              <span className="text-xs text-muted-foreground">{age} años</span>
-                            )}
-                            <span className={`text-xs px-2 py-0.5 rounded-full border font-medium ${sexBadgeColor(profile.sex)}`}>
-                              {sexLabel(profile.sex)}
-                            </span>
-                            {profile.esTitular && (
-                              <Badge variant="outline" className="text-xs border-blue-300 text-blue-700 bg-blue-50">
-                                Titular
-                              </Badge>
-                            )}
-                          </div>
-                          {profile.allergies?.length ? (
-                            <p className="text-xs text-amber-600 mt-1 truncate">
-                              ⚠️ Alergia: {profile.allergies.slice(0, 2).join(', ')}
-                            </p>
-                          ) : null}
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* ── STEP 2: Cargando contexto ────────────────────────────────── */}
-          {view === 'loading-context' && (
-            <div className="flex flex-col items-center justify-center flex-1 gap-5">
-              <div className="relative">
-                <div className="h-16 w-16 rounded-full bg-blue-100 flex items-center justify-center">
-                  <MessageCircleHeart className="h-8 w-8 text-blue-600" />
-                </div>
-                <Loader2 className="h-20 w-20 absolute -top-2 -left-2 animate-spin text-blue-400 opacity-60" />
-              </div>
-              <div className="text-center space-y-1">
-                <p className="font-semibold text-foreground">Preparando orientación personalizada…</p>
-                <p className="text-sm text-muted-foreground">
-                  Cargando historial clínico, laboratorios y sesiones previas de{' '}
-                  <span className="font-medium text-blue-600">{selectedProfile?.firstName}</span>
-                </p>
-              </div>
-              <div className="flex gap-2 text-xs text-muted-foreground mt-2">
-                {['Historial clínico', 'Alergias y medicamentos', 'Laboratorios IDP', 'Sesión anterior'].map((item) => (
-                  <span key={item} className="flex items-center gap-1 bg-muted px-2 py-1 rounded-full">
-                    <Loader2 className="h-3 w-3 animate-spin" /> {item}
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* ── STEP 3: Chat ─────────────────────────────────────────────── */}
-          {view === 'chat' && selectedProfile && patientContext && (
-            <div className="flex flex-col flex-1 min-h-0 gap-3">
-
-              {/* Cabecera contextual obligatoria */}
-              <div className="flex items-center gap-3 bg-card rounded-xl border border-blue-200 px-4 py-3 shadow-sm">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 text-muted-foreground hover:text-foreground shrink-0"
-                  onClick={handleReset}
-                  title="Cambiar integrante"
-                >
-                  <ArrowLeft className="h-4 w-4" />
-                </Button>
-
-                <Avatar className="h-10 w-10 border-2 border-blue-200 shrink-0">
-                  <AvatarFallback className="bg-blue-50 text-blue-700 font-bold text-sm">
-                    {initials(selectedProfile.firstName, selectedProfile.lastName)}
-                  </AvatarFallback>
-                </Avatar>
-
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium text-blue-600 uppercase tracking-wide">
-                    Orientando sobre
-                  </p>
-                  <p className="font-bold text-foreground truncate">
-                    {patientContext.fullName}
-                    <span className="font-normal text-muted-foreground text-sm ml-2">
-                      {patientContext.age !== undefined && `${patientContext.age} años`}
-                      {patientContext.age !== undefined && patientContext.sex && ' · '}
-                      {patientContext.sex && `Sexo: ${sexLabel(patientContext.sex)}`}
-                    </span>
-                  </p>
-                </div>
-
-                <div className="flex items-center gap-2 shrink-0">
-                  {patientContext.lastLabResults?.length ? (
-                    <Badge className="bg-blue-100 text-blue-700 border border-blue-200 text-xs gap-1 hidden sm:flex">
-                      <FlaskConical className="h-3 w-3" />
-                      {patientContext.lastLabResults.length} lab{patientContext.lastLabResults.length > 1 ? 's' : ''}
-                    </Badge>
-                  ) : null}
-                  {patientContext.allergies?.length ? (
-                    <Badge className="bg-amber-100 text-amber-700 border border-amber-200 text-xs hidden sm:flex">
-                      ⚠️ Alergias
-                    </Badge>
-                  ) : null}
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleNewSession}
-                    disabled={sending || loadingSession}
-                    className="h-7 gap-1 text-xs text-muted-foreground hover:text-foreground px-2 hidden sm:flex"
-                    title="Iniciar nueva sesión de orientación"
-                  >
-                    <RotateCcw className="h-3 w-3" /> Nueva sesión
-                  </Button>
-                </div>
-              </div>
-
-              {/* ── Banner legal fijo (Escudo Legal) ─────────────────── */}
-              <div className="flex gap-2.5 items-start rounded-xl border border-red-200 bg-red-50 px-3.5 py-2.5 shrink-0">
-                <ShieldAlert className="h-4 w-4 text-red-600 mt-0.5 shrink-0" />
-                <p className="text-[11px] leading-relaxed text-red-800">
-                  <strong>Atención:</strong> Este es un servicio de orientación asistido por Inteligencia Artificial.
-                  <strong> NO emite diagnósticos ni reemplaza una consulta médica formal.</strong> Si usted o su
-                  familiar presenta una emergencia vital (dolor en el pecho, dificultad para respirar, pérdida de
-                  conocimiento), diríjase inmediatamente a urgencias o comuníquese con la línea{' '}
-                  <strong>123</strong>.
-                </p>
-              </div>
-
-              {/* Área de mensajes */}
-              <ScrollArea className="flex-1 min-h-0 rounded-xl border bg-muted/20" ref={scrollAreaRef}>
-                <div className="p-4 space-y-4">
-                  {messages.map((msg, i) => (
-                    <div
-                      key={i}
-                      className={`flex gap-3 ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}
-                    >
-                      {/* Avatar */}
-                      {msg.role === 'model' ? (
-                        <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center shrink-0 mt-1">
-                          <MessageCircleHeart className="h-4 w-4 text-blue-600" />
-                        </div>
-                      ) : (
-                        <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0 mt-1">
-                          <User className="h-4 w-4 text-primary" />
-                        </div>
-                      )}
-
-                      {/* Burbuja */}
-                      <div className={`max-w-[78%] ${msg.role === 'user' ? 'items-end' : 'items-start'} flex flex-col gap-1`}>
-                        <div
-                          className={`rounded-2xl px-4 py-2.5 text-sm leading-relaxed shadow-sm ${
-                            msg.role === 'user'
-                              ? 'bg-primary text-primary-foreground rounded-tr-sm'
-                              : 'bg-card text-foreground border border-border rounded-tl-sm'
-                          }`}
-                        >
-                          {msg.content === '__thinking__' ? (
-                            <span className="flex items-center gap-2 text-muted-foreground">
-                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                              <span className="italic text-xs">El asistente está pensando…</span>
-                            </span>
-                          ) : (
-                            <p className="whitespace-pre-wrap">{msg.content}</p>
-                          )}
-                        </div>
-                        <span className="text-[10px] text-muted-foreground px-1">
-                          {msg.timestamp.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </ScrollArea>
-
-              {/* Error IA */}
-              {aiError && (
-                <Alert variant="destructive" className="py-2">
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertDescription className="text-xs">{aiError}</AlertDescription>
-                </Alert>
-              )}
-
-              {/* Input */}
-              <div className="flex gap-2 items-center bg-card rounded-xl border px-3 py-2 shadow-sm focus-within:border-blue-300 focus-within:ring-1 focus-within:ring-blue-200 transition-all">
-                <Input
-                  ref={inputRef}
-                  value={inputValue}
-                  onChange={(e) => setInputValue(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  placeholder={`Escribe tu consulta sobre ${selectedProfile.firstName}…`}
-                  disabled={sending}
-                  className="border-0 shadow-none focus-visible:ring-0 bg-transparent text-sm flex-1"
-                />
-                <Button
-                  size="icon"
-                  onClick={handleSend}
-                  disabled={!inputValue.trim() || sending}
-                  className="h-8 w-8 rounded-lg bg-primary hover:bg-primary/90 text-white shrink-0"
-                >
-                  {sending
-                    ? <Loader2 className="h-4 w-4 animate-spin" />
-                    : <Send className="h-4 w-4" />}
-                </Button>
-              </div>
-
-              <p className="text-center text-[10px] text-muted-foreground">
-                Este asistente <strong>no diagnóstica ni receta</strong>. Para evaluación clínica, agenda una teleconsulta con el Dr. García.
-              </p>
-            </div>
-          )}
-
+      <aside
+        className={`fixed inset-y-0 left-0 z-[9991] w-72 transform border-r border-slate-200 bg-white transition-transform duration-200 lg:relative lg:z-0 lg:translate-x-0 flex flex-col ${
+          isOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
+      >
+        <div className="flex h-14 items-center border-b border-slate-200 px-4 flex-shrink-0">
+          <h2 className="text-sm font-semibold text-slate-800">
+            Conversaciones
+          </h2>
+          <button
+            onClick={onClose}
+            className="ml-auto rounded-lg p-1 text-slate-400 hover:text-slate-600 lg:hidden"
+            aria-label="Cerrar menú"
+          >
+            \u2715
+          </button>
         </div>
-      </main>
+
+        <div className="px-3 py-3 flex-shrink-0">
+          <button
+            onClick={() => {
+              onNewConversation();
+              onClose();
+            }}
+            className="flex w-full items-center gap-2 rounded-xl border border-dashed border-slate-300 px-3 py-2.5 text-sm font-medium text-slate-600 transition-colors hover:border-teal-400 hover:bg-teal-50 hover:text-teal-700"
+          >
+            <MessageSquarePlus className="h-4 w-4" />
+            Nueva conversación
+          </button>
+        </div>
+
+        <nav className="flex-1 overflow-y-auto px-3 pb-3">
+          {conversations.length === 0 && (
+            <p className="px-2 py-4 text-center text-xs text-slate-400">
+              No hay conversaciones aún. Inicia una nueva.
+            </p>
+          )}
+          {groupOrder.map((group) => {
+            const items = grouped[group];
+            if (items.length === 0) return null;
+            return (
+              <div key={group} className="mb-3">
+                <p className="mb-1 px-2 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+                  {group}
+                </p>
+                {items.map((c) => {
+                  const isSelected = c.id === selectedId;
+                  return (
+                    <div
+                      key={c.id}
+                      className={`group mb-0.5 flex items-center rounded-xl transition-colors ${
+                        isSelected
+                          ? 'bg-teal-50 text-teal-800'
+                          : 'text-slate-700 hover:bg-slate-50'
+                      }`}
+                    >
+                      <button
+                        onClick={() => {
+                          onSelect(c);
+                          onClose();
+                        }}
+                        className="flex-1 min-w-0 px-3 py-2.5 text-left"
+                      >
+                        <p className="truncate text-sm font-medium">
+                          {c.title}
+                        </p>
+                        <p className="text-[11px] text-slate-400">
+                          {c.memberName}
+                        </p>
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onDelete(c.id);
+                        }}
+                        className="mr-2 rounded-lg p-1 text-slate-300 opacity-0 transition-opacity hover:text-red-500 group-hover:opacity-100"
+                        aria-label="Eliminar conversación"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })}
+        </nav>
+      </aside>
+    </>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Componente: Selector de integrante (modal)                         */
+/* ------------------------------------------------------------------ */
+
+interface MemberPickerProps {
+  open: boolean;
+  members: FamilyProfile[];
+  onSelect: (member: FamilyProfile) => void;
+  onClose: () => void;
+}
+
+function MemberPicker({ open, members, onSelect, onClose }: MemberPickerProps) {
+  return (
+    <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>¿Para quién es esta consulta?</DialogTitle>
+          <DialogDescription>
+            Selecciona el integrante de tu familia que necesita orientación.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-2 py-2">
+          {members.map((m) => {
+            const age = calcAge(m.dateOfBirth);
+            return (
+              <button
+                key={m.id}
+                onClick={() => onSelect(m)}
+                className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left transition-colors hover:bg-teal-50"
+              >
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-teal-100 text-sm font-bold text-teal-700">
+                  {m.firstName?.charAt(0)?.toUpperCase() ?? '?'}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium text-slate-800">
+                    {m.firstName} {m.lastName}
+                  </p>
+                  <p className="text-xs text-slate-500">
+                    {m.relationship ?? 'Integrante'}
+                    {age !== undefined ? ` · ${age} años` : ''}
+                  </p>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Componente principal exportado                                      */
+/* ------------------------------------------------------------------ */
+
+export function TeleorientacionChatPage() {
+  const ctx = useContext(UserContext);
+  const user = ctx?.user ?? null;
+  const personalInfo = ctx?.personalInfo ?? null;
+  const healthInfo = ctx?.healthInfo ?? null;
+
+  const [members, setMembers] = useState<FamilyProfile[]>([]);
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [selectedConv, setSelectedConv] = useState<Conversation | null>(null);
+  const [selectedMember, setSelectedMember] = useState<FamilyProfile | null>(null);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isHistoryLoading, setIsHistoryLoading] = useState(false);
+  const [showMemberPicker, setShowMemberPicker] = useState(false);
+  const initialGreetingTriggeredRef = useRef<Record<string, boolean>>({});
+
+  /* ---- Cargar integrantes ---- */
+  useEffect(() => {
+    if (!user) return;
+    const load = async () => {
+      try {
+        const idToken = await auth.currentUser?.getIdToken();
+        if (!idToken) return;
+        const list = await getSecureFamilyMembers(idToken);
+        
+        // Ordenar por nombre
+        const sorted = (list as FamilyProfile[]).sort((a, b) => 
+          (a.firstName || '').localeCompare(b.firstName || '')
+        );
+        
+        setMembers(sorted);
+      } catch (err) {
+        console.error('[Teleorientación] Error cargando integrantes:', err);
+      }
+    };
+    load();
+  }, [user]);
+
+  /* ---- Crear titular por defecto si no existe ---- */
+  useEffect(() => {
+    if (!user || !personalInfo || members.length > 0) return;
+
+    const createTitularProfile = async () => {
+      try {
+        const titularRef = doc(
+          db,
+          COLECCION_TUTOR,
+          user.uid,
+          SUBCOLECCION_INTEGRANTES,
+          'titular'
+        );
+
+        const dateOfBirth =
+          personalInfo.dateOfBirth instanceof Date
+            ? personalInfo.dateOfBirth.toISOString().split('T')[0]
+            : '';
+
+        const fallbackMember: FamilyProfile = {
+          id: 'titular',
+          userId: user.uid,
+          firstName: personalInfo.firstName || 'Titular',
+          lastName: personalInfo.lastName || '',
+          sex: personalInfo.sex,
+          dateOfBirth,
+          country: personalInfo.country,
+          insuranceProvider: personalInfo.insuranceProvider,
+          insuranceProviderName: personalInfo.insuranceProviderName || '',
+          relationship: 'Titular',
+          esTitular: true,
+          allergies: healthInfo?.allergies ?? [],
+          medications: healthInfo?.medications ?? [],
+          hasHistory: !!(
+            healthInfo?.pathologicalHistory ||
+            healthInfo?.surgicalHistory ||
+            healthInfo?.gynecologicalHistory
+          ),
+        };
+
+        const idToken = await auth.currentUser?.getIdToken();
+        if (!idToken) return;
+
+        await saveFamilyMember(idToken, 'titular', {
+          userId: fallbackMember.userId,
+          firstName: fallbackMember.firstName,
+          lastName: fallbackMember.lastName,
+          sex: fallbackMember.sex,
+          dateOfBirth: fallbackMember.dateOfBirth,
+          country: fallbackMember.country,
+          insuranceProvider: fallbackMember.insuranceProvider,
+          insuranceProviderName: fallbackMember.insuranceProviderName,
+          relationship: fallbackMember.relationship,
+          esTitular: fallbackMember.esTitular,
+          allergies: fallbackMember.allergies,
+          medications: fallbackMember.medications,
+          hasHistory: fallbackMember.hasHistory,
+        });
+
+
+        setMembers([fallbackMember]);
+      } catch (err) {
+        console.error('[Teleorientación] Error creando titular por defecto:', err);
+      }
+    };
+
+    createTitularProfile();
+  }, [user, personalInfo, members.length, healthInfo]);
+
+  /* ---- Cargar conversaciones ---- */
+  useEffect(() => {
+    if (!user) return;
+    const load = async () => {
+      try {
+        const q = query(
+          getConversationsCollectionRef(user.uid),
+          orderBy('updatedAt', 'desc')
+        );
+        const snap = await getDocs(q);
+        const list = snap.docs.map((d) => {
+          const data = d.data();
+          return {
+            id: d.id,
+            memberId: data.memberId,
+            memberName: data.memberName,
+            title: data.title,
+            createdAt: data.createdAt?.toDate?.() ?? new Date(),
+            updatedAt: data.updatedAt?.toDate?.() ?? new Date(),
+            messageCount: data.messageCount ?? 0,
+          } as Conversation;
+        });
+        setConversations(list);
+        if (list.length > 0 && !selectedConv) {
+          setSelectedConv(list[0]);
+        }
+      } catch (err) {
+        console.error('[Teleorientación] Error cargando conversaciones:', err);
+      }
+    };
+    load();
+  }, [user]);
+
+  /* ---- Resolver miembro seleccionado cuando cambia la conversacion ---- */
+  useEffect(() => {
+    if (!selectedConv || members.length === 0) return;
+    const member = members.find((m) => m.id === selectedConv.memberId);
+    setSelectedMember(member ?? null);
+  }, [selectedConv, members]);
+
+  /* ---- Cargar mensajes de la conversacion seleccionada ---- */
+  useEffect(() => {
+    if (!user || !selectedConv) {
+      setMessages([]);
+      return;
+    }
+
+    const loadMessages = async () => {
+      setIsHistoryLoading(true);
+      try {
+        const idToken = await auth.currentUser?.getIdToken();
+        if (!idToken) return;
+        
+        const loaded = await getSecureMessages(idToken, selectedConv.id);
+        setMessages(loaded as ChatMessage[]);
+      } catch (err) {
+        console.error('[Teleorientación] Error cargando mensajes:', err);
+        setMessages([]);
+      } finally {
+        setIsHistoryLoading(false);
+      }
+    };
+
+    loadMessages();
+  }, [user, selectedConv?.id]);
+
+  /* ---- Handlers de Conversación ---- */
+  const handleCreateConversation = useCallback(async (member: FamilyProfile) => {
+    if (!user) return;
+    try {
+      const convsRef = getConversationsCollectionRef(user.uid);
+      const newConvData = {
+        memberId: member.id,
+        memberName: `${member.firstName} ${member.lastName}`.trim(),
+        title: `Consulta para ${member.firstName}`,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+        messageCount: 0,
+      };
+      
+      const docRef = await addDoc(convsRef, newConvData);
+      
+      const newConv: Conversation = {
+        id: docRef.id,
+        memberId: member.id,
+        memberName: newConvData.memberName,
+        title: newConvData.title,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        messageCount: 0,
+      };
+      
+      setConversations(prev => [newConv, ...prev]);
+      setSelectedConv(newConv);
+      setMessages([]);
+      setShowMemberPicker(false);
+    } catch (err) {
+      console.error('[Teleorientación] Error creando conversación:', err);
+    }
+  }, [user]);
+
+  const handleDeleteConversation = useCallback(async (convId: string) => {
+    if (!user) return;
+    if (!confirm('¿Estás seguro de que deseas eliminar esta conversación?')) return;
+    
+    try {
+      const docRef = doc(db, COLECCION_TUTOR, user.uid, SUBCOLECCION_CONVERSACIONES, convId);
+      await deleteDoc(docRef);
+      
+      setConversations(prev => prev.filter(c => c.id !== convId));
+      if (selectedConv?.id === convId) {
+        setSelectedConv(null);
+        setMessages([]);
+      }
+    } catch (err) {
+      console.error('[Teleorientación] Error eliminando conversación:', err);
+    }
+  }, [user, selectedConv]);
+
+  /* ---- Saludo inicial ---- */
+
+  useEffect(() => {
+    if (!user || !selectedConv || !selectedMember || isHistoryLoading || members.length === 0) return;
+
+    const convKey = selectedConv.id;
+    if (initialGreetingTriggeredRef.current[convKey]) return;
+
+    if (messages.length > 0) return;
+
+    const sendGreeting = async () => {
+      try {
+        initialGreetingTriggeredRef.current[convKey] = true;
+        setIsLoading(true);
+
+        const userName = selectedMember.firstName?.trim();
+        const isFirstEver = conversations.length <= 1 && messages.length === 0;
+
+        let greetingInstruction: string;
+        if (isFirstEver) {
+          greetingInstruction = userName
+            ? `Saluda al usuario llamado ${userName} por primera vez. Preséntate y explícale qué es la teleorientación.`
+            : 'Saluda al usuario por primera vez. Preséntate y explícale qué es la teleorientación.';
+        } else {
+          const dayPeriod = getDayPeriodGreeting();
+          greetingInstruction = userName
+            ? `¡${dayPeriod}, ${userName}! Saluda brevemente y pregúntale en qué puedes orientarle hoy.`
+            : `¡${dayPeriod}! Saluda brevemente y pregúntale en qué puedes orientarle hoy.`;
+        }
+
+        const patientCtx = buildPatientContext(selectedMember, healthInfo?.allergies);
+        const idToken = (await auth.currentUser?.getIdToken()) || '';
+
+        const result = await sendTeleorientacionMessage(
+          [{ role: 'user', content: greetingInstruction }],
+          patientCtx,
+          idToken
+        );
+
+        if (!result.success) {
+          initialGreetingTriggeredRef.current[convKey] = false;
+          return;
+        }
+
+        const assistantMsg: ChatMessage = {
+          id: uid(),
+          role: 'assistant',
+          content: result.message,
+          timestamp: new Date(),
+        };
+
+        setMessages((prev) => {
+          if (prev.length > 0) return prev;
+          return [assistantMsg];
+        });
+        await persistSecureMessage(user.uid, selectedConv.id, assistantMsg);
+      } catch (err) {
+        console.error('[Teleorientación] Error enviando saludo:', err);
+        initialGreetingTriggeredRef.current[convKey] = false;
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    sendGreeting();
+  }, [user, selectedConv?.id, selectedMember, isHistoryLoading, members.length, messages.length, healthInfo, user?.uid, conversations.length]);
+
+  /* ---- Enviar mensaje ---- */
+  const handleSendMessage = useCallback(
+    async (text: string, images?: File[]) => {
+      if (!user || !selectedConv || !selectedMember) return;
+      if (!text.trim() && (!images || images.length === 0)) return;
+
+      let imageUrls: string[] = [];
+      if (images?.length) {
+        
+        imageUrls = await Promise.all(
+          images.map(async (file) => {
+            const fileExt = file.name.split('.').pop();
+            const fileName = `${user.uid}/${selectedConv.id}/${uid()}.${fileExt}`;
+            const storageRef = ref(storage, `medical-images/${fileName}`);
+            
+            const metadata = {
+              contentType: file.type,
+              customMetadata: {
+                owner: user.uid,
+                phi: 'true'
+              }
+            };
+            
+            const uploadResult = await uploadBytes(storageRef, file, metadata);
+            return await getDownloadURL(uploadResult.ref);
+          })
+        );
+      }
+
+      const userMsg: ChatMessage = {
+        id: uid(),
+        role: 'user',
+        content: text,
+        timestamp: new Date(),
+        imageUrls: imageUrls.length > 0 ? imageUrls : undefined,
+      };
+
+      const nextMessages = [...messages, userMsg];
+      setMessages(nextMessages);
+      setIsLoading(true);
+
+      try {
+        await persistSecureMessage(user.uid, selectedConv.id, userMsg);
+
+        const history: TeleorientacionMessage[] = nextMessages.map((m) => ({
+          role: m.role as 'user' | 'assistant',
+          content: m.content,
+          imageUrls: m.imageUrls,
+        }));
+
+        const patientCtx = selectedMember
+          ? buildPatientContext(selectedMember, healthInfo?.allergies)
+          : { firstName: 'Paciente', lastName: '' };
+
+        const idToken = (await auth.currentUser?.getIdToken()) || '';
+
+        const result = await sendTeleorientacionMessage(history, patientCtx, idToken);
+
+        if (result.success) {
+          const assistantMsg: ChatMessage = {
+            id: uid(),
+            role: 'assistant',
+            content: result.message,
+            timestamp: new Date(),
+          };
+          setMessages((prev) => [...prev, assistantMsg]);
+          await persistSecureMessage(user.uid, selectedConv.id, assistantMsg);
+        } else {
+          const errorMsg: ChatMessage = {
+            id: uid(),
+            role: 'assistant',
+            content: result.error ?? 'Lo siento, no pude procesar tu consulta. Intenta de nuevo.',
+            timestamp: new Date(),
+          };
+          setMessages((prev) => [...prev, errorMsg]);
+          await persistSecureMessage(user.uid, selectedConv.id, errorMsg);
+        }
+      } catch (err) {
+        console.error('[Teleorientación] Error enviando mensaje:', err);
+        const errorMsg: ChatMessage = {
+          id: uid(),
+          role: 'assistant',
+          content: 'Ocurrió un error de conexión. Verifica tu internet e intenta de nuevo.',
+          timestamp: new Date(),
+        };
+        setMessages((prev) => [...prev, errorMsg]);
+        await persistSecureMessage(user.uid, selectedConv.id, errorMsg);
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [messages, selectedConv, selectedMember, healthInfo, user]
+  );
+
+  /* ---- Nueva sesion ---- */
+  const handleNewSession = useCallback(() => {
+    if (members.length === 1) {
+      handleCreateConversation(members[0]);
+    } else {
+      setShowMemberPicker(true);
+    }
+  }, [members, handleCreateConversation]);
+
+  /* ---- Datos del miembro para la cabecera ---- */
+  const memberAge = selectedMember ? calcAge(selectedMember.dateOfBirth) : undefined;
+  const memberSex = selectedMember ? sexLabel(selectedMember.sex) : undefined;
+  const memberName = selectedMember
+    ? `${selectedMember.firstName} ${selectedMember.lastName}`.trim()
+    : undefined;
+
+  if (!user || ctx?.loading) {
+    return (
+      <div className="flex h-full items-center justify-center">
+        <div className="text-center">
+          <div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-2 border-slate-300 border-t-teal-500" />
+          <p className="text-sm text-slate-500">Cargando teleorientación...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex h-full min-h-0">
+      <ConversationSidebar
+        conversations={conversations}
+        selectedId={selectedConv?.id ?? null}
+        onSelect={(conv) => {
+          setSelectedConv(conv);
+          setMessages([]);
+        }}
+        onNewConversation={handleNewSession}
+        onDelete={handleDeleteConversation}
+        isOpen={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+      />
+
+      <div className="flex min-w-0 flex-1 flex-col">
+        {selectedConv ? (
+          <ChatInterface
+            messages={messages}
+            onSendMessage={handleSendMessage}
+            isLoading={isLoading}
+            memberName={memberName}
+            memberAge={memberAge}
+            memberSex={memberSex}
+            onMenuToggle={() => setSidebarOpen((prev) => !prev)}
+            onNewSession={handleNewSession}
+          />
+        ) : (
+          <div className="flex h-full flex-col items-center justify-center gap-4 px-6 text-center bg-slate-50">
+            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-teal-50">
+              <MessageSquarePlus className="h-8 w-8 text-teal-500" />
+            </div>
+            <div>
+              <h3 className="mb-1 text-lg font-semibold text-slate-800">Bienvenido a Teleorientación</h3>
+              <p className="text-sm text-slate-500">Inicia una nueva conversación para recibir orientación médica.</p>
+            </div>
+            <button
+              onClick={handleNewSession}
+              className="rounded-xl bg-teal-600 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-teal-700"
+            >
+              Nueva conversación
+            </button>
+          </div>
+        )}
+      </div>
+
+      <MemberPicker
+        open={showMemberPicker}
+        members={members}
+        onSelect={handleCreateConversation}
+        onClose={() => setShowMemberPicker(false)}
+      />
     </div>
   );
 }

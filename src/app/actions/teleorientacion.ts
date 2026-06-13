@@ -1,255 +1,428 @@
+// ============================================================
+// app/actions/teleorientacion.ts — Server Action: Dra. Hilda AI
+// Conexión directa a Abacus AI (routellm) sin rate-limiting ni pruning.
+// Versión estable restaurada (rollback quirúrgico).
+// ============================================================
 'use server';
 
-/**
- * Server Action: Teleorientación — Orientación Médica Familiar Empática
- *
- * Llama directamente al REST API de Gemini (v1beta) con header Referer
- * para evitar el bloqueo "API_KEY_HTTP_REFERRER_BLOCKED" que ocurre
- * cuando la llamada se hace desde server-side sin navegador.
- *
- * Regla absoluta: el modelo nunca recibe ni da respuestas genéricas.
- * Cada turno lleva un bloque [CONTEXTO DEL PACIENTE] oculto para el usuario.
- */
-
-// ── Tipos exportados ─────────────────────────────────────────────────────────
-
+/* ------------------------------------------------------------------ */
+/*  Tipos                                                              */
+/* ------------------------------------------------------------------ */
 export interface TeleorientacionMessage {
-  role: 'user' | 'model';
+  role: 'user' | 'assistant' | 'system';
   content: string;
+  imageUrls?: string[];
 }
 
-export interface LabResult {
-  estudio?: string;
-  resultados?: Array<{
-    parametro: string;
-    valor: string;
-    referencia?: string;
-    interpretacion?: string;
-  }>;
-  conclusion_general?: string;
-}
-
-export interface TeleorientacionPatientContext {
-  fullName: string;
-  age?: number;
-  sex?: string;
-  weight?: number;
-  allergies?: string[];
-  medications?: string[];
-  pathologicalHistory?: string;
-  surgicalHistory?: string;
-  gynecologicalHistory?: string;
-  /** Últimos documentos procesados por IDP (idpStatus === 'done') */
-  lastLabResults?: LabResult[];
-}
-
-export interface SendOrientacionMessageInput {
-  patientContext: TeleorientacionPatientContext;
-  userMessage: string;
-  conversationHistory: TeleorientacionMessage[];
-}
-
-export interface SendOrientacionMessageOutput {
-  response: string;
+export interface TeleorientacionResponse {
   success: boolean;
+  message: string;
   error?: string;
 }
 
-// ── Configuración API ────────────────────────────────────────────────────────
+/* ------------------------------------------------------------------ */
+/*  Constantes                                                         */
+/* ------------------------------------------------------------------ */
+const ABACUS_API_URL = 'https://routellm.abacus.ai/v1/chat/completions';
+const MODEL_ID = 'claude-3-5-sonnet-20241022';
+const MAX_TOKENS = 2048;
+const TEMPERATURE = 0.4;
 
-const GEMINI_MODEL = 'gemini-2.0-flash';
-const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
-const APP_REFERER = 'https://myhomedoctorapp.web.app';
+/**
+ * System prompt de la Dra. Hilda.
+ * Define su personalidad, límites éticos y protocolo de triage.
+ */
+const SYSTEM_PROMPT = `SYSTEM PROMPT — Dra. Hilda v2.0 (myhomedoctorapp)
 
-// ── System Prompt maestro (Instrucción maestra – Protocolos MBE y Triage) ────
+Eres Dra. Hilda, asistente de orientación médica con IA de myhomedoctorapp.
+Tu función es orientar, educar y apoyar al paciente sin reemplazar la consulta médica presencial.
 
-const SYSTEM_PROMPT = `Eres el Asistente de Orientación Médica de MyHomeDoctorApp.
-TONO Y ESTILO: Eres empático, profesional y conciso. Te expresas en español colombiano estándar. Usa viñetas para ser claro. Ve directo al grano.
+════════════════════════════════════════════════════════
+## 1. PROTOCOLO DE SALUDO PROACTIVO (PRIORIDAD MÁXIMA)
+════════════════════════════════════════════════════════
+- SIEMPRE saluda al inicio de cada nueva sesión o conexión, ANTES de que el usuario escriba.
+- Verifica si es un nuevo día o una nueva conexión:
+    • Nueva conexión (mismo día) → "¡Hola de nuevo, [Nombre]! Aquí estoy. ¿Cómo te sientes?"
+    • Nuevo día → "¡Buenos días/tardes/noches, [Nombre]! Un nuevo día para cuidar tu salud. ¿En qué puedo ayudarte hoy?"
+    • Primera vez → Saluda calidamente, preséntate como Dra. Hilda y entrega la siguiente explicación de forma empática, clara y estructurada:
 
-REGLAS CLÍNICAS INQUEBRANTABLES:
+      "¡Hola, [Nombre]! Soy la Dra. Hilda, tu asistente de orientación en salud en myhomedoctorapp. Bienvenido/a. Antes de comenzar, quiero contarte brevemente qué es la teleorientación y cómo puedo ayudarte:
 
-1. ANCLAJE DE CONTEXTO (CERO ALUCINACIONES): Tu única fuente de verdad sobre el paciente es el bloque etiquetado como [CONTEXTO DEL PACIENTE] que recibirás al inicio. No inventes antecedentes, no asumas datos que no estén ahí. Hazle saber al usuario sutilmente que tienes en cuenta este contexto específico.
+      **¿Qué es la teleorientación?**
+      La teleorientación es un servicio de salud regulado en Colombia por la Resolución 2654 de 2019 del Ministerio de Salud y Protección Social. Consiste en brindarte orientación, educación en salud, consejería y direccionamiento hacia los centros de atención médica que necesites.
 
-2. LÍMITE LEGAL: NUNCA emitas diagnósticos definitivos ni recetes medicamentos. Toda recomendación debe basarse en Medicina Basada en la Evidencia (MBE) para primer nivel de atención.
+      **¿Qué puedo hacer por ti?**
+      - Orientarte sobre síntomas, hábitos saludables y prevención de enfermedades.
+      - Educarte con información basada en evidencia científica.
+      - Ayudarte a identificar si necesitas consulta médica presencial o de urgencias.
+      - Guiarte hacia el nivel de atención adecuado (consulta general, especialista o urgencias).
 
-3. INTERROGATORIO ACTIVO (CRÍTICO): Si el usuario reporta un síntoma pero faltan datos para clasificar el riesgo, NO des recomendaciones inmediatas. Haz máximo 2 preguntas de descarte concisas (Ej. Si reporta dolor abdominal, pregunta: "¿El dolor es constante? ¿Al tocar el estómago se siente duro como una tabla?").
+      **¿Qué NO hago?**
+      - No realizo diagnósticos definitivos.
+      - No formulo ni prescribo medicamentos (esto está reservado a la telemedicina interactiva, según el Artículo 19 de la Resolución 2654).
+      - No ordeno exámenes de laboratorio ni imágenes diagnósticas.
+      - No reemplazo la consulta médica presencial.
 
-4. SISTEMA DE TRIAGE ESTRICTO Y ESCALAMIENTO:
-Evalúa la gravedad cruzando los síntomas con el [CONTEXTO DEL PACIENTE] y aplica estrictamente UNA de estas tres rutas:
+      **Tu privacidad es importante:**
+      Tus datos de salud son tratados como datos sensibles conforme a la Ley 1581 de 2012 de protección de datos personales. Toda nuestra comunicación viaja bajo protocolos seguros.
 
-🔴 RUTA ROJA (URGENCIA VITAL - ACUDIR A URGENCIAS O LLAMAR AL 123):
-Aplica si detectas:
-- Dolor abdominal: Con signos de irritación peritoneal, abdomen rígido, dolor severo de inicio súbito, o persistencia a pesar de medidas iniciales.
-- Fiebre: En neonatos/lactantes menores de 3 meses, o fiebre con rigidez nucal, petequias, o alteración de conciencia a cualquier edad.
-- Otros: Dolor torácico opresivo, dificultad respiratoria evidente, sangrado activo profuso.
-(Acción: Tono firme, indica ir a urgencias inmediatamente. PROHIBIDO ofrecer teleconsulta o medicamentos).
+      Si en algún momento presentas una emergencia, por favor acude a urgencias o llama al 123.
 
-🟡 RUTA AMARILLA (TELECONSULTA CON EL DR. ALEXANDER GARCÍA):
-Aplica si el cuadro requiere criterio o supervisión médica pero NO es una urgencia inminente:
-- Fiebre: Menor a 3 días en paciente mayor de 3 meses sin signos de alarma, pero que requiere evaluación.
-- Dolor abdominal: Leve/moderado, dudoso, o sin mejoría clara.
-- Dudas sobre evolución de cuadros previos, revisión de laboratorios anormales o ajuste de tratamientos crónicos.
-(Acción: Sugiere con mucha empatía agendar una teleconsulta con el Dr. Alexander García para una evaluación médica detallada).
+      Estoy aquí para cuidarte. ¿En qué puedo orientarte hoy?"
+- El saludo es OBLIGATORIO aunque existan tareas, recordatorios o conversaciones pendientes.
+- El factor humano y la calidez son prioridad antes que cualquier tarea pendiente.
+- Usa el nombre del usuario si está disponible en el perfil.
+- Adapta el saludo a la hora del día (buenos días / buenas tardes / buenas noches).
 
-🟢 RUTA VERDE (AUTOCUIDADO Y EDUCACIÓN EN SALUD - MANEJO EN CASA):
-Aplica para síntomas leves, autolimitados, o educación en enfermedades crónicas estables:
-- Síntomas leves: Resfriado común, cefalea tensional, mialgias por esfuerzo, gastroenteritis leve sin signos de deshidratación.
-- Educación: Pacientes con hipertensión, diabetes o falla cardíaca solicitando consejos de estilo de vida (dieta, ejercicio, control de estrés).
-(Acción: Eres el médico de cabecera orientando. Brinda recomendaciones prácticas (reposo, hidratación, medios físicos, dieta). Puedes sugerir manejo sintomático de primera línea (Ej. Acetaminofén o Ibuprofeno) ÚNICA Y EXCLUSIVAMENTE si verificas en el [CONTEXTO DEL PACIENTE] que no existen alergias o contraindicaciones (como daño renal o gástrico). NUNCA sugieras antibióticos, antihipertensivos o hipoglucemiantes. Finaliza siempre indicando claramente 2 o 3 'Signos de Alarma' que, de aparecer, obligarían al paciente a pasar a la Ruta Amarilla o Roja).`;
+════════════════════════════════════════════════════════
+## 2. ESTÁNDAR DE EVIDENCIA CIENTÍFICA (OBLIGATORIO)
+════════════════════════════════════════════════════════
+- Trabajas EXCLUSIVAMENTE con Medicina Basada en la Evidencia (MBE).
+- Solo emites recomendaciones respaldadas por niveles de evidencia Ia, Ib o IIa
+  según la clasificación Oxford Centre for Evidence-Based Medicine (OCEBM) y el sistema GRADE:
 
-// ── Construcción del bloque de contexto oculto ───────────────────────────────
+    • Ia  → Metaanálisis de ensayos clínicos aleatorizados y controlados (ECA).
+              Ejemplo: revisiones Cochrane, metaanálisis de NEJM, Lancet, JAMA.
+    • Ib  → Al menos un ensayo clínico aleatorizado y controlado bien diseñado.
+              Ejemplo: ECA publicado en revista indexada con bajo riesgo de sesgo.
+    • IIa → Al menos un estudio controlado bien diseñado sin aleatorización.
+              Ejemplo: estudios de cohorte prospectivos, estudios caso-control robustos.
 
-function buildContextBlock(patient: TeleorientacionPatientContext): string {
-  const sexLabel =
-    patient.sex === 'male' ? 'Masculino' :
-    patient.sex === 'female' ? 'Femenino' : 'No especificado';
+- NO emitas recomendaciones basadas en:
+    • Opinión de expertos aislada (nivel IV o V).
+    • Consensos informales, anecdóticos o sin respaldo metodológico.
+    • Información no verificable o de fuentes no indexadas.
 
-  const allergiesText =
-    patient.allergies?.length
-      ? patient.allergies.join(', ')
-      : 'Sin alergias conocidas';
+- Si una consulta no tiene respaldo en niveles Ia, Ib o IIa:
+    → Indícalo explícitamente: "Sobre este tema la evidencia disponible es limitada o no alcanza el nivel requerido. Te recomiendo consultar con tu médico tratante."
+    → Nunca inventes referencias ni cites estudios que no puedas verificar.
 
-  const medicationsText =
-    patient.medications?.length
-      ? patient.medications.join(', ')
-      : 'Sin medicamentos registrados';
+- Si el usuario pregunta sobre tus niveles de evidencia, explica el sistema OCEBM/GRADE
+  y confirma que solo trabajas con Ia, Ib y IIa.
 
-  const labResultsText =
-    patient.lastLabResults?.length
-      ? JSON.stringify(patient.lastLabResults, null, 2)
-      : 'Sin resultados de laboratorio procesados';
+════════════════════════════════════════════════════════
+## 3. ROL, ALCANCE Y LÍMITES CLÍNICOS
+════════════════════════════════════════════════════════
+- Tu rol es: orientar, educar y realizar triage digital.
+- NO diagnosticas enfermedades específicas.
+- NO prescribes medicamentos ni dosis.
+- NO reemplazas la evaluación clínica presencial, el examen físico ni los estudios paraclínicos.
+- Ante signos de alarma o emergencia, responde SIEMPRE:
+    "⚠️ Esto requiere atención médica presencial urgente. Por favor acude a urgencias o llama a tu médico de inmediato."
+- Signos de alarma que SIEMPRE escalan a urgencias:
+    • Dolor torácico, dificultad respiratoria severa, pérdida de consciencia.
+    • Signos de ACV (FAST: Face, Arms, Speech, Time).
+    • Sangrado activo no controlable, trauma severo.
+    • Ideación suicida o crisis de salud mental aguda.
 
-  return [
-    `[CONTEXTO DEL PACIENTE]`,
-    `Nombre: ${patient.fullName}`,
-    `Edad: ${patient.age ?? 'No especificada'} años`,
-    `Sexo: ${sexLabel}`,
-    `Peso: ${patient.weight ? `${patient.weight} kg` : 'No especificado'}`,
-    `Alergias: ${allergiesText}`,
-    `Antecedentes Patológicos: ${patient.pathologicalHistory || 'Sin antecedentes registrados'}`,
-    `Antecedentes Quirúrgicos: ${patient.surgicalHistory || 'Sin antecedentes registrados'}`,
-    patient.gynecologicalHistory
-      ? `Antecedentes Gineco-obstétricos: ${patient.gynecologicalHistory}`
-      : null,
-    `Medicamentos Actuales: ${medicationsText}`,
-    `Últimos laboratorios procesados (IDP): ${labResultsText}`,
-    `[FIN CONTEXTO]`,
-  ]
-    .filter(Boolean)
-    .join('\n');
+════════════════════════════════════════════════════════
+## 4. TONO, ESTILO Y FORMATO DE RESPUESTA
+════════════════════════════════════════════════════════
+- Lenguaje: claro, empático, profesional y accesible para pacientes no médicos.
+- Usa viñetas o numeración para instrucciones paso a paso.
+- Cita la fuente o guía de referencia cuando sea relevante:
+    Ejemplos: OMS, CDC, AHA, Ministerio de Salud Colombia, guías ACMI, GPC colombianas.
+- Responde SIEMPRE en el idioma del usuario (español o inglés según detectes).
+- Usa lenguaje probabilístico, nunca certeza absoluta:
+    ✅ "La evidencia sugiere..." / "Según las guías actuales..." / "Los estudios muestran..."
+    ❌ "Definitivamente tienes..." / "Esto es seguramente..."
+- Mantén respuestas concisas pero completas. Evita párrafos largos sin estructura.
+
+════════════════════════════════════════════════════════
+## 5. TRANSPARENCIA Y CONFIANZA
+════════════════════════════════════════════════════════
+- Si no sabes algo, dilo claramente: "No tengo información suficiente sobre esto con el nivel de evidencia requerido."
+- Nunca afirmes capacidades que no tienes.
+- Recuerda al usuario periódicamente (no en cada mensaje) que eres una herramienta de orientación, no un reemplazo médico.
+- Protege la privacidad del usuario: no solicites datos sensibles innecesarios.`;
+
+/* ------------------------------------------------------------------ */
+/*  Función principal — Server Action                                  */
+/* ------------------------------------------------------------------ */
+import { adminAuth, adminDb } from '@/lib/firebase-admin';
+import { encryptField, decryptField } from '@/lib/crypto';
+import { COLECCION_TUTOR, SUBCOLECCION_CONVERSACIONES } from '@/lib/constants';
+import { Timestamp, FieldValue } from 'firebase-admin/firestore';
+
+export interface PatientStructuredContext {
+  firstName: string;
+  lastName: string;
+  age?: number;
+  sex?: string;
+  allergies?: string[];
+  medications?: string[];
 }
 
-// ── Llamada directa a Gemini REST API ────────────────────────────────────────
+/**
+ * Verifica el Rate Limit del usuario en Firestore.
+ * Límite: 20 mensajes cada 60 minutos.
+ */
+async function checkRateLimit(userId: string): Promise<{ allowed: boolean; remainingWait?: number }> {
+  const rateLimitRef = adminDb.collection('rate_limits').doc(userId);
+  const now = Date.now();
+  const windowMs = 60 * 60 * 1000; // 60 minutos
+  const maxRequests = 20;
 
-interface GeminiContent {
-  role: 'user' | 'model';
-  parts: Array<{ text: string }>;
+  return await adminDb.runTransaction(async (transaction) => {
+    const doc = await transaction.get(rateLimitRef);
+    const data = doc.data();
+
+    if (!doc.exists || (now - data?.windowStart) > windowMs) {
+      // Nueva ventana
+      transaction.set(rateLimitRef, {
+        count: 1,
+        windowStart: now,
+        lastRequest: now,
+      });
+      return { allowed: true };
+    }
+
+    if (data!.count >= maxRequests) {
+      const waitTime = Math.ceil((data!.windowStart + windowMs - now) / (1000 * 60));
+      return { allowed: false, remainingWait: waitTime };
+    }
+
+    transaction.update(rateLimitRef, {
+      count: data!.count + 1,
+      lastRequest: now,
+    });
+    return { allowed: true };
+  });
 }
 
-async function callGeminiRest(
-  apiKey: string,
-  systemPrompt: string,
-  contents: GeminiContent[],
-): Promise<string> {
-  const url = `${GEMINI_API_BASE}/${GEMINI_MODEL}:generateContent?key=${apiKey}`;
+/**
+ * Persiste un mensaje en Firestore de forma segura (cifrado).
+ */
+export async function persistSecureMessage(
+  userId: string,
+  convId: string,
+  message: { role: string; content: string; imageUrls?: string[] }
+) {
+  const messagesCol = adminDb
+    .collection(COLECCION_TUTOR)
+    .doc(userId)
+    .collection(SUBCOLECCION_CONVERSACIONES)
+    .doc(convId)
+    .collection('mensajes');
 
-  const body = {
-    systemInstruction: { parts: [{ text: systemPrompt }] },
-    contents,
-    generationConfig: {
-      temperature: 0.7,
-      maxOutputTokens: 4096,
-      topP: 0.95,
-      topK: 40,
-    },
-    safetySettings: [
-      { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_ONLY_HIGH' },
-      { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_ONLY_HIGH' },
-      { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_ONLY_HIGH' },
-      { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_ONLY_HIGH' },
-    ],
+  // Cifrar el contenido del mensaje antes de guardar (V#5)
+  const encryptedContent = encryptField(message.content);
+
+  const msgDoc = {
+    role: message.role,
+    content: encryptedContent,
+    imageUrls: message.imageUrls || [],
+    timestamp: Timestamp.now(),
+    isEncrypted: true, // Flag para saber que este mensaje está cifrado
   };
 
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Referer': APP_REFERER,
-      'X-Requested-With': 'XMLHttpRequest',
-    },
-    body: JSON.stringify(body),
-  });
+  await messagesCol.add(msgDoc);
 
-  if (!res.ok) {
-    const errText = await res.text();
-    throw new Error(
-      `Gemini API ${res.status}: ${errText}`,
-    );
-  }
-
-  const data = await res.json();
-
-  // Extraer texto de la respuesta
-  const candidate = data?.candidates?.[0];
-  if (!candidate?.content?.parts?.length) {
-    const blockReason = candidate?.finishReason ?? data?.promptFeedback?.blockReason;
-    throw new Error(
-      blockReason
-        ? `Respuesta bloqueada por el modelo (${blockReason}). Intenta reformular tu consulta.`
-        : 'El modelo no generó una respuesta. Intenta de nuevo.',
-    );
-  }
-
-  return candidate.content.parts.map((p: any) => p.text ?? '').join('');
+  // Actualizar metadata de la conversación
+  await adminDb
+    .collection(COLECCION_TUTOR)
+    .doc(userId)
+    .collection(SUBCOLECCION_CONVERSACIONES)
+    .doc(convId)
+    .update({
+      updatedAt: FieldValue.serverTimestamp(),
+      messageCount: FieldValue.increment(1),
+    });
 }
 
-// ── Server Action principal ──────────────────────────────────────────────────
-
-export async function sendOrientacionMessage(
-  input: SendOrientacionMessageInput,
-): Promise<SendOrientacionMessageOutput> {
-  // Validación temprana: evita llamar a la AI si la clave no está configurada
-  const apiKey = process.env.GOOGLE_GENAI_API_KEY || process.env.GEMINI_API_KEY;
-  if (!apiKey || apiKey === 'TU_API_KEY_AQUI') {
-    return {
-      response: '',
-      success: false,
-      error:
-        'La clave de Google AI (GOOGLE_GENAI_API_KEY) no está configurada. ' +
-        'Agrégala en tu archivo .env.local y reinicia el servidor.',
-    };
-  }
-
+/**
+ * Recupera mensajes de una conversación y los descifra (V#5).
+ */
+export async function getSecureMessages(idToken: string, convId: string) {
   try {
-    const contextBlock = buildContextBlock(input.patientContext);
+    const decodedToken = await adminAuth.verifyIdToken(idToken);
+    const userId = decodedToken.uid;
 
-    // El mensaje enviado al modelo lleva el contexto oculto como prefijo
-    const messageWithContext = `${contextBlock}\n\n[PREGUNTA DEL USUARIO]: ${input.userMessage}`;
+    const snap = await adminDb
+      .collection(COLECCION_TUTOR)
+      .doc(userId)
+      .collection(SUBCOLECCION_CONVERSACIONES)
+      .doc(convId)
+      .collection('mensajes')
+      .orderBy('timestamp', 'asc')
+      .get();
 
-    // Safety filter: Gemini exige que el historial empiece con 'user'.
-    // Eliminamos cualquier mensaje 'model' inicial para evitar el error
-    // "First content should be with role 'user', got model".
-    const safeHistory = [...input.conversationHistory];
-    while (safeHistory.length > 0 && safeHistory[0].role === 'model') safeHistory.shift();
+    return snap.docs.map(d => {
+      const data = d.data();
+      return {
+        id: d.id,
+        role: data.role,
+        content: data.isEncrypted ? decryptField(data.content) : data.content,
+        imageUrls: data.imageUrls || [],
+        timestamp: data.timestamp.toDate(),
+      };
+    });
+  } catch (error) {
+    console.error('[Dra. Hilda] Error recuperando mensajes:', error);
+    throw new Error('No se pudieron recuperar los mensajes.');
+  }
+}
 
-    // Construir array de contents para la REST API
-    const contents: GeminiContent[] = [
-      ...safeHistory.map((m) => ({
-        role: m.role as 'user' | 'model',
-        parts: [{ text: m.content }],
-      })),
-      { role: 'user' as const, parts: [{ text: messageWithContext }] },
+/**
+ * Envía el historial de conversación a Abacus AI...
+ */
+export async function sendTeleorientacionMessage(
+  conversationHistory: TeleorientacionMessage[],
+  patientContext: PatientStructuredContext,
+  idToken: string
+): Promise<TeleorientacionResponse> {
+  try {
+    /* ---- Validación de Autenticación ---- */
+    if (!idToken) {
+      return {
+        success: false,
+        message: '',
+        error: 'No autenticado. Por favor, inicia sesión de nuevo.',
+      };
+    }
+
+    let decodedToken;
+    try {
+      decodedToken = await adminAuth.verifyIdToken(idToken);
+    } catch (authError) {
+      console.error('[Dra. Hilda] Error de verificación de token:', authError);
+      return {
+        success: false,
+        message: '',
+        error: 'Sesión inválida o expirada. Por favor, inicia sesión de nuevo.',
+      };
+    }
+
+    const userId = decodedToken.uid;
+
+    /* ---- Rate Limiting (V#8) ---- */
+    const rateLimit = await checkRateLimit(userId);
+    if (!rateLimit.allowed) {
+      return {
+        success: false,
+        message: '',
+        error: `Has superado el límite de 20 mensajes por hora. Por favor, espera ${rateLimit.remainingWait} minutos.`,
+      };
+    }
+
+    /* ---- Validación básica ---- */
+    const apiKey = process.env.ABACUS_API_KEY;
+    if (!apiKey) {
+      console.error('[Dra. Hilda] ABACUS_API_KEY no configurada');
+      return {
+        success: false,
+        message: '',
+        error: 'Error de configuración del servidor. Contacta al administrador.',
+      };
+    }
+
+    if (!conversationHistory.length) {
+      return {
+        success: false,
+        message: '',
+        error: 'No se recibió ningún mensaje.',
+      };
+    }
+
+    /* ---- Construir mensajes para la API ---- */
+    const messages: { role: string; content: string }[] = [
+      { role: 'system', content: SYSTEM_PROMPT },
     ];
 
-    const responseText = await callGeminiRest(apiKey, SYSTEM_PROMPT, contents);
+    // Inyectar contexto del paciente estructurado (Sanitizado)
+    // Nota: El contexto llega ya descifrado (si venía de Firestore) o se maneja en memoria
+    const sanitizedPatientInfo = [
+      `Nombre: ${patientContext.firstName} ${patientContext.lastName}`,
+      patientContext.age !== undefined ? `Edad: ${patientContext.age} años` : null,
+      patientContext.sex ? `Sexo: ${patientContext.sex}` : null,
+      patientContext.allergies?.length ? `Alergias: ${patientContext.allergies.join(', ')}` : null,
+      patientContext.medications?.length ? `Medicamentos: ${patientContext.medications.join(', ')}` : null,
+    ].filter(Boolean).join('\n');
 
-    return { response: responseText, success: true };
-  } catch (error: any) {
-    console.error('[sendOrientacionMessage] Error:', error);
+    messages.push({
+      role: 'system',
+      content: `Contexto del paciente actual:\n${sanitizedPatientInfo}`,
+    });
+
+    // Agregar historial de conversación (Asegurarse de que el contenido enviado al LLM sea texto plano)
+    for (const msg of conversationHistory) {
+      // El historial que recibe esta función ya debe estar descifrado si venía de DB
+      let content = msg.content;
+
+      if (msg.imageUrls?.length) {
+        const imageNote = msg.imageUrls
+          .map((url, i) => `[Imagen adjunta ${i + 1}: ${url}]`)
+          .join('\n');
+        content = `${content}\n\n${imageNote}`;
+      }
+
+      messages.push({
+        role: msg.role === 'assistant' ? 'assistant' : 'user',
+        content,
+      });
+    }
+
+    /* ---- Llamada a la API de Abacus AI ---- */
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 60_000);
+
+    const response = await fetch(ABACUS_API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: MODEL_ID,
+        messages,
+        max_tokens: MAX_TOKENS,
+        temperature: TEMPERATURE,
+      }),
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => 'Sin detalle');
+      console.error(`[Dra. Hilda] Error API ${response.status}: ${errorText}`);
+      return {
+        success: false,
+        message: '',
+        error: `Error del servicio de IA (${response.status}). Intenta de nuevo en unos segundos.`,
+      };
+    }
+
+    const data = await response.json();
+    const assistantMessage = data.choices?.[0]?.message?.content?.trim() ?? '';
+
+    if (!assistantMessage) {
+      return {
+        success: false,
+        message: '',
+        error: 'No se recibió respuesta del asistente. Intenta de nuevo.',
+      };
+    }
+
     return {
-      response: '',
+      success: true,
+      message: assistantMessage,
+    };
+  } catch (error: any) {
+    if (error.name === 'AbortError') {
+      return {
+        success: false,
+        message: '',
+        error: 'La solicitud tardó demasiado. Verifica tu conexión e intenta de nuevo.',
+      };
+    }
+
+    console.error('[Dra. Hilda] Error inesperado:', error);
+    return {
       success: false,
-      error: error?.message ?? 'Error desconocido al contactar la IA',
+      message: '',
+      error: 'Ocurrió un error inesperado. Intenta de nuevo.',
     };
   }
 }
+

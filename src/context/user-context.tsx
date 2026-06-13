@@ -6,6 +6,7 @@ import type { PersonalInfo, HealthInfo, Appointment, Document as DocumentType, M
 import { auth, db } from '@/lib/firebase';
 import { onAuthStateChanged, User, signOut, updateProfile } from 'firebase/auth';
 import { doc, getDoc, setDoc, Timestamp, collection, getDocs, updateDoc, deleteDoc, query, orderBy, onSnapshot } from 'firebase/firestore';
+import { getSecureUserDocument, updateSecureHealthInfo } from '@/app/actions/user';
 import { useToast } from '@/hooks/use-toast';
 import { COLECCION_TUTOR } from '@/lib/constants';
 
@@ -163,7 +164,9 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       if (user) {
         setLoading(true);
         try {
-          const userDoc = await getUserDocument(user.uid);
+          const idToken = await auth.currentUser?.getIdToken();
+          if (!idToken) return;
+          const userDoc = await getSecureUserDocument(idToken);
           
           if (userDoc) {
               setPersonalInfo(userDoc.personalInfo);
@@ -175,8 +178,8 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
                   lastName: user.displayName?.split(' ').slice(1).join(' ') || 'Usuario',
                   sex: 'other',
                   dateOfBirth: new Date(),
-                  country: 'chile',
-                  insuranceProvider: 'Fonasa',
+                  country: 'colombia',
+                  insuranceProvider: '',
                   insuranceProviderName: ''
               };
               const defaultHealthInfo = isAnon ? initialAnonymousHealthInfo : {
@@ -241,6 +244,8 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   const signOutUser = async () => {
     try {
         await signOut(auth);
+        await fetch('/api/auth/session', { method: 'DELETE' });
+        window.location.href = '/login';
     } catch (error) {
         console.error("Error signing out:", error);
     }
@@ -259,7 +264,9 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   const updateHealthInfo = async (info: HealthInfo) => {
       if (user) {
           setHealthInfo(info);
-          await updateUserDocument(user.uid, { healthInfo: info });
+          const idToken = await auth.currentUser?.getIdToken();
+          if (!idToken) return;
+          await updateSecureHealthInfo(idToken, info);
       }
   };
 

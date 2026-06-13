@@ -1,6 +1,3 @@
-// ============================================================
-// hooks/useSpeechRecognition.ts — Hook para speech-to-text con Web Speech API
-// ============================================================
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
@@ -10,12 +7,26 @@ interface UseSpeechRecognitionReturn {
   interimTranscript: string;
   isListening: boolean;
   isSupported: boolean;
-  startListening: () => void;
+  hasPermission: boolean;
+  startListening: () => Promise<void>;
   stopListening: () => void;
-  toggleListening: () => void;
+  toggleListening: () => Promise<void>;
   resetTranscript: () => void;
+  clearError: () => void;
   error: string | null;
 }
+
+type SpeechRecognitionLike = {
+  lang: string;
+  continuous: boolean;
+  interimResults: boolean;
+  onresult: ((event: any) => void) | null;
+  onerror: ((event: any) => void) | null;
+  onend: (() => void) | null;
+  start: () => void;
+  stop: () => void;
+  abort: () => void;
+};
 
 export function useSpeechRecognition(): UseSpeechRecognitionReturn {
   const [transcript, setTranscript] = useState('');
@@ -23,109 +34,110 @@ export function useSpeechRecognition(): UseSpeechRecognitionReturn {
   const [isListening, setIsListening] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSupported, setIsSupported] = useState(false);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const recognitionRef = useRef<any>(null);
+  const [hasPermission, setHasPermission] = useState(false);
+  const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
+  const isListeningRef = useRef(false);
 
   useEffect(() => {
-    // Verificar soporte del navegador
-    const SpeechRecognitionAPI =
-      typeof window !== 'undefined'
-        ? (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
-        : null;
-
-    if (SpeechRecognitionAPI) {
-      setIsSupported(true);
-      const recognition = new SpeechRecognitionAPI();
-      recognition.continuous = true;
-      recognition.interimResults = true;
-      recognition.lang = 'es-CO'; // Español Colombia
-
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      recognition.onresult = (event: any) => {
-        let finalTranscript = '';
-        let nextInterimTranscript = '';
-
-        for (let i = event.resultIndex; i < event.results.length; i++) {
-          const result = event.results[i];
-          if (result.isFinal) {
-            finalTranscript += result[0].transcript;
-          } else {
-            nextInterimTranscript += result[0].transcript;
-          }
-        }
-
-        if (finalTranscript) {
-          setTranscript((prev) => `${prev} ${finalTranscript}`.trim());
-          setInterimTranscript('');
-        } else {
-          setInterimTranscript(nextInterimTranscript.trim());
-        }
-      };
-
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      recognition.onerror = (event: any) => {
-        switch (event.error) {
-          case 'not-allowed':
-            setError('Permiso de micrófono denegado. Habilítalo en la configuración del navegador.');
-            break;
-          case 'no-speech':
-            setError('No se detectó voz. Intenta de nuevo.');
-            break;
-          case 'network':
-            setError('Error de red. Verifica tu conexión.');
-            break;
-          default:
-            setError(`Error de reconocimiento: ${event.error}`);
-        }
-        setIsListening(false);
-      };
-
-      recognition.onend = () => {
-        setIsListening(false);
-      };
-
-      recognitionRef.current = recognition;
-    } else {
-      setIsSupported(false);
-    }
-
+    if (typeof window === 'undefined') return;
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    setIsSupported(!!SpeechRecognition);
     return () => {
       if (recognitionRef.current) {
         recognitionRef.current.abort();
+        recognitionRef.current = null;
       }
     };
   }, []);
 
-  const startListening = useCallback(() => {
-    if (!recognitionRef.current) return;
-    setError(null);
-    setTranscript('');
-    setInterimTranscript('');
-    try {
-      recognitionRef.current.start();
-      setIsListening(true);
-    } catch (e) {
-      console.warn('Speech recognition already started');
-    }
+  useEffect(() => {
+    isListeningRef.current = isListening;
+  }, [isListening]);
+
+  const onResult = useCallback((text: string) => {
+    setTranscript(text);
   }, []);
 
   const stopListening = useCallback(() => {
-    if (!recognitionRef.current) return;
-    recognitionRef.current.stop();
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.stop();
+      } catch {
+        recognitionRef.current.abort();
+      }
+      recognitionRef.current = null;
+    }
     setIsListening(false);
   }, []);
 
-  const toggleListening = useCallback(() => {
-    if (isListening) {
-      stopListening();
-    } else {
-      startListening();
+  const startListening = useCallback(async () => {
+    if (isListeningRef.current) return;
+
+    console.log('[MIC] Button clicked');
+
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      setError('Tu navegador no soporta el micrófono. Usa Chrome.');
+      return;
     }
-  }, [isListening, startListening, stopListening]);
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      stream.getTracks().forEach((track) => track.stop());
+      setHasPermission(true);
+      console.log('[MIC] getUserMedia result: granted');
+    } catch (err) {
+      setHasPermission(false);
+      setError('Permiso de micrófono denegado. Actívalo en la configuración de tu navegador.');
+      return;
+    }
+
+    setIsListening(true);
+
+    const recognition: SpeechRecognitionLike = new SpeechRecognition();
+    recognition.lang = 'es-CO';
+    recognition.continuous = false;
+    recognition.interimResults = false;
+
+    recognition.onresult = (event) => {
+      const transcript = event.results[0][0].transcript;
+      console.log('[MIC] Result received:', transcript);
+      onResult(transcript);
+      setIsListening(false);
+    };
+
+    recognition.onerror = (event) => {
+      console.error('SpeechRecognition error:', event.error);
+      console.log('[MIC] Error:', event.error);
+      setError('Error al escuchar. Intenta de nuevo.');
+      setIsListening(false);
+    };
+
+    recognition.onend = () => {
+      setIsListening(false);
+      recognitionRef.current = null;
+    };
+
+    recognitionRef.current = recognition;
+    recognition.start();
+    console.log('[MIC] SpeechRecognition started');
+  }, [onResult]);
+
+  const toggleListening = useCallback(async () => {
+    if (isListeningRef.current) {
+      stopListening();
+      return;
+    }
+    await startListening();
+  }, [startListening, stopListening]);
 
   const resetTranscript = useCallback(() => {
     setTranscript('');
     setInterimTranscript('');
+  }, []);
+
+  const clearError = useCallback(() => {
+    setError(null);
   }, []);
 
   return {
@@ -137,6 +149,8 @@ export function useSpeechRecognition(): UseSpeechRecognitionReturn {
     stopListening,
     toggleListening,
     resetTranscript,
+    clearError,
     error,
+    hasPermission,
   };
 }

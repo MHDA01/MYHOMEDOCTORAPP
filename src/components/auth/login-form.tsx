@@ -7,8 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Separator } from '@/components/ui/separator';
-import { signInWithEmailAndPassword, signInAnonymously } from 'firebase/auth';
+import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from 'lucide-react';
@@ -20,40 +19,37 @@ export function LoginForm() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [isGuestLoading, setIsGuestLoading] = useState(false);
-
   const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsLoading(true);
     try {
-      await signInWithEmailAndPassword(auth, email, password);
-      router.push('/dashboard');
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      // Forzar la obtención de un nuevo token
+      const idToken = await userCredential.user.getIdToken(true);
+      
+      // Crear sesión con cookie httpOnly
+      const response = await fetch('/api/auth/session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idToken }),
+      });
+
+      if (!response.ok) {
+        throw new Error('No se pudo establecer la sesión en el servidor.');
+      }
+
+      // Usar window.location.href en lugar de router.push para asegurar que 
+      // el middleware procese la nueva cookie de sesión en la siguiente carga
+      window.location.href = '/dashboard/teleorientacion';
     } catch (error: any) {
       console.error(error);
       toast({
         variant: 'destructive',
-        title: 'Error de Autenticación',
-        description: 'Las credenciales no son válidas. Por favor, inténtalo de nuevo.',
+        title: 'Error de Autenticaci\u00f3n',
+        description: 'Las credenciales no son v\u00e1lidas. Por favor, int\u00e9ntalo de nuevo.',
       });
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const handleGuestLogin = async () => {
-    setIsGuestLoading(true);
-    try {
-        await signInAnonymously(auth);
-        router.push('/dashboard');
-    } catch (error) {
-        console.error("Anonymous sign-in failed:", error);
-        toast({
-            variant: "destructive",
-            title: "Error",
-            description: "No se pudo iniciar sesión como invitado. Inténtalo de nuevo.",
-        });
-    } finally {
-        setIsGuestLoading(false);
     }
   };
 
@@ -68,26 +64,17 @@ export function LoginForm() {
         <form className="space-y-4" onSubmit={handleLogin}>
           <div className="space-y-2">
             <Label htmlFor="email">Correo Electrónico</Label>
-            <Input id="email" type="email" placeholder="nombre@ejemplo.com" required value={email} onChange={(e) => setEmail(e.target.value)} />
+            <Input id="email" name="email" type="email" placeholder="nombre@ejemplo.com" required value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" />
           </div>
           <div className="space-y-2">
             <Label htmlFor="password">Contraseña</Label>
-            <Input id="password" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} />
+            <Input id="password" name="password" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" />
           </div>
           <Button type="submit" className="w-full" disabled={isLoading}>
             {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Iniciar Sesión
           </Button>
         </form>
-        <div className="my-4 flex items-center">
-          <Separator className="flex-1" />
-          <span className="mx-4 text-xs text-muted-foreground">O</span>
-          <Separator className="flex-1" />
-        </div>
-        <Button variant="outline" className="w-full" onClick={handleGuestLogin} disabled={isGuestLoading}>
-          {isGuestLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          Iniciar Sesión como Invitado
-        </Button>
       </CardContent>
       <CardFooter className="justify-center text-sm">
         <p>

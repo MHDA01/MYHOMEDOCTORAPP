@@ -1,115 +1,71 @@
+/* ============================================================
+   globals.css — Estilos base para MyHomeDoctorApp
+   INSTRUCCIONES: Agrega estas utilidades a tu globals.css existente
+   ============================================================ */
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
-  :root {
-    /* ── Paleta MyHomeDoctorApp ─────────────────────────────────────────────
-     *  Primary  (#3B82F6)  Azul Celeste         →  hsl(217, 91%, 60%)
-     *  Accent   (#48C9B0)  Turquesa / Teal      →  hsl(164, 53%, 54%)
-     *  Bg       (#F8F9FA)  Gris muy claro        →  hsl(210, 17%, 98%)
-     *  Fg       (#1E293B)  Azul marino oscuro    →  hsl(217, 33%, 17%)
-     *  Card     (#FFFFFF)  Blanco                →  hsl(0,   0%, 100%)
-     * ─────────────────────────────────────────────────────────────────────── */
-    --background:           210  17% 98%;   /* #F8F9FA — Gris muy claro */
-    --foreground:           217  33% 17%;   /* #1E293B — Azul marino oscuro */
-
-    --card:                   0   0% 100%;  /* #FFFFFF — Blanco */
-    --card-foreground:      217  33% 17%;
-
-    --popover:                0   0% 100%;
-    --popover-foreground:   217  33% 17%;
-
-    --primary:              217  91% 60%;   /* #3B82F6 — Azul celeste */
-    --primary-foreground:     0   0% 100%;
-
-    --secondary:            210  33% 94%;   /* #EBF1F6 — Azul grisáceo pálido */
-    --secondary-foreground: 217  33% 17%;
-
-    --muted:                210  14% 96%;   /* #F1F3F5 — Gris muy tenue */
-    --muted-foreground:     210   7% 46%;   /* #6C757D — Gris medio */
-
-    --accent:               164  53% 54%;   /* #48C9B0 — Turquesa/Teal */
-    --accent-foreground:      0   0% 100%;
-
-    --destructive:            0  72% 51%;
-    --destructive-foreground: 0   0% 98%;
-
-    --border:               210  14% 89%;   /* Gris borde sutil */
-    --input:                210  14% 95%;   /* Fondo input gris tenue */
-    --ring:                 217  91% 60%;   /* Ring = Azul para foco */
-    --radius:               0.75rem;
-
-    /* ── Charts ──────────────────────────────────────────────────────────── */
-    --chart-1:              217  91% 60%;   /* Azul principal */
-    --chart-2:              164  53% 54%;   /* Turquesa */
-    --chart-3:              217  70% 75%;   /* Azul claro */
-    --chart-4:              210  33% 70%;   /* Gris azulado */
-    --chart-5:              210   7% 46%;   /* Gris */
-
-    /* ── Sidebar (blanco/claro) ───────────────────────────────────────────── */
-    --sidebar-background:     0   0% 100%;  /* Blanco */
-    --sidebar-foreground:   217  33% 17%;   /* Azul marino */
-    --sidebar-primary:      217  91% 60%;   /* Azul = ítem activo */
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent:       213  94% 95%;   /* Azul muy tenue para activo */
-    --sidebar-accent-foreground: 217 91% 60%;  /* Texto azul */
-    --sidebar-border:       210  14% 91%;
-    --sidebar-ring:         217  91% 60%;
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
-  .dark {
-    --background:           222  47% 11%;
-    --foreground:           210  17% 95%;
-
-    --card:                 217  33% 15%;
-    --card-foreground:      210  17% 95%;
-
-    --popover:              217  33% 15%;
-    --popover-foreground:   210  17% 95%;
-
-    --primary:              217  91% 60%;
-    --primary-foreground:     0   0% 100%;
-
-    --secondary:            217  33% 20%;
-    --secondary-foreground: 210  17% 95%;
-
-    --muted:                217  33% 18%;
-    --muted-foreground:     210  14% 60%;
-
-    --accent:               164  53% 45%;
-    --accent-foreground:      0   0% 100%;
-
-    --destructive:            0  60% 38%;
-    --destructive-foreground: 0   0% 98%;
-
-    --border:               217  33% 24%;
-    --input:                217  33% 20%;
-    --ring:                 217  91% 60%;
-
-    --chart-1:              217  91% 60%;
-    --chart-2:              164  53% 45%;
-    --chart-3:              210  40% 50%;
-    --chart-4:              180  40% 50%;
-    --chart-5:              210  14% 60%;
-
-    --sidebar-background:   222  47% 11%;
-    --sidebar-foreground:   210  17% 95%;
-    --sidebar-primary:      217  91% 60%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent:       217  50% 20%;
-    --sidebar-accent-foreground: 217 91% 70%;
-    --sidebar-border:       217  33% 20%;
-    --sidebar-ring:         217  91% 60%;
-  }
-}
-
-@layer base {
-  * {
-    @apply border-border;
-  }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-white text-gray-900;
+  }
+
+  /* Scrollbar personalizado — solo Webkit */
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    @apply rounded-full bg-gray-200;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    @apply bg-gray-300;
   }
 }
 
+@layer utilities {
+  /* Animación para el indicador de escucha del micrófono */
+  @keyframes pulse-ring {
+    0% {
+      box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4);
+    }
+    70% {
+      box-shadow: 0 0 0 10px rgba(239, 68, 68, 0);
+    }
+    100% {
+      box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+    }
+  }
+
+  .animate-pulse-ring {
+    animation: pulse-ring 1.5s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+  }
+
+  @keyframes shake-x {
+    0%, 100% {
+      transform: translateX(0);
+    }
+    25% {
+      transform: translateX(-3px);
+    }
+    75% {
+      transform: translateX(3px);
+    }
+  }
+
+  .animate-shake-x {
+    animation: shake-x 0.35s ease-in-out 1;
+  }
+}

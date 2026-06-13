@@ -11,3 +11,23 @@ env:
     availability:
       - BUILD
       - RUNTIME
+  - variable: ABACUS_API_KEY
+    secret: ABACUS_API_KEY
+    availability:
+      - RUNTIME
+  - variable: MHD_FIREBASE_PROJECT_ID
+    secret: MHD_FIREBASE_PROJECT_ID
+    availability:
+      - RUNTIME
+  - variable: MHD_FIREBASE_CLIENT_EMAIL
+    secret: MHD_FIREBASE_CLIENT_EMAIL
+    availability:
+      - RUNTIME
+  - variable: MHD_FIREBASE_PRIVATE_KEY
+    secret: MHD_FIREBASE_PRIVATE_KEY
+    availability:
+      - RUNTIME
+  - variable: MHD_FIREBASE_STORAGE_BUCKET
+    secret: MHD_FIREBASE_STORAGE_BUCKET
+    availability:
+      - RUNTIME

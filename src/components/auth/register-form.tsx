@@ -9,10 +9,11 @@ import { Label } from '@/components/ui/label';
 import { useState } from 'react';
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { auth, db } from '@/lib/firebase';
-import { doc, setDoc } from 'firebase/firestore';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from 'lucide-react';
-import { COLECCION_TUTOR } from '@/lib/constants';
+import { COLECCION_TUTOR, SUBCOLECCION_INTEGRANTES } from '@/lib/constants';
+import { LegalConsentModal } from './legal-consent-modal';
 
 export function RegisterForm() {
   const router = useRouter();
@@ -22,16 +23,22 @@ export function RegisterForm() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [showConsent, setShowConsent] = useState(false);
 
-  const handleRegister = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleFormSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (password !== confirmPassword) {
       toast({
         variant: 'destructive',
-        title: 'Las contraseñas no coinciden',
+        title: 'Las contrase\u00f1as no coinciden',
       });
       return;
     }
+    setShowConsent(true);
+  };
+
+  const handleConsentAccepted = async () => {
+    setShowConsent(false);
     setIsLoading(true);
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
@@ -42,15 +49,15 @@ export function RegisterForm() {
       const [firstName, ...lastNameParts] = name.split(' ');
       const lastName = lastNameParts.join(' ');
 
-      // Create a default profile document in Firestore
+      // Crear perfil inicial del usuario (Tutor)
       const initialProfile = {
         personalInfo: {
           firstName: firstName || '',
           lastName: lastName || '',
           sex: 'other',
-          dateOfBirth: new Date(),
-          country: 'chile',
-          insuranceProvider: 'Fonasa',
+          dateOfBirth: new Date().toISOString(),
+          country: 'colombia',
+          insuranceProvider: '',
           insuranceProviderName: '',
         },
         healthInfo: {
@@ -61,11 +68,54 @@ export function RegisterForm() {
             gynecologicalHistory: '',
             emergencyContacts: [],
         },
+        legalConsent: {
+          dataProtection: true,
+          teleorientationDisclaimer: true,
+          termsAndConditions: true,
+          consentVersion: '1.0',
+          acceptedAt: serverTimestamp(),
+        },
       };
 
       await setDoc(doc(db, COLECCION_TUTOR, user.uid), initialProfile);
 
-      router.push('/dashboard');
+      // Crear integrante titular coincidente
+      const titularProfile = {
+        userId: user.uid,
+        firstName: firstName || '',
+        lastName: lastName || '',
+        sex: 'other',
+        dateOfBirth: new Date().toISOString().split('T')[0],
+        relationship: 'Titular',
+        esTitular: true,
+        allergies: [],
+        medications: [],
+        hasHistory: false,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      };
+
+      await setDoc(
+        doc(db, COLECCION_TUTOR, user.uid, SUBCOLECCION_INTEGRANTES, 'titular'),
+        titularProfile,
+        { merge: true }
+      );
+
+      // Forzar la obtención de un nuevo token y crear sesión
+      const idToken = await user.getIdToken(true);
+      const response = await fetch('/api/auth/session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idToken }),
+      });
+
+      if (!response.ok) {
+        throw new Error('No se pudo establecer la sesión en el servidor.');
+      }
+
+      // Usar window.location.href en lugar de router.push para asegurar que 
+      // el middleware procese la nueva cookie de sesión en la siguiente carga
+      window.location.href = '/dashboard/teleorientacion';
     } catch (error: any) {
       console.error(error);
        toast({
@@ -79,43 +129,50 @@ export function RegisterForm() {
   };
 
   return (
-    <Card>
-      <CardHeader className="text-center">
-        <CardTitle className="text-2xl font-headline">Crear una Cuenta</CardTitle>
-        <CardDescription>Completa los siguientes datos para comenzar.</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form className="space-y-4" onSubmit={handleRegister}>
-          <div className="space-y-2">
-            <Label htmlFor="name">Nombre Completo</Label>
-            <Input id="name" type="text" placeholder="John Doe" required value={name} onChange={e => setName(e.target.value)} />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="email">Correo Electrónico</Label>
-            <Input id="email" type="email" placeholder="nombre@ejemplo.com" required value={email} onChange={e => setEmail(e.target.value)} />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="password">Contraseña</Label>
-            <Input id="password" type="password" required value={password} onChange={e => setPassword(e.target.value)} />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="confirm-password">Confirmar Contraseña</Label>
-            <Input id="confirm-password" type="password" required value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} />
-          </div>
-          <Button type="submit" className="w-full" disabled={isLoading}>
-            {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Registrarse
-          </Button>
-        </form>
-      </CardContent>
-      <CardFooter className="justify-center text-sm">
-        <p>
-          ¿Ya tienes una cuenta?{' '}
-          <Link href="/login" className="font-semibold text-primary underline-offset-4 hover:underline">
-            Iniciar Sesión
-          </Link>
-        </p>
-      </CardFooter>
-    </Card>
+    <>
+      <Card>
+        <CardHeader className="text-center">
+          <CardTitle className="text-2xl font-headline">Crear una Cuenta</CardTitle>
+          <CardDescription>Completa los siguientes datos para comenzar.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form className="space-y-4" onSubmit={handleFormSubmit}>
+            <div className="space-y-2">
+              <Label htmlFor="name">Nombre Completo</Label>
+              <Input id="name" name="name" type="text" placeholder="John Doe" required value={name} onChange={e => setName(e.target.value)} autoComplete="name" />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="register-email">Correo Electr\u00f3nico</Label>
+              <Input id="register-email" name="email" type="email" placeholder="nombre@ejemplo.com" required value={email} onChange={e => setEmail(e.target.value)} autoComplete="email" />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="register-password">Contrase\u00f1a</Label>
+              <Input id="register-password" name="password" type="password" required value={password} onChange={e => setPassword(e.target.value)} autoComplete="new-password" />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="confirm-password">Confirmar Contrase\u00f1a</Label>
+              <Input id="confirm-password" name="confirm-password" type="password" required value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} autoComplete="new-password" />
+            </div>
+            <Button type="submit" className="w-full" disabled={isLoading}>
+              {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Registrarse
+            </Button>
+          </form>
+        </CardContent>
+        <CardFooter className="justify-center text-sm">
+          <p>
+            \u00bfYa tienes una cuenta?{' '}
+            <Link href="/login" className="font-semibold text-primary underline-offset-4 hover:underline">
+              Iniciar Sesi\u00f3n
+            </Link>
+          </p>
+        </CardFooter>
+      </Card>
+
+      <LegalConsentModal
+        open={showConsent}
+        onAccept={handleConsentAccepted}
+      />
+    </>
   );
 }
