@@ -6,11 +6,6 @@ runConfig:
   memoryMiB: 512
 
 env:
-  - variable: GOOGLE_GENAI_API_KEY
-    secret: GOOGLE_GENAI_API_KEY
-    availability:
-      - BUILD
-      - RUNTIME
   - variable: ABACUS_API_KEY
     secret: ABACUS_API_KEY
     availability:
