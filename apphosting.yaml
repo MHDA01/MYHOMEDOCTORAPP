@@ -26,3 +26,61 @@ env:
     secret: MHDA_ENCRYPTION_KEY
     availability:
       - RUNTIME
+
+  # Config pública del cliente Firebase/Wompi — no son secretos, Firebase los expone
+  # a propósito en el bundle del navegador. Sin esto, next build falla al pre-renderizar
+  # páginas que inicializan el SDK de Firebase (ej. /login).
+  - variable: NEXT_PUBLIC_FIREBASE_API_KEY
+    value: AIzaSyAp65amh6olkSyo94sYxaBD9E2frbkws44
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
+    value: myhomedoctorapp.firebaseapp.com
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: NEXT_PUBLIC_DATABASE_URL
+    value: https://myhomedoctorapp-default-rtdb.firebaseio.com
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: NEXT_PUBLIC_FIREBASE_PROJECT_ID
+    value: myhomedoctorapp
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
+    value: myhomedoctorapp.firebasestorage.app
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
+    value: "138646987953"
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: NEXT_PUBLIC_FIREBASE_APP_ID
+    value: "1:138646987953:web:8d668e0db76f20974dae90"
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: NEXT_PUBLIC_MEASUREMENT_ID
+    value: G-JQQL7L8WL0
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: NEXT_PUBLIC_WOMPI_PUBLIC_KEY
+    value: pub_prod_HEfS9EpvKwmC8QL9UojA5uBUHOyeKSu2
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: NEXT_PUBLIC_FOUNDER_EMAIL
+    value: marketing@myhomedoctorapp.com
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: FOUNDER_EMAIL
+    value: marketing@myhomedoctorapp.com
+    availability:
+      - RUNTIME
