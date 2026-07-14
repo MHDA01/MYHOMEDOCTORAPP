@@ -1,23 +1,15 @@
 const CACHE_PREFIX = 'my-home-doctor-app-cache-';
-const CACHE_NAME = `${CACHE_PREFIX}v3`;
-const urlsToCache = [
-  '/',
-  '/login',
-  '/dashboard',
-  '/manifest.webmanifest',
-  '/favicon.ico',
-];
+const CACHE_NAME = `${CACHE_PREFIX}v4`;
+const urlsToCache = ['/manifest.webmanifest', '/favicon.ico', '/images/LOGO_1_transparent.png'];
 
 self.addEventListener('message', (event) => {
-  if (event.data && event.data.type === 'SKIP_WAITING') {
+  if (event.data?.type === 'SKIP_WAITING') {
     self.skipWaiting();
   }
 });
 
 self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(urlsToCache))
-  );
+  event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(urlsToCache)));
 });
 
 self.addEventListener('activate', (event) => {
@@ -33,43 +25,35 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  if (event.request.method !== 'GET') {
-    return;
-  }
+  if (event.request.method !== 'GET') return;
 
   const url = new URL(event.request.url);
-  if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') return;
+  if (url.pathname.startsWith('/api/') || url.hostname.includes('firebase') || url.hostname.includes('google') || url.hostname.includes('gstatic')) return;
+
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      fetch(event.request)
+        .then((response) => response)
+        .catch(() => fetch('/'))
+    );
     return;
   }
 
-  if (event.request.url.includes('firestore.googleapis.com') || event.request.url.includes('google.com/recaptcha')) {
-    return;
-  }
-
-  event.respondWith(
-    fetch(event.request)
-      .then((networkResponse) => {
-        if (networkResponse && networkResponse.status === 200) {
-          const responseToCache = networkResponse.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, responseToCache);
-          });
-        }
-        return networkResponse;
-      })
-      .catch(() =>
-        caches.match(event.request).then((cachedResponse) => {
-          if (cachedResponse) {
-            return cachedResponse;
+  const isStaticAsset = ['style', 'script', 'font', 'image', 'manifest', 'worker'].includes(event.request.destination || '');
+  if (isStaticAsset) {
+    event.respondWith(
+      caches.match(event.request).then((cachedResponse) => {
+        if (cachedResponse) return cachedResponse;
+        return fetch(event.request).then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200) {
+            const copy = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
           }
-          return new Response('Offline', {
-            status: 503,
-            statusText: 'Service Unavailable',
-            headers: {
-              'Content-Type': 'text/plain; charset=utf-8',
-            },
-          });
-        })
-      )
-  );
+          return networkResponse;
+        });
+      })
+    );
+    return;
+  }
 });

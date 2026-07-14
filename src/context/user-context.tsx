@@ -169,7 +169,10 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
           const userDoc = await getSecureUserDocument(idToken);
           
           if (userDoc) {
-              setPersonalInfo(userDoc.personalInfo);
+              setPersonalInfo({
+                  ...userDoc.personalInfo,
+                  dateOfBirth: toDate(userDoc.personalInfo?.dateOfBirth),
+              });
               setHealthInfo(userDoc.healthInfo);
           } else {
               const isAnon = user.isAnonymous;

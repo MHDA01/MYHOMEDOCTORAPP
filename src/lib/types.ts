@@ -138,3 +138,90 @@ export type FamilyProfileMedical = {
   gynecologicalHistory?: string;
   updatedAt?: any;
 };
+
+// ──────────────────────────────────────────────────────────────
+// TOKEN & PAYMENT SYSTEM
+// ──────────────────────────────────────────────────────────────
+
+/**
+ * Sistema de tokens para consultas de teleorientación.
+ * Almacenado en Cuentas_Tutor/{uid}/tokens
+ *
+ * Flujo:
+ * 1. Registración → free: 6 tokens (2/día × 3 días)
+ * 2. Cloud Function renueva 2 tokens diarios (primeros 3 días)
+ * 3. Después de 3 días → 0 tokens → Modal de pago Wompy
+ * 4. Pago exitoso → paid: 210 tokens (7 consultas/día × 30 días)
+ */
+export interface TokenSystem {
+  /** Tokens gratis disponibles (renovables diariamente durante 3 días) */
+  free: number;
+  /** Tokens pagos disponibles (210 = 7 consultas/día × 30 días) */
+  paid: number;
+  /** Timestamp de última renovación de tokens gratis */
+  dailyReset: Date;
+  /** Timestamp de expiración del período de prueba (3 días desde registro) */
+  freePeriodEnds: Date;
+  /** Timestamp de expiración del plan pagado (30 días desde compra) */
+  planExpires?: Date;
+  /** Renovación automática mensual activa */
+  autoRenew?: boolean;
+  /** Estado de la suscripción de renovación automática */
+  subscriptionStatus?: 'none' | 'active' | 'pending' | 'cancelled' | 'payment_failed';
+  /** Próxima fecha de cobro automático */
+  nextBillingDate?: Date;
+  /** Referencia opaca de Wompi a la tarjeta tokenizada (nunca el número real) */
+  paymentSourceId?: string | number;
+  /** Timestamp de aceptación de términos y autorización de datos personales (Wompi) */
+  consentAcceptedAt?: Date;
+  /** Intentos de cobro fallidos consecutivos (se auto-cancela tras 3) */
+  failedChargeAttempts?: number;
+}
+
+/**
+ * Transacción de pago a través de Wompi.
+ * Almacenado en Cuentas_Tutor/{uid}/transactions (subcol)
+ */
+export interface Transaction {
+  id: string;
+  /** ID de transacción en Wompi */
+  wompy_id?: string;
+  /** Monto en COP */
+  amount: number;
+  /** Estado: pending, success, failed, cancelled */
+  status: 'pending' | 'success' | 'failed' | 'cancelled';
+  /** Tipo: purchase (pago único), recurring (renovación automática), refund */
+  type: 'purchase' | 'recurring' | 'refund';
+  /** Referencia: "teleorientacion_monthly_{uid}_{timestamp}" o "teleorientacion_recurring_{uid}_{timestamp}" */
+  reference: string;
+  /** URL de pago de Wompi (para el usuario, solo pagos únicos) */
+  payment_url?: string;
+  /** Fecha de transacción */
+  createdAt: Date;
+  /** Fecha de completación */
+  completedAt?: Date;
+  /** Descripción para el usuario */
+  description: string;
+}
+
+/**
+ * Estado de una consulta de teleorientación.
+ * Almacenado en Cuentas_Tutor/{uid}/conversaciones/{convId}
+ * 
+ * Flujo:
+ * - in-progress: Chat abierto, usuario consultando
+ * - completed: Avatar confirmó resolución, usuario respondió "Sí" → 1 token consumido
+ */
+export type ConsultationStatus = 'in-progress' | 'completed' | 'abandoned';
+
+export interface Consultation {
+  id: string;
+  /** Estado de la consulta */
+  status: ConsultationStatus;
+  /** ¿Ya se consumió el token? */
+  tokenConsumed: boolean;
+  /** Fecha de inicio */
+  createdAt: Date;
+  /** Fecha de completación (solo si status=completed) */
+  completedAt?: Date;
+}

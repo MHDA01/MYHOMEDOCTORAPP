@@ -26,8 +26,8 @@ export default {
           foreground: 'hsl(var(--popover-foreground))',
         },
         primary: {
-          DEFAULT: 'hsl(var(--primary))',
-          foreground: 'hsl(var(--primary-foreground))',
+          DEFAULT: '#1a365d',
+          foreground: '#ffffff',
         },
         secondary: {
           DEFAULT: 'hsl(var(--secondary))',
@@ -55,11 +55,25 @@ export default {
           '4': 'hsl(var(--chart-4))',
           '5': 'hsl(var(--chart-5))',
         },
+        success: {
+          DEFAULT: '#10b981',
+          light: '#f0fdf4',
+          border: '#bbf7d0',
+        },
+        error: {
+          DEFAULT: '#ef4444',
+          light: '#fee2e2',
+          border: '#fecaca',
+        },
+        warning: {
+          DEFAULT: '#f59e0b',
+          light: '#fef3c7',
+        },
         sidebar: {
-          DEFAULT: 'hsl(var(--sidebar-background))',
-          foreground: 'hsl(var(--sidebar-foreground))',
-          primary: 'hsl(var(--sidebar-primary))',
-          'primary-foreground': 'hsl(var(--sidebar-primary-foreground))',
+          DEFAULT: '#1a365d',
+          foreground: '#ffffff',
+          primary: '#10b981',
+          'primary-foreground': '#ffffff',
           accent: 'hsl(var(--sidebar-accent))',
           'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
           border: 'hsl(var(--sidebar-border))',
@@ -78,11 +92,28 @@ export default {
           900: '#0F2B47',
           950: '#091A2E',
         },
-        medical: {
-          green: '#2BAD8E',
-          red: '#DC2626',
-          amber: '#F59E0B',
-        },
+        surface: '#f7fafc',
+        'surface-white': '#ffffff',
+        'border-neutral': '#e2e8f0',
+        'text-muted': '#64748b',
+        'text-body': '#1e293b',
+      },
+      fontSize: {
+        logo: ['13px', { lineHeight: '1.3' }],
+        'nav-item': ['13px', { lineHeight: '1.3' }],
+        'section-label': ['11px', { lineHeight: '1.3', letterSpacing: '0.03em' }],
+        title: ['16px', { lineHeight: '1.3' }],
+        subtitle: ['12px', { lineHeight: '1.4' }],
+        body: ['14px', { lineHeight: '1.55' }],
+        caption: ['11px', { lineHeight: '1.4' }],
+        button: ['13px', { lineHeight: '1.3' }],
+      },
+      spacing: {
+        // El resto de la escala (4/6/8/10/12/14/16/20px) ya existe por defecto en Tailwind
+        '5.5': '22px',
+      },
+      boxShadow: {
+        card: '0 4px 16px rgba(26,54,93,0.08)',
       },
       borderRadius: {
         lg: 'var(--radius)',

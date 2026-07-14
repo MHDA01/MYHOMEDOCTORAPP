@@ -47,4 +47,6 @@ export interface Conversation {
   createdAt: Date;
   updatedAt: Date;
   messageCount: number;
+  status?: 'in-progress' | 'completed' | 'abandoned';
+  tokenConsumed?: boolean;
 }

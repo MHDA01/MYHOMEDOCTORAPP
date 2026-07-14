@@ -1,15 +1,16 @@
-import { adminAuth } from '@/lib/firebase-admin';
+import { getAdminAuth } from '@/lib/firebase-admin';
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
+
+export const dynamic = 'force-dynamic';
 
 export async function POST(request: Request) {
   try {
     const { idToken } = await request.json();
     
-    // Set session expiration to 5 days.
     const expiresIn = 60 * 60 * 24 * 5 * 1000;
     
-    const sessionCookie = await adminAuth.createSessionCookie(idToken, { expiresIn });
+    const sessionCookie = await getAdminAuth().createSessionCookie(idToken, { expiresIn });
     
     const cookieStore = await cookies();
     cookieStore.set('__session', sessionCookie, {
@@ -21,7 +22,7 @@ export async function POST(request: Request) {
     
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Error creating session cookie:', error);
+    console.error('Error creating session cookie:', JSON.stringify(error, null, 2));
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }

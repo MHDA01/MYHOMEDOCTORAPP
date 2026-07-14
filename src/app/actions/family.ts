@@ -1,18 +1,59 @@
 'use server';
 
-import { adminAuth, adminDb } from '@/lib/firebase-admin';
+import { getAdminAuth, getAdminDb } from '@/lib/firebase-admin';
 import { encryptField, decryptField } from '@/lib/crypto';
 import { COLECCION_TUTOR, SUBCOLECCION_INTEGRANTES, SUBCOLECCION_HISTORIAL, DOC_HISTORIAL } from '@/lib/constants';
+import { validateFamilyMemberData, formatZodErrors, type SaveFamilyMemberInput } from '@/lib/validation-schemas';
+import { checkRateLimit } from '@/lib/rate-limit';
+import { z } from 'zod';
+
+function safeDecryptFamilyJsonArray(value: unknown): string[] {
+  if (typeof value !== 'string' || !value) return [];
+  try {
+    const decrypted = decryptField(value);
+    const parsed = JSON.parse(decrypted);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
 
 /**
  * Crea o actualiza un integrante de la familia con datos cifrados (V#5).
+ * @param idToken - Firebase ID token del usuario
+ * @param memberId - ID del integrante (null para crear nuevo)
+ * @param memberData - Datos del integrante (validados con Zod)
+ * @throws Lanza error si validación falla o rate limit es excedido
  */
 export async function saveFamilyMember(idToken: string, memberId: string | null, memberData: any) {
   try {
-    const decodedToken = await adminAuth.verifyIdToken(idToken);
+    const decodedToken = await getAdminAuth().verifyIdToken(idToken);
     const userId = decodedToken.uid;
 
-    const processedData = { ...memberData };
+    // ✅ Rate limiting: máx 10 requests por minuto por usuario
+    checkRateLimit(
+      { userId },
+      {
+        limit: 10,
+        window: 60,
+        keys: ['userId'],
+      }
+    );
+
+    // ✅ Validar datos de entrada con Zod
+    let validatedData: SaveFamilyMemberInput;
+    try {
+      validatedData = validateFamilyMemberData(memberData);
+    } catch (validationError) {
+      if (validationError instanceof z.ZodError) {
+        const errorMsg = formatZodErrors(validationError);
+        console.error('[Family Action] Validation error:', errorMsg);
+        return { success: false, error: errorMsg };
+      }
+      throw validationError;
+    }
+
+    const processedData: any = { ...validatedData };
 
     // Cifrar campos sensibles (PHI)
     if (processedData.allergies && Array.isArray(processedData.allergies)) {
@@ -31,14 +72,17 @@ export async function saveFamilyMember(idToken: string, memberId: string | null,
     let hasMedicalData = false;
 
     historyFields.forEach(field => {
-      if (processedData[field] !== undefined) {
-        medicalData[`encrypted_${field}`] = encryptField(processedData[field]);
-        delete processedData[field];
-        hasMedicalData = true;
+      if (processedData[field as keyof typeof processedData] !== undefined) {
+        const value = processedData[field as keyof typeof processedData];
+        if (typeof value === 'string' && value.length > 0) {
+          medicalData[`encrypted_${field}`] = encryptField(value);
+          hasMedicalData = true;
+        }
+        delete processedData[field as keyof typeof processedData];
       }
     });
 
-    const membersCol = adminDb
+    const membersCol = getAdminDb()
       .collection(COLECCION_TUTOR)
       .doc(userId)
       .collection(SUBCOLECCION_INTEGRANTES);
@@ -71,8 +115,9 @@ export async function saveFamilyMember(idToken: string, memberId: string | null,
 
     return { success: true, id: finalMemberId };
   } catch (error) {
-    console.error('[Family Action] Error saving member:', error);
-    return { success: false, error: 'Failed to save member data' };
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    console.error('[Family Action] Error saving member:', errorMsg);
+    return { success: false, error: `Failed to save member data: ${errorMsg}` };
   }
 }
 
@@ -81,34 +126,52 @@ export async function saveFamilyMember(idToken: string, memberId: string | null,
  */
 export async function getSecureFamilyMembers(idToken: string) {
   try {
-    const decodedToken = await adminAuth.verifyIdToken(idToken);
+    if (!idToken) {
+      return [];
+    }
+
+    const decodedToken = await getAdminAuth().verifyIdToken(idToken);
     const userId = decodedToken.uid;
 
-    const snap = await adminDb
+    const snap = await getAdminDb()
       .collection(COLECCION_TUTOR)
       .doc(userId)
       .collection(SUBCOLECCION_INTEGRANTES)
       .get();
 
     const members = snap.docs.map(doc => {
-      const data = doc.data();
-      const member: any = { id: doc.id, ...data };
+      const data = doc.data() as any;
+      const allergies = data.isEncrypted
+        ? safeDecryptFamilyJsonArray(data.encryptedAllergies)
+        : (Array.isArray(data.allergies) ? data.allergies : []);
+      const medications = data.isEncrypted
+        ? safeDecryptFamilyJsonArray(data.encryptedMedications)
+        : (Array.isArray(data.medications) ? data.medications : []);
 
-      if (data.isEncrypted) {
-        if (data.encryptedAllergies) {
-          member.allergies = JSON.parse(decryptField(data.encryptedAllergies));
-        }
-        if (data.encryptedMedications) {
-          member.medications = JSON.parse(decryptField(data.encryptedMedications));
-        }
-      }
-      return member;
+      return {
+        id: doc.id,
+        userId: typeof data.userId === 'string' ? data.userId : userId,
+        firstName: typeof data.firstName === 'string' ? data.firstName : '',
+        lastName: typeof data.lastName === 'string' ? data.lastName : '',
+        sex: typeof data.sex === 'string' ? data.sex : 'other',
+        dateOfBirth: typeof data.dateOfBirth === 'string' ? data.dateOfBirth : '',
+        age: typeof data.age === 'number' ? data.age : undefined,
+        weight: typeof data.weight === 'number' ? data.weight : undefined,
+        country: typeof data.country === 'string' ? data.country : undefined,
+        insuranceProvider: typeof data.insuranceProvider === 'string' ? data.insuranceProvider : undefined,
+        insuranceProviderName: typeof data.insuranceProviderName === 'string' ? data.insuranceProviderName : undefined,
+        relationship: typeof data.relationship === 'string' ? data.relationship : 'Integrante',
+        esTitular: Boolean(data.esTitular),
+        allergies,
+        medications,
+        hasHistory: Boolean(data.hasHistory),
+      };
     });
 
     return members;
   } catch (error) {
     console.error('[Family Action] Error fetching members:', error);
-    throw new Error('Failed to fetch secure family members');
+    return [];
   }
 }
 
@@ -117,10 +180,10 @@ export async function getSecureFamilyMembers(idToken: string) {
  */
 export async function getSecureMemberMedicalHistory(idToken: string, memberId: string) {
   try {
-    const decodedToken = await adminAuth.verifyIdToken(idToken);
+    const decodedToken = await getAdminAuth().verifyIdToken(idToken);
     const userId = decodedToken.uid;
 
-    const docSnap = await adminDb
+    const docSnap = await getAdminDb()
       .collection(COLECCION_TUTOR)
       .doc(userId)
       .collection(SUBCOLECCION_INTEGRANTES)

@@ -27,15 +27,19 @@ import {
   type TeleorientacionMessage,
   type PatientStructuredContext,
 } from '@/app/actions/teleorientacion';
-import { 
+import {
   saveFamilyMember,
   getSecureFamilyMembers 
 } from '@/app/actions/family';
-import { storage } from '@/lib/firebase';
+import { checkTokenAvailability } from '@/app/actions/tokens';
+import { storage, functions } from '@/lib/firebase';
+import { httpsCallable } from 'firebase/functions';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 import type { ChatMessage, Conversation } from '@/types/chat';
 import type { FamilyProfile } from '@/lib/types';
+import { TokenDisplay } from '@/components/payment/token-display';
+import { WompyPaymentModal } from '@/components/payment/wompy-payment-modal';
 import {
   Dialog,
   DialogContent,
@@ -43,7 +47,17 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
-import { MessageSquarePlus, Trash2 } from 'lucide-react';
+import { MessageSquarePlus, Trash2, Settings, LogOut } from 'lucide-react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import ChatInterface from '@/components/chat/ChatInterface';
 import { 
   COLECCION_TUTOR, 
@@ -54,6 +68,9 @@ import {
 /* ------------------------------------------------------------------ */
 /*  Helpers                                                            */
 /* ------------------------------------------------------------------ */
+
+// Debe coincidir con el "free: 6" inicial de src/lib/token-system.ts (ensureTokenDocument)
+const FREE_TOKENS_DAILY_LIMIT = 6;
 
 function uid(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
@@ -163,6 +180,8 @@ interface ConversationSidebarProps {
   onDelete: (convId: string) => void;
   isOpen: boolean;
   onClose: () => void;
+  freeTokens: number;
+  freeTokensTotal: number;
 }
 
 function ConversationSidebar({
@@ -173,9 +192,28 @@ function ConversationSidebar({
   onDelete,
   isOpen,
   onClose,
+  freeTokens,
+  freeTokensTotal,
 }: ConversationSidebarProps) {
   const grouped = groupConversations(conversations);
   const groupOrder: DateGroup[] = ['Hoy', 'Ayer', 'Últimos 7 días', 'Últimos 30 días', 'Anteriores'];
+
+  const userCtx = useContext(UserContext);
+  const router = useRouter();
+  const userFullName = userCtx?.personalInfo?.firstName && userCtx?.personalInfo?.lastName
+    ? `${userCtx.personalInfo.firstName} ${userCtx.personalInfo.lastName}`
+    : (userCtx?.user?.displayName || 'Usuario');
+  const userInitials = userFullName
+    ? userFullName.split(' ').map((n) => n[0]).join('').substring(0, 2).toUpperCase()
+    : 'U';
+  const userEmail = userCtx?.user?.email || '';
+
+  const handleLogout = async () => {
+    if (userCtx?.signOutUser) {
+      await userCtx.signOutUser();
+      router.push('/login');
+    }
+  };
 
   return (
     <>
@@ -188,59 +226,88 @@ function ConversationSidebar({
       )}
 
       <aside
-        className={`fixed inset-y-0 left-0 z-[9991] w-72 transform border-r border-slate-200 bg-white transition-transform duration-200 lg:relative lg:z-0 lg:translate-x-0 flex flex-col ${
+        className={`fixed inset-y-0 left-0 z-[9991] w-[230px] transform border-r border-slate-200 bg-[#1a365d] transition-transform duration-200 lg:relative lg:z-0 lg:translate-x-0 flex flex-col ${
           isOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
-        <div className="flex h-14 items-center border-b border-slate-200 px-4 flex-shrink-0">
-          <h2 className="text-sm font-semibold text-slate-800">
-            Conversaciones
-          </h2>
+        {/* Logo */}
+        <div className="relative flex items-center justify-center px-2 py-2 flex-shrink-0">
+          <img
+            src="/images/LOGO_1.png"
+            alt="MyHome DoctorApp"
+            className="h-[150px] w-[150px] flex-shrink-0 object-contain"
+          />
           <button
             onClick={onClose}
-            className="ml-auto rounded-lg p-1 text-slate-400 hover:text-slate-600 lg:hidden"
+            className="absolute right-2 top-2 rounded-lg p-1 text-slate-400 hover:text-slate-200 lg:hidden"
             aria-label="Cerrar menú"
           >
-            \u2715
+            ✕
           </button>
         </div>
 
-        <div className="px-3 py-3 flex-shrink-0">
-          <button
-            onClick={() => {
-              onNewConversation();
-              onClose();
-            }}
-            className="flex w-full items-center gap-2 rounded-xl border border-dashed border-slate-300 px-3 py-2.5 text-sm font-medium text-slate-600 transition-colors hover:border-teal-400 hover:bg-teal-50 hover:text-teal-700"
-          >
-            <MessageSquarePlus className="h-4 w-4" />
-            Nueva conversación
-          </button>
+        {/* Nueva conversación button */}
+        <button
+          onClick={() => {
+            onNewConversation();
+            onClose();
+          }}
+          className="mx-3 mb-2.5 flex items-center justify-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg bg-[#10b981] text-white hover:bg-[#059669] transition-colors"
+        >
+          <MessageSquarePlus className="h-4 w-4" />
+          Nueva conversación
+        </button>
+
+        {/* Navigation items */}
+        <nav className="flex flex-col gap-0.5 px-3 flex-shrink-0">
+          <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-[rgba(16,185,129,0.15)]">
+            <i className="ti ti-stethoscope text-[#6ee7b7] text-base flex-shrink-0"></i>
+            <span className="text-xs font-semibold text-white">Teleorientación</span>
+          </div>
+          <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[#cbd5e1] hover:bg-[rgba(255,255,255,0.08)] transition-colors cursor-pointer">
+            <i className="ti ti-file-text text-[#94a3b8] text-base flex-shrink-0"></i>
+            <span className="text-xs text-[#cbd5e1]">Informes</span>
+          </div>
+        </nav>
+
+        {/* Tokens libres card */}
+        <div className="mx-3 my-2.5 p-2 rounded-lg bg-[rgba(16,185,129,0.12)] border border-[rgba(16,185,129,0.3)]">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-[11px] font-semibold text-[#6ee7b7]">Tokens gratis</span>
+            <span className="text-[11px] font-semibold text-[#6ee7b7]">{freeTokens} / {freeTokensTotal}</span>
+          </div>
+          <div className="flex gap-1">
+            {[...Array(freeTokensTotal)].map((_, i) => (
+              <div
+                key={i}
+                className={`flex-1 h-1 rounded-sm ${i < freeTokens ? 'bg-[#10b981]' : 'bg-[rgba(16,185,129,0.25)]'}`}
+              />
+            ))}
+          </div>
         </div>
 
-        <nav className="flex-1 overflow-y-auto px-3 pb-3">
+        {/* Conversation history */}
+        <p className="text-[10px] text-[#64748b] mb-0.5 mx-3">últimos 7 dias</p>
+        <nav className="flex-1 overflow-y-auto px-3 pb-2">
           {conversations.length === 0 && (
-            <p className="px-2 py-4 text-center text-xs text-slate-400">
-              No hay conversaciones aún. Inicia una nueva.
+            <p className="px-2 py-4 text-center text-xs text-[#64748b]">
+              No hay conversaciones aún.
             </p>
           )}
           {groupOrder.map((group) => {
             const items = grouped[group];
             if (items.length === 0) return null;
             return (
-              <div key={group} className="mb-3">
-                <p className="mb-1 px-2 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
-                  {group}
-                </p>
+              <div key={group} className="mb-1.5">
                 {items.map((c) => {
                   const isSelected = c.id === selectedId;
                   return (
                     <div
                       key={c.id}
-                      className={`group mb-0.5 flex items-center rounded-xl transition-colors ${
+                      className={`group mb-0.5 flex items-center rounded-lg transition-colors ${
                         isSelected
-                          ? 'bg-teal-50 text-teal-800'
-                          : 'text-slate-700 hover:bg-slate-50'
+                          ? 'bg-[rgba(255,255,255,0.08)]'
+                          : 'hover:bg-[rgba(255,255,255,0.04)]'
                       }`}
                     >
                       <button
@@ -248,12 +315,12 @@ function ConversationSidebar({
                           onSelect(c);
                           onClose();
                         }}
-                        className="flex-1 min-w-0 px-3 py-2.5 text-left"
+                        className="flex-1 min-w-0 px-2.5 py-1.5 text-left"
                       >
-                        <p className="truncate text-sm font-medium">
+                        <p className="truncate text-xs font-semibold text-white">
                           {c.title}
                         </p>
-                        <p className="text-[11px] text-slate-400">
+                        <p className="text-[10px] text-[#94a3b8] mt-0.5">
                           {c.memberName}
                         </p>
                       </button>
@@ -262,10 +329,10 @@ function ConversationSidebar({
                           e.stopPropagation();
                           onDelete(c.id);
                         }}
-                        className="mr-2 rounded-lg p-1 text-slate-300 opacity-0 transition-opacity hover:text-red-500 group-hover:opacity-100"
+                        className="mr-2 rounded-lg p-1 text-[#64748b] opacity-0 transition-opacity hover:text-[#ef4444] group-hover:opacity-100"
                         aria-label="Eliminar conversación"
                       >
-                        <Trash2 className="h-3.5 w-3.5" />
+                        <Trash2 className="h-3 w-3" />
                       </button>
                     </div>
                   );
@@ -274,6 +341,44 @@ function ConversationSidebar({
             );
           })}
         </nav>
+
+        {/* User card - fixed at bottom */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              className="mx-3 mb-3 flex items-center gap-2 p-2 rounded-lg border border-[rgba(255,255,255,0.12)] flex-shrink-0 hover:bg-[rgba(255,255,255,0.08)] transition-colors text-left"
+            >
+              <div className="w-6 h-6 rounded-full bg-[#10b981] flex items-center justify-center text-[10px] font-semibold text-white flex-shrink-0">
+                {userInitials}
+              </div>
+              <p className="min-w-0 flex-1 truncate text-xs font-semibold text-white">
+                {userFullName}
+              </p>
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent className="w-56" align="start" side="top">
+            <DropdownMenuLabel className="font-normal">
+              <div className="flex flex-col space-y-1">
+                <p className="text-sm font-medium leading-none">{userFullName}</p>
+                {userEmail && (
+                  <p className="text-xs leading-none text-muted-foreground">{userEmail}</p>
+                )}
+              </div>
+            </DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem asChild>
+              <Link href="/dashboard/cuenta">
+                <Settings className="mr-2 h-4 w-4" />
+                <span>Mi cuenta</span>
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={handleLogout}>
+              <LogOut className="mr-2 h-4 w-4" />
+              <span>Cerrar Sesión</span>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </aside>
     </>
   );
@@ -349,6 +454,12 @@ export function TeleorientacionChatPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isHistoryLoading, setIsHistoryLoading] = useState(false);
   const [showMemberPicker, setShowMemberPicker] = useState(false);
+  const [hasTokens, setHasTokens] = useState<boolean | null>(null);
+  const [tokenInfo, setTokenInfo] = useState<{ free: number; paid: number; needsPayment?: boolean; freePeriodEnds?: Date } | null>(null);
+  const [tokenLoading, setTokenLoading] = useState(false);
+  const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+  const [conversationCompleted, setConversationCompleted] = useState(false);
+  const [chatDisabledReason, setChatDisabledReason] = useState<string | null>(null);
   const initialGreetingTriggeredRef = useRef<Record<string, boolean>>({});
 
   /* ---- Cargar integrantes ---- */
@@ -561,6 +672,103 @@ export function TeleorientacionChatPage() {
     }
   }, [user, selectedConv]);
 
+  /* ---- Tokens del usuario ---- */
+
+  const checkTokens = useCallback(async () => {
+    if (!user) return null;
+    setTokenLoading(true);
+
+    try {
+      const result = await checkTokenAvailability(user.uid);
+      const tokenState = {
+        free: result.tokens.free,
+        paid: result.tokens.paid,
+        needsPayment: result.needsPayment,
+        freePeriodEnds: result.freePeriodEnds ? new Date(result.freePeriodEnds) : undefined,
+      };
+      setHasTokens(result.available);
+      setTokenInfo(tokenState);
+
+      if (!result.available) {
+        setConversationCompleted(true);
+        if (result.needsPayment) {
+          setChatDisabledReason(
+            'Tu período de prueba finalizó. Completa el pago para seguir usando teleorientación.'
+          );
+          setPaymentModalOpen(true);
+        } else {
+          setChatDisabledReason(
+            'No hay tokens disponibles. Adquiere un plan para continuar con tus consultas.'
+          );
+        }
+      } else {
+        setChatDisabledReason(null);
+      }
+
+      return result;
+    } catch (error) {
+      console.error('[Teleorientación] Error verificando tokens:', error);
+      setHasTokens(false);
+      setChatDisabledReason(
+        'No se pudo verificar tu estado de tokens. Intenta de nuevo más tarde.'
+      );
+      return null;
+    } finally {
+      setTokenLoading(false);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
+    checkTokens();
+  }, [user, selectedConv?.id, checkTokens]);
+
+  useEffect(() => {
+    setConversationCompleted(false);
+    setChatDisabledReason(null);
+  }, [selectedConv?.id]);
+
+  const consumeToken = useCallback(async (convId: string) => {
+    try {
+      const callable = httpsCallable(functions, 'consumeTokenOnConsultationEnd');
+      const response = await callable({ convId });
+      const data = (response as any)?.data as any;
+      return data?.success === true;
+    } catch (error) {
+      console.error('[Teleorientación] Error consumiendo token:', error);
+      return false;
+    }
+  }, []);
+
+  const isExplicitTopicChange = useCallback((text: string) => {
+    const normalized = text.trim().toLowerCase();
+    return /otra consulta|otra pregunta|cambio de tema|ahora quisiera|ahora quiero|otra cosa|cualquier otra|cambiar de tema|nuevo tema|quiero hablar de otra cosa/i.test(normalized);
+  }, []);
+
+  const isClosingMessage = useCallback((text: string) => {
+    const normalized = text.trim().toLowerCase();
+    if (!normalized) return false;
+
+    const closurePatterns = [
+      /^(gracias|muchas gracias|eso es todo|eso seria todo|eso sería todo|no necesito mas|no necesito más|no gracias|listo|termin[oé]|finaliz[ao]|hasta luego|chau|adios|adiós)([.!?]*)$/i,
+      /(gracias|eso es todo|no necesito mas|no necesito más|no gracias|listo|termin[oé]|finaliz[ao]|hasta luego|chau|adios|adiós)(\s*\.?\!?)*$/i,
+      /^cualquier cosa te escribo/i,
+      // Respuestas de satisfacción cuando la IA pregunta "¿sientes que esto resolvió tu duda?"
+      /^(si|sí)(,)?\s*(estoy|me siento|quedo)?\s*(satisfech[oa])?(\s*,?\s*gracias)?([.!?]*)$/i,
+      /satisfech[oa]|resolvi[oó] mi (duda|inquietud|pregunta)|qued[oó] clar[oa]|no tengo más (dudas|preguntas)|no tengo mas (dudas|preguntas)/i,
+    ];
+
+    return closurePatterns.some((pattern) => pattern.test(normalized));
+  }, []);
+
+  function assistantClosureText(reason: 'user_close' | 'topic_change') {
+    if (reason === 'user_close') {
+      return `Gracias por usar Teleorientación. He terminado tu consulta actual. Si más adelante necesitas continuar o tienes otra duda relacionada, inicia una nueva conversación y con gusto te ayudaré. Cuídate y gracias por tu confianza.`;
+    }
+    // topic_change
+    return `Veo que estás cambiando de tema. Para mantener la calidad y trazabilidad de las teleorientaciones, he registrado la consulta y aplicado el consumo correspondiente. Si quieres seguir con este nuevo tema, inicia por favor una nueva conversación. Gracias por tu comprensión.`;
+  }
+
   /* ---- Saludo inicial ---- */
 
   useEffect(() => {
@@ -632,29 +840,45 @@ export function TeleorientacionChatPage() {
   const handleSendMessage = useCallback(
     async (text: string, images?: File[]) => {
       if (!user || !selectedConv || !selectedMember) return;
-      if (!text.trim() && (!images || images.length === 0)) return;
+      if (conversationCompleted || hasTokens === false) return;
+      const trimmedText = text.trim();
+      if (!trimmedText && (!images || images.length === 0)) return;
 
       let imageUrls: string[] = [];
       if (images?.length) {
-        
-        imageUrls = await Promise.all(
-          images.map(async (file) => {
-            const fileExt = file.name.split('.').pop();
-            const fileName = `${user.uid}/${selectedConv.id}/${uid()}.${fileExt}`;
-            const storageRef = ref(storage, `medical-images/${fileName}`);
-            
-            const metadata = {
-              contentType: file.type,
-              customMetadata: {
-                owner: user.uid,
-                phi: 'true'
-              }
-            };
-            
-            const uploadResult = await uploadBytes(storageRef, file, metadata);
-            return await getDownloadURL(uploadResult.ref);
-          })
-        );
+        setIsLoading(true);
+        try {
+          imageUrls = await Promise.all(
+            images.map(async (file) => {
+              const fileExt = file.name.split('.').pop();
+              const fileName = `${user.uid}/${selectedConv.id}/${uid()}.${fileExt}`;
+              const storageRef = ref(storage, `medical-images/${fileName}`);
+
+              const metadata = {
+                contentType: file.type,
+                customMetadata: {
+                  owner: user.uid,
+                  phi: 'true'
+                }
+              };
+
+              const uploadResult = await uploadBytes(storageRef, file, metadata);
+              return await getDownloadURL(uploadResult.ref);
+            })
+          );
+        } catch (err) {
+          console.error('[Teleorientación] Error subiendo imagen:', err);
+          setIsLoading(false);
+          const uploadErrorMsg: ChatMessage = {
+            id: uid(),
+            role: 'assistant',
+            content: 'No pude subir la imagen. Verifica tu conexión e intenta de nuevo.',
+            timestamp: new Date(),
+          };
+          setMessages((prev) => [...prev, uploadErrorMsg]);
+          persistSecureMessage(user.uid, selectedConv.id, uploadErrorMsg).catch(() => undefined);
+          return;
+        }
       }
 
       const userMsg: ChatMessage = {
@@ -671,6 +895,36 @@ export function TeleorientacionChatPage() {
 
       try {
         await persistSecureMessage(user.uid, selectedConv.id, userMsg);
+
+        // Cierre por cambio de tema: SOLO cuando el paciente lo dice explícitamente con sus
+        // propias palabras (ej. "otra consulta", "cambio de tema"). Ya no se infiere el cambio
+        // de tema por solapamiento de palabras contra el primer mensaje — ese heurístico
+        // generaba falsos positivos con preguntas de continuidad normales (ej. adjuntar una
+        // imagen sin texto, o preguntar algo relacionado con vocabulario distinto al mensaje 1).
+        if (!images?.length && isExplicitTopicChange(trimmedText)) {
+          const consumed = await consumeToken(selectedConv.id);
+
+          const assistantMsg: ChatMessage = {
+            id: uid(),
+            role: 'assistant',
+            content: assistantClosureText('topic_change'),
+            timestamp: new Date(),
+          };
+
+          setMessages((prev) => [...prev, assistantMsg]);
+          await persistSecureMessage(user.uid, selectedConv.id, assistantMsg);
+
+          if (consumed) {
+            setConversationCompleted(true);
+            setHasTokens(false);
+            setChatDisabledReason(
+              'Has cambiado de tema; token consumido. Inicia nueva conversación para continuar.'
+            );
+            await checkTokens();
+          }
+
+          return;
+        }
 
         const history: TeleorientacionMessage[] = nextMessages.map((m) => ({
           role: m.role as 'user' | 'assistant',
@@ -695,6 +949,28 @@ export function TeleorientacionChatPage() {
           };
           setMessages((prev) => [...prev, assistantMsg]);
           await persistSecureMessage(user.uid, selectedConv.id, assistantMsg);
+
+          if (isClosingMessage(text)) {
+            const consumed = await consumeToken(selectedConv.id);
+
+            const closingAssistantMsg: ChatMessage = {
+              id: uid(),
+              role: 'assistant',
+              content: assistantClosureText('user_close'),
+              timestamp: new Date(),
+            };
+
+            setMessages((prev) => [...prev, closingAssistantMsg]);
+            await persistSecureMessage(user.uid, selectedConv.id, closingAssistantMsg);
+
+            if (consumed) {
+              setConversationCompleted(true);
+              setChatDisabledReason(
+                'Consulta finalizada. Inicia una nueva conversación para continuar.'
+              );
+              await checkTokens();
+            }
+          }
         } else {
           const errorMsg: ChatMessage = {
             id: uid(),
@@ -719,7 +995,7 @@ export function TeleorientacionChatPage() {
         setIsLoading(false);
       }
     },
-    [messages, selectedConv, selectedMember, healthInfo, user]
+    [messages, selectedConv, selectedMember, healthInfo, user, conversationCompleted, hasTokens, isExplicitTopicChange, isClosingMessage, consumeToken, checkTokens]
   );
 
   /* ---- Nueva sesion ---- */
@@ -762,20 +1038,43 @@ export function TeleorientacionChatPage() {
         onDelete={handleDeleteConversation}
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
+        freeTokens={tokenInfo?.free ?? 0}
+        freeTokensTotal={FREE_TOKENS_DAILY_LIMIT}
       />
 
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div className="flex min-w-0 flex-1 flex-col bg-white">
+        {chatDisabledReason && selectedConv && (
+          <div className="border-b border-rose-100 bg-rose-50 px-5 py-3 text-xs text-rose-700">
+            {chatDisabledReason}
+          </div>
+        )}
         {selectedConv ? (
-          <ChatInterface
-            messages={messages}
-            onSendMessage={handleSendMessage}
-            isLoading={isLoading}
-            memberName={memberName}
-            memberAge={memberAge}
-            memberSex={memberSex}
-            onMenuToggle={() => setSidebarOpen((prev) => !prev)}
-            onNewSession={handleNewSession}
-          />
+          <div className="flex h-full min-h-0 flex-col">
+            {/* Banner "Comprar tokens" */}
+            <div className="flex items-center justify-between px-3 py-1.5 rounded-lg bg-[#f1f5f9] mx-5 mt-2">
+              <p className="text-[11px] font-semibold text-[#1a365d]">Necesitas mas consultas? Compra tokens.</p>
+              <button
+                type="button"
+                onClick={() => setPaymentModalOpen(true)}
+                className="px-2.5 py-1 rounded-lg bg-[#1a365d] text-white text-[11px] font-semibold hover:bg-[#0f2a47] transition-colors flex-shrink-0"
+              >
+                Comprar tokens
+              </button>
+            </div>
+
+            {/* Chat interface */}
+            <ChatInterface
+              messages={messages}
+              onSendMessage={handleSendMessage}
+              isLoading={isLoading || tokenLoading}
+              memberName={memberName}
+              memberAge={memberAge}
+              memberSex={memberSex}
+              onMenuToggle={() => setSidebarOpen((prev) => !prev)}
+              onNewSession={handleNewSession}
+              disabled={Boolean(chatDisabledReason)}
+            />
+          </div>
         ) : (
           <div className="flex h-full flex-col items-center justify-center gap-4 px-6 text-center bg-slate-50">
             <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-teal-50">
@@ -800,6 +1099,16 @@ export function TeleorientacionChatPage() {
         members={members}
         onSelect={handleCreateConversation}
         onClose={() => setShowMemberPicker(false)}
+      />
+
+      <WompyPaymentModal
+        isOpen={paymentModalOpen}
+        onClose={() => setPaymentModalOpen(false)}
+        uid={user.uid}
+        onPaymentSuccess={async () => {
+          setPaymentModalOpen(false);
+          await checkTokens();
+        }}
       />
     </div>
   );

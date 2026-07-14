@@ -91,6 +91,21 @@
         { "fieldPath": "action", "order": "ASCENDING" },
         { "fieldPath": "timestamp", "order": "DESCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "tokens",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        { "fieldPath": "autoRenew", "order": "ASCENDING" },
+        { "fieldPath": "nextBillingDate", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "dailyTips",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        { "fieldPath": "date", "order": "ASCENDING" }
+      ]
     }
   ],
   "fieldOverrides": [

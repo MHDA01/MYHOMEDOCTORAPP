@@ -12,7 +12,7 @@ import { auth, db } from '@/lib/firebase';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from 'lucide-react';
-import { COLECCION_TUTOR, SUBCOLECCION_INTEGRANTES } from '@/lib/constants';
+import { COLECCION_TUTOR, SUBCOLECCION_INTEGRANTES, DOC_TOKENS } from '@/lib/constants';
 import { LegalConsentModal } from './legal-consent-modal';
 
 export function RegisterForm() {
@@ -98,6 +98,21 @@ export function RegisterForm() {
       await setDoc(
         doc(db, COLECCION_TUTOR, user.uid, SUBCOLECCION_INTEGRANTES, 'titular'),
         titularProfile,
+        { merge: true }
+      );
+
+      // Crear documento inicial de tokens para el nuevo usuario
+      const now = new Date();
+      const initialTokens = {
+        free: 6,
+        paid: 0,
+        dailyReset: now,
+        freePeriodEnds: new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000),
+      };
+
+      await setDoc(
+        doc(db, COLECCION_TUTOR, user.uid, DOC_TOKENS, 'config'),
+        initialTokens,
         { merge: true }
       );
 

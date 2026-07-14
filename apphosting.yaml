@@ -31,3 +31,7 @@ env:
     secret: MHD_FIREBASE_STORAGE_BUCKET
     availability:
       - RUNTIME
+  - variable: MHDA_ENCRYPTION_KEY
+    secret: MHDA_ENCRYPTION_KEY
+    availability:
+      - RUNTIME

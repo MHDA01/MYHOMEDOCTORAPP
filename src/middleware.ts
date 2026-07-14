@@ -4,9 +4,10 @@ import type { NextRequest } from 'next/server';
 export function middleware(request: NextRequest) {
   const session = request.cookies.get('__session')?.value;
   const { pathname } = request.nextUrl;
+  const isServerAction = request.method === 'POST' && request.headers.has('next-action');
 
   
-  if (pathname.startsWith('/dashboard') && !session) {
+  if (pathname.startsWith('/dashboard') && !session && !isServerAction) {
     return NextResponse.redirect(new URL('/login', request.url));
   }
 

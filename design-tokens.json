@@ -1,0 +1,99 @@
+{
+  "project_name": "MyHome DoctorApp",
+  "brand_identity": {
+    "logo_description": "Doctora dentro de la silueta de una casa azul con una cruz médica verde",
+    "primary_color": "#1a365d",
+    "secondary_color": "#10b981",
+    "aesthetic": "Premium, Clínico, Profesional"
+  },
+  "design_system": {
+    "typography": {
+      "font_family": "Inter, sans-serif",
+      "sizes": {
+        "logo": "13px / 600",
+        "nav_item": "13px / 500-600",
+        "section_label": "11px / 500, uppercase-ish tracking",
+        "title": "15-16px / 600",
+        "subtitle": "12px / 400",
+        "body": "13-14px / 400, line-height 1.5-1.6",
+        "caption": "11px / 400",
+        "button": "12-13px / 600"
+      }
+    },
+    "corners": "8px en tarjetas y botones, 50% (circular) en avatares",
+    "color_palette": {
+      "surface": "#f7fafc",
+      "surface_white": "#ffffff",
+      "primary": "#1a365d",
+      "primary_text_on_dark_sidebar": "#ffffff",
+      "primary_muted_on_dark_sidebar": "#cbd5e1",
+      "success": "#10b981",
+      "success_bg": "#f0fdf4",
+      "success_border": "#bbf7d0",
+      "error": "#ef4444",
+      "error_bg": "#fee2e2",
+      "error_border": "#fecaca",
+      "warning": "#f59e0b",
+      "warning_bg": "#fef3c7",
+      "border_neutral": "#e2e8f0",
+      "text_muted": "#64748b",
+      "text_body": "#1e293b"
+    },
+    "shadows": {
+      "card_elevation": "0 4px 16px rgba(26,54,93,0.08)"
+    },
+    "spacing_scale": "4 / 6 / 8 / 10 / 12 / 14 / 16 / 20 / 22px"
+  },
+  "screens": [
+    {
+      "id": "SCREEN_13",
+      "title": "Escritorio Premium - Teleorientación",
+      "device": "Escritorio",
+      "layout": {
+        "sidebar": {
+          "background": "primary (#1a365d)",
+          "width": "230px",
+          "sections": [
+            "Logo (icono verde redondeado + wordmark)",
+            "Botón 'Nueva conversación' (fondo success)",
+            "Navegación: Teleorientación (activo, fondo success translúcido) / Informes",
+            "Tarjeta de tokens gratis (barra segmentada por día + contador X/Y)",
+            "Historial de conversaciones agrupado por fecha, scrollable",
+            "Tarjeta de usuario fija abajo (avatar iniciales + nombre)"
+          ]
+        },
+        "header": "Avatar circular Dra. Hilda AI + nombre paciente + edad, botón 'Nueva sesión'",
+        "main_content": [
+          "Banner superior 'Comprar tokens' (fondo surface, botón primary)",
+          "Banner de disclaimer general (fondo warning)",
+          "Burbuja de chat con mensaje del asistente",
+          "Tarjeta de alerta de alergia embebida en la burbuja (fondo error_bg)"
+        ],
+        "footer": "Input de texto + iconos cámara/micrófono + botón enviar circular (fondo primary)"
+      }
+    },
+    {
+      "id": "SCREEN_11",
+      "title": "Mobile Premium Final",
+      "device": "Móvil",
+      "layout": {
+        "top_app_bar": "Fondo primary, logo compacto + icono de campana de notificaciones",
+        "sections": [
+          { "name": "Alerta médica crítica", "content": "Tarjeta fondo error_bg con lista de alergias" },
+          { "name": "Tokens de servicio", "content": "Tarjeta fondo success_bg, barra de progreso X/Y + botón 'Comprar tokens'" },
+          { "name": "Chat reciente", "content": "Tarjeta con avatar Dra. Hilda, preview del mensaje, botones 'Responder ahora' / 'Detalles'" },
+          { "name": "Acciones rápidas", "content": "Grid 2 columnas: 'Reservar visita' / 'Recargas'" }
+        ],
+        "bottom_navigation": "4 items: Inicio, Chats, Informes, Perfil — icono + label 9px"
+      }
+    }
+  ],
+  "shared_components": [
+    "TopAppBar",
+    "BottomNavBar",
+    "NavigationDrawer (Escritorio)",
+    "MedicalAlertCard",
+    "TokenProgressCard",
+    "ChatBubble"
+  ]
+}

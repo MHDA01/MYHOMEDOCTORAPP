@@ -5,7 +5,16 @@
 
 import { useState, useEffect, useRef, FormEvent } from 'react';
 import { useSpeechRecognition } from '@/hooks/useSpeechRecognition';
-import { Camera } from 'lucide-react';
+import { Camera, ImagePlus, Aperture } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+
+const MAX_IMAGE_SIZE_MB = 10;
+const MAX_IMAGE_SIZE_BYTES = MAX_IMAGE_SIZE_MB * 1024 * 1024;
 
 interface ChatInputProps {
   onSend: (message: string, images?: File[]) => void;
@@ -22,8 +31,10 @@ export default function ChatInput({
 }: ChatInputProps) {
   const [text, setText] = useState('');
   const [selectedImages, setSelectedImages] = useState<File[]>([]);
+  const [imageError, setImageError] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const imageInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const galleryInputRef = useRef<HTMLInputElement>(null);
   const {
     transcript,
     interimTranscript,
@@ -90,16 +101,36 @@ export default function ChatInput({
     await toggleListening();
   };
 
-  const handleCameraClick = () => {
+  const handleTakePhotoClick = () => {
     if (disabled) return;
-    imageInputRef.current?.click();
+    cameraInputRef.current?.click();
+  };
+
+  const handleUploadFileClick = () => {
+    if (disabled) return;
+    galleryInputRef.current?.click();
   };
 
   const handleImageSelection = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files ?? []).filter((file) => /image\/(jpeg|jpg|png)/i.test(file.type));
-    if (!files.length) return;
-    setSelectedImages((prev) => [...prev, ...files].slice(0, 4));
+    const picked = Array.from(e.target.files ?? []);
     e.target.value = '';
+    if (!picked.length) return;
+
+    const validType = picked.filter((file) => /image\/(jpeg|jpg|png)/i.test(file.type));
+    const validSize = validType.filter((file) => file.size <= MAX_IMAGE_SIZE_BYTES);
+
+    if (validSize.length < picked.length) {
+      setImageError(
+        validType.length < picked.length
+          ? 'Solo se permiten imágenes JPG o PNG.'
+          : `Cada imagen debe pesar menos de ${MAX_IMAGE_SIZE_MB}MB.`
+      );
+    } else {
+      setImageError(null);
+    }
+
+    if (!validSize.length) return;
+    setSelectedImages((prev) => [...prev, ...validSize].slice(0, 4));
   };
 
   const removeSelectedImage = (index: number) => {
@@ -127,6 +158,12 @@ export default function ChatInput({
           <p className="max-w-[65%] truncate text-[11px] text-red-700/90">
             {(interimTranscript || transcript).trim() || 'Escuchando...'}
           </p>
+        </div>
+      )}
+
+      {imageError && (
+        <div className="mb-2 px-1 text-xs text-red-600">
+          {imageError}
         </div>
       )}
 
@@ -165,28 +202,54 @@ export default function ChatInput({
           />
         </div>
 
+        {/* Input oculto: cámara — fuerza la app de cámara en móvil */}
         <input
-          id="chat-image-upload"
-          name="chat-image-upload"
-          ref={imageInputRef}
+          id="chat-camera-capture"
+          name="chat-camera-capture"
+          ref={cameraInputRef}
           type="file"
           accept="image/jpeg,image/jpg,image/png"
           capture="environment"
+          className="hidden"
+          onChange={handleImageSelection}
+          aria-label="Tomar foto"
+        />
+
+        {/* Input oculto: galería / explorador de archivos */}
+        <input
+          id="chat-image-upload"
+          name="chat-image-upload"
+          ref={galleryInputRef}
+          type="file"
+          accept="image/jpeg,image/jpg,image/png"
           multiple
           className="hidden"
           onChange={handleImageSelection}
           aria-label="Subir imagen clínica"
         />
 
-        <button
-          type="button"
-          onClick={handleCameraClick}
-          disabled={disabled}
-          aria-label="Tomar o subir foto"
-          className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-blue-500 bg-blue-50 text-blue-600 transition-all duration-200 hover:bg-blue-100 disabled:opacity-50"
-        >
-          <Camera className="h-5 w-5" />
-        </button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild disabled={disabled}>
+            <button
+              type="button"
+              disabled={disabled}
+              aria-label="Tomar o subir foto"
+              className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-blue-500 bg-blue-50 text-blue-600 transition-all duration-200 hover:bg-blue-100 disabled:opacity-50"
+            >
+              <Camera className="h-5 w-5" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" side="top">
+            <DropdownMenuItem onClick={handleTakePhotoClick}>
+              <Aperture className="mr-2 h-4 w-4" />
+              Tomar foto
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={handleUploadFileClick}>
+              <ImagePlus className="mr-2 h-4 w-4" />
+              Subir archivo
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
 
         {/* Botón de micrófono */}
         {isSupported ? (
@@ -221,7 +284,7 @@ export default function ChatInput({
         {/* Botón de enviar — siempre visible */}
         <button
           type="submit"
-          disabled={disabled && !text.trim() && selectedImages.length === 0}
+          disabled={disabled}
           aria-label="Enviar mensaje"
           className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-slate-900 text-white transition-all duration-200 hover:bg-slate-700 disabled:opacity-40 disabled:hover:bg-slate-900"
         >

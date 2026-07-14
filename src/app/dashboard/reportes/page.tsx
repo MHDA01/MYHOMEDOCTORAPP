@@ -65,7 +65,7 @@ export default function ReportesPage() {
                 <p className="text-sm text-muted-foreground">Cargando reportes...</p>
               ) : reports.length === 0 ? (
                 <p className="text-sm text-muted-foreground">
-                  Aún no tienes reportes. En Teleorientación escribe o di: <strong>"genera mi reporte"</strong>.
+                  Aún no tienes reportes. En Teleorientación escribe o di: <strong>&quot;genera mi reporte&quot;</strong>.
                 </p>
               ) : (
                 reports.map((report) => {

@@ -54,10 +54,6 @@ export function useSpeechRecognition(): UseSpeechRecognitionReturn {
     isListeningRef.current = isListening;
   }, [isListening]);
 
-  const onResult = useCallback((text: string) => {
-    setTranscript(text);
-  }, []);
-
   const stopListening = useCallback(() => {
     if (recognitionRef.current) {
       try {
@@ -73,42 +69,67 @@ export function useSpeechRecognition(): UseSpeechRecognitionReturn {
   const startListening = useCallback(async () => {
     if (isListeningRef.current) return;
 
-    console.log('[MIC] Button clicked');
-
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SpeechRecognition) {
       setError('Tu navegador no soporta el micrófono. Usa Chrome.');
       return;
     }
 
+    // Evita pedir permiso dos veces (getUserMedia + SpeechRecognition) cuando ya está concedido.
+    let alreadyGranted = false;
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      stream.getTracks().forEach((track) => track.stop());
-      setHasPermission(true);
-      console.log('[MIC] getUserMedia result: granted');
-    } catch (err) {
-      setHasPermission(false);
-      setError('Permiso de micrófono denegado. Actívalo en la configuración de tu navegador.');
-      return;
+      if (navigator.permissions?.query) {
+        const status = await navigator.permissions.query({ name: 'microphone' as PermissionName });
+        alreadyGranted = status.state === 'granted';
+      }
+    } catch {
+      // Permissions API no disponible para 'microphone' en este navegador; seguimos con el flujo normal.
     }
 
+    if (alreadyGranted) {
+      setHasPermission(true);
+    } else {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        stream.getTracks().forEach((track) => track.stop());
+        setHasPermission(true);
+      } catch (err) {
+        setHasPermission(false);
+        setError('Permiso de micrófono denegado. Actívalo en la configuración de tu navegador.');
+        return;
+      }
+    }
+
+    setTranscript('');
+    setInterimTranscript('');
     setIsListening(true);
 
     const recognition: SpeechRecognitionLike = new SpeechRecognition();
     recognition.lang = 'es-CO';
-    recognition.continuous = false;
-    recognition.interimResults = false;
+    recognition.continuous = true;
+    recognition.interimResults = true;
 
     recognition.onresult = (event) => {
-      const transcript = event.results[0][0].transcript;
-      console.log('[MIC] Result received:', transcript);
-      onResult(transcript);
-      setIsListening(false);
+      let final = '';
+      let interim = '';
+      for (let i = 0; i < event.results.length; i++) {
+        const result = event.results[i];
+        if (result.isFinal) {
+          final += `${result[0].transcript} `;
+        } else {
+          interim += result[0].transcript;
+        }
+      }
+      setTranscript(final.trim());
+      setInterimTranscript(interim.trim());
     };
 
     recognition.onerror = (event) => {
+      if (event.error === 'no-speech' || event.error === 'aborted') {
+        // No son errores reales: el usuario no dijo nada o detuvo la grabación a propósito.
+        return;
+      }
       console.error('SpeechRecognition error:', event.error);
-      console.log('[MIC] Error:', event.error);
       setError('Error al escuchar. Intenta de nuevo.');
       setIsListening(false);
     };
@@ -120,8 +141,7 @@ export function useSpeechRecognition(): UseSpeechRecognitionReturn {
 
     recognitionRef.current = recognition;
     recognition.start();
-    console.log('[MIC] SpeechRecognition started');
-  }, [onResult]);
+  }, []);
 
   const toggleListening = useCallback(async () => {
     if (isListeningRef.current) {

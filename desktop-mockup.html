@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<title>MyHome DoctorApp - Escritorio (referencia)</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tabler-icons/2.44.0/tabler-icons.min.css" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Inter', sans-serif; background: #f7fafc; padding: 24px; }
+</style>
+</head>
+<body>
+
+<div style="display:grid;grid-template-columns:230px 1fr;background:#fff;border-radius:8px;border:1px solid #e2e8f0;overflow:hidden;min-height:640px;max-width:960px;margin:0 auto;box-shadow:0 4px 16px rgba(26,54,93,0.08);">
+
+<div style="background:#1a365d;padding:20px 14px;display:flex;flex-direction:column;gap:16px;">
+  <div style="display:flex;align-items:center;gap:9px;">
+    <div style="width:34px;height:34px;border-radius:8px;background:#10b981;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="ti ti-home-2" style="font-size:18px;color:#fff;"></i></div>
+    <div>
+      <p style="font-size:12px;font-weight:600;color:#fff;line-height:1.2;">MyHome</p>
+      <p style="font-size:12px;font-weight:600;color:#6ee7b7;line-height:1.2;">DoctorApp</p>
+    </div>
+  </div>
+
+  <button style="font-family:'Inter',sans-serif;width:100%;justify-content:center;gap:6px;display:flex;align-items:center;font-size:12px;font-weight:600;padding:9px;border-radius:8px;border:none;background:#10b981;color:#fff;cursor:pointer;"><i class="ti ti-plus" style="font-size:14px;"></i>Nueva conversacion</button>
+
+  <div style="display:flex;flex-direction:column;gap:2px;">
+    <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;background:rgba(16,185,129,0.15);">
+      <i class="ti ti-stethoscope" style="font-size:15px;color:#6ee7b7;"></i>
+      <span style="font-size:12px;font-weight:600;color:#fff;">Teleorientacion</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;">
+      <i class="ti ti-file-text" style="font-size:15px;color:#94a3b8;"></i>
+      <span style="font-size:12px;color:#cbd5e1;">Informes</span>
+    </div>
+  </div>
+
+  <div style="padding:10px 11px;border-radius:8px;background:rgba(16,185,129,0.12);border:1px solid rgba(16,185,129,0.3);">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+      <span style="font-size:11px;font-weight:600;color:#6ee7b7;">Tokens gratis</span>
+      <span style="font-size:11px;font-weight:600;color:#6ee7b7;">4 / 6</span>
+    </div>
+    <div style="display:flex;gap:3px;">
+      <div style="flex:1;height:4px;border-radius:2px;background:#10b981;"></div>
+      <div style="flex:1;height:4px;border-radius:2px;background:#10b981;"></div>
+      <div style="flex:1;height:4px;border-radius:2px;background:rgba(16,185,129,0.25);"></div>
+    </div>
+  </div>
+
+  <p style="font-size:10px;color:#64748b;margin:0 0 2px 2px;">ultimos 7 dias</p>
+  <div style="display:flex;flex-direction:column;gap:2px;overflow-y:auto;">
+    <div style="padding:7px 10px;border-radius:8px;background:rgba(255,255,255,0.08);">
+      <p style="font-size:12px;font-weight:600;color:#fff;">Alexander Garcia</p>
+      <p style="font-size:11px;color:#94a3b8;margin-top:1px;">Hoy</p>
+    </div>
+    <div style="padding:7px 10px;border-radius:8px;">
+      <p style="font-size:12px;color:#cbd5e1;">Alejandra Garcia E.</p>
+      <p style="font-size:11px;color:#64748b;margin-top:1px;">hace 2 dias</p>
+    </div>
+    <div style="padding:7px 10px;border-radius:8px;">
+      <p style="font-size:12px;color:#cbd5e1;">Alexander Garcia</p>
+      <p style="font-size:11px;color:#64748b;margin-top:1px;">hace 3 dias</p>
+    </div>
+  </div>
+
+  <div style="margin-top:auto;display:flex;align-items:center;gap:8px;padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.12);">
+    <div style="width:26px;height:26px;border-radius:50%;background:#10b981;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;color:#fff;flex-shrink:0;">AG</div>
+    <p style="font-size:11px;font-weight:600;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Alexander Garcia</p>
+  </div>
+</div>
+
+<div style="padding:18px 22px;display:flex;flex-direction:column;">
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:11px 14px;border-radius:8px;background:#f1f5f9;margin-bottom:14px;">
+    <p style="font-size:12px;font-weight:600;color:#1a365d;">Necesitas mas consultas? Compra tokens.</p>
+    <button style="font-family:'Inter',sans-serif;background:#1a365d;color:#fff;border:none;font-size:12px;font-weight:600;padding:7px 12px;border-radius:8px;cursor:pointer;">Comprar tokens</button>
+  </div>
+
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+    <div style="display:flex;align-items:center;gap:10px;">
+      <div style="width:38px;height:38px;border-radius:50%;background:rgba(16,185,129,0.12);display:flex;align-items:center;justify-content:center;"><i class="ti ti-stethoscope" style="font-size:18px;color:#10b981;"></i></div>
+      <div>
+        <p style="font-size:14px;font-weight:600;color:#1a365d;">Dra. Hilda AI</p>
+        <p style="font-size:11px;color:#64748b;">Alexander Garcia &middot; 41 anos</p>
+      </div>
+    </div>
+    <button style="font-family:'Inter',sans-serif;font-size:12px;font-weight:600;padding:7px 12px;border-radius:8px;border:1px solid #e2e8f0;background:#fff;color:#1a365d;cursor:pointer;">Nueva sesion</button>
+  </div>
+
+  <div style="display:flex;gap:8px;padding:9px 11px;border-radius:8px;background:#fef3c7;margin-bottom:16px;">
+    <i class="ti ti-alert-triangle" style="font-size:14px;color:#f59e0b;flex-shrink:0;margin-top:1px;"></i>
+    <p style="font-size:11px;color:#92400e;line-height:1.5;">Orientacion asistida por IA, no reemplaza consulta medica. Emergencias: linea 123.</p>
+  </div>
+
+  <div style="display:flex;gap:9px;max-width:440px;">
+    <div style="width:26px;height:26px;border-radius:50%;background:rgba(16,185,129,0.12);display:flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="ti ti-stethoscope" style="font-size:13px;color:#10b981;"></i></div>
+    <div style="background:#f7fafc;border-radius:8px;padding:11px 13px;">
+      <p style="font-size:13px;color:#1e293b;margin-bottom:8px;line-height:1.6;">Buenas tardes, Alexander. En que puedo ayudarte hoy?</p>
+      <div style="display:flex;gap:6px;padding:7px 9px;border-radius:6px;background:#fee2e2;">
+        <i class="ti ti-shield-exclamation" style="font-size:13px;color:#ef4444;flex-shrink:0;margin-top:1px;"></i>
+        <p style="font-size:11px;color:#991b1b;line-height:1.5;">Alergia registrada a AINES.</p>
+      </div>
+    </div>
+  </div>
+
+  <div style="margin-top:auto;padding-top:16px;display:flex;align-items:center;gap:8px;border:1px solid #e2e8f0;border-radius:8px;padding:6px 8px;">
+    <input type="text" placeholder="Escribe tu consulta..." style="font-family:'Inter',sans-serif;flex:1;border:none;background:transparent;font-size:12px;height:28px;outline:none;" />
+    <i class="ti ti-camera" style="font-size:15px;color:#64748b;"></i>
+    <i class="ti ti-microphone" style="font-size:15px;color:#64748b;"></i>
+    <div style="width:28px;height:28px;border-radius:50%;background:#1a365d;display:flex;align-items:center;justify-content:center;"><i class="ti ti-arrow-up" style="font-size:14px;color:#fff;"></i></div>
+  </div>
+</div>
+</div>
+
+</body>
+</html>

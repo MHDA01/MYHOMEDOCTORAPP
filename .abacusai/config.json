@@ -95,10 +95,15 @@
       "Bash(npx next build *)",
       "Bash(npx firebase hosting:channel:list *)",
       "Bash(chcp *)",
-      "Bash(dir *)"
+      "Bash(dir *)",
+      "Bash(ping -n 120 127.0.0.1 > nul 2>&1)",
+      "Bash(ping -n 180 127.0.0.1 > nul 2>&1)",
+      "Bash(ping -n 120 127.0.0.1 > nul 2>&1)",
+      "Bash(ping -n 30 127.0.0.1 > nul 2>&1)"
     ]
   },
   "additionalDirectories": [
-    "C:\\Users\\alexa\\.abacusai\\tmp\\codellm-prompt-Ccg1af"
+    "C:\\Users\\alexa\\.abacusai\\tmp\\codellm-prompt-Ccg1af",
+    "c:\\Users\\alexa\\.abacusai\\tmp\\codellm-prompt-e5uXBo"
   ]
 }

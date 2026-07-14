@@ -78,6 +78,19 @@ service cloud.firestore {
         allow read, write: if isOwner(tutorId);
       }
 
+      // El saldo de tokens y el historial de transacciones solo los debe poder
+      // escribir el backend (Admin SDK, vía Cloud Functions). Un usuario nunca
+      // debe poder auto-otorgarse tokens o marcar un pago como exitoso desde el cliente.
+      match /tokens/{tokenId} {
+        allow read: if isOwner(tutorId);
+        allow write: if false;
+      }
+
+      match /transactions/{transactionId} {
+        allow read: if isOwner(tutorId);
+        allow write: if false;
+      }
+
       match /{subcol}/{docId} {
         allow read, write: if isOwner(tutorId);
       }

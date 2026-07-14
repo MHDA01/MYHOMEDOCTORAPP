@@ -12,6 +12,12 @@ export function DashboardHeader() {
         return 'Teleorientación';
       case '/dashboard/reportes':
         return 'Mis Reportes PDF';
+      case '/dashboard/growth':
+        return 'Agente de Crecimiento';
+      case '/dashboard/growth/tips':
+        return 'Consejos Diarios';
+      case '/dashboard/cuenta':
+        return 'Mi cuenta';
       default:
         return 'Teleorientación';
     }

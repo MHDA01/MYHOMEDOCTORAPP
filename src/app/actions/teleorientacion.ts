@@ -134,15 +134,71 @@ Tu función es orientar, educar y apoyar al paciente sin reemplazar la consulta 
 - Si no sabes algo, dilo claramente: "No tengo información suficiente sobre esto con el nivel de evidencia requerido."
 - Nunca afirmes capacidades que no tienes.
 - Recuerda al usuario periódicamente (no en cada mensaje) que eres una herramienta de orientación, no un reemplazo médico.
-- Protege la privacidad del usuario: no solicites datos sensibles innecesarios.`;
+- Protege la privacidad del usuario: no solicites datos sensibles innecesarios.
+
+════════════════════════════════════════════════════════
+## 6. LECTURA DE EXÁMENES DE LABORATORIO, INFORMES DE IMÁGENES DIAGNÓSTICAS Y LESIONES CUTÁNEAS
+════════════════════════════════════════════════════════
+Cuando el paciente adjunte una imagen o texto de un examen, informe o lesión, tu objetivo es
+orientarlo con pasos claros y un tono empático y tranquilizador — nunca alarmante ni frío.
+
+- **Exámenes de laboratorio** (ej. hemograma, química sanguínea, uroanálisis):
+    1. Identifica los valores fuera del rango de referencia (si el rango aparece en el examen).
+    2. Explica en lenguaje sencillo, sin tecnicismos, qué podría significar cada alteración.
+    3. Entrega SIEMPRE una lista clara y numerada de pasos a seguir (ej. "1. Esto no es urgente,
+       coméntaselo a tu médico en tu próximo control. 2. Mantente bien hidratado. 3. No te
+       automediques mientras tanto.").
+    4. Si detectas un valor crítico o de pánico, escala de inmediato según la Sección 3
+       (atención médica presencial urgente).
+
+- **Informes de imágenes diagnósticas** (ej. radiografía, ecografía, tomografía, resonancia):
+    - Lees y explicas en lenguaje sencillo el INFORME escrito (los hallazgos redactados por el
+      radiólogo), no la imagen médica cruda — no reemplazas la lectura del especialista.
+    - Aclara siempre que estás explicando el informe, no reinterpretando la imagen original.
+    - Entrega pasos claros a seguir, igual que con los exámenes de laboratorio.
+
+- **Fotos de lesiones cutáneas** (ej. lunares, erupciones, heridas):
+    - Describe de forma objetiva lo que observas (color, forma, bordes, tamaño aproximado,
+      simetría) usando un lenguaje descriptivo, no diagnóstico.
+    - Cuando aplique, orienta según características de alarma reconocidas en la evidencia
+      (regla ABCDE: Asimetría, Bordes irregulares, Color variable, Diámetro >6mm, Evolución/cambio).
+    - NUNCA nombres una enfermedad o condición específica como si fuera un diagnóstico confirmado
+      (ej. no digas "esto es cáncer de piel" o "esto es psoriasis"); en su lugar usa lenguaje
+      probabilístico y orientador ("estas características ameritan valoración presencial por
+      dermatología en los próximos días" / "no observo signos de alarma, pero si cambia de
+      tamaño, color o forma, consulta pronto").
+    - Si observas signos de alarma (ABCDE positivo, sangrado, crecimiento rápido, dolor), indica
+      que amerita evaluación presencial prioritaria.
+
+- En todos los casos: mantén el formato de la Sección 4 (viñetas/numeración, lenguaje
+  probabilístico, cita la guía o fuente cuando aplique) y respeta siempre los límites de la
+  Sección 3 — orientas y educas, nunca diagnosticas con certeza ni reemplazas la evaluación
+  presencial.
+
+════════════════════════════════════════════════════════
+## 7. VERIFICACIÓN DE SATISFACCIÓN ANTES DE CERRAR
+════════════════════════════════════════════════════════
+- Después de entregar una orientación completa sobre un tema (ej. un plan de acción, la lectura
+  de un examen, o la respuesta a una pregunta de seguimiento), pregunta al paciente si siente que
+  su duda quedó resuelta, por ejemplo: "¿Sientes que esta orientación resolvió tu duda, o
+  necesitas que profundice en algo más sobre este mismo tema?"
+- No hagas esta pregunta después de CADA mensaje — solo cuando el intercambio sobre ese tema
+  parezca haber llegado a un punto de cierre natural (ya diste el plan de acción o respondiste
+  la pregunta de seguimiento).
+- Si el paciente responde afirmativamente (ej. "sí", "sí, gracias", "estoy satisfecho"), agradece
+  y despídete cordialmente — esa respuesta es la señal de que la consulta puede cerrarse.
+- Si el paciente responde que no, o hace otra pregunta relacionada con el mismo tema, continúa
+  orientando con normalidad: seguir profundizando en el mismo caso NUNCA debe tratarse como un
+  cambio de tema.`;
 
 /* ------------------------------------------------------------------ */
 /*  Función principal — Server Action                                  */
 /* ------------------------------------------------------------------ */
-import { adminAuth, adminDb } from '@/lib/firebase-admin';
+import { getAdminAuth, getAdminDb } from '@/lib/firebase-admin';
 import { encryptField, decryptField } from '@/lib/crypto';
 import { COLECCION_TUTOR, SUBCOLECCION_CONVERSACIONES } from '@/lib/constants';
 import { Timestamp, FieldValue } from 'firebase-admin/firestore';
+import { decrementTokenForConsultation, getUserTokenState } from '@/lib/token-system';
 
 export interface PatientStructuredContext {
   firstName: string;
@@ -158,12 +214,12 @@ export interface PatientStructuredContext {
  * Límite: 20 mensajes cada 60 minutos.
  */
 async function checkRateLimit(userId: string): Promise<{ allowed: boolean; remainingWait?: number }> {
-  const rateLimitRef = adminDb.collection('rate_limits').doc(userId);
+  const rateLimitRef = getAdminDb().collection('rate_limits').doc(userId);
   const now = Date.now();
   const windowMs = 60 * 60 * 1000; // 60 minutos
   const maxRequests = 20;
 
-  return await adminDb.runTransaction(async (transaction) => {
+  return await getAdminDb().runTransaction(async (transaction) => {
     const doc = await transaction.get(rateLimitRef);
     const data = doc.data();
 
@@ -193,41 +249,62 @@ async function checkRateLimit(userId: string): Promise<{ allowed: boolean; remai
 /**
  * Persiste un mensaje en Firestore de forma segura (cifrado).
  */
-export async function persistSecureMessage(
+async function persistConversationMessage(
   userId: string,
   convId: string,
   message: { role: string; content: string; imageUrls?: string[] }
-) {
-  const messagesCol = adminDb
+): Promise<void> {
+  const messagesCol = getAdminDb()
     .collection(COLECCION_TUTOR)
     .doc(userId)
     .collection(SUBCOLECCION_CONVERSACIONES)
     .doc(convId)
     .collection('mensajes');
 
-  // Cifrar el contenido del mensaje antes de guardar (V#5)
-  const encryptedContent = encryptField(message.content);
+  let contentToStore = message.content;
+  let isEncrypted = false;
+
+  try {
+    contentToStore = encryptField(message.content);
+    isEncrypted = true;
+  } catch (error) {
+    console.error('[Dra. Hilda] Error cifrando mensaje, se guarda en texto plano:', error);
+  }
 
   const msgDoc = {
     role: message.role,
-    content: encryptedContent,
+    content: contentToStore,
     imageUrls: message.imageUrls || [],
     timestamp: Timestamp.now(),
-    isEncrypted: true, // Flag para saber que este mensaje está cifrado
+    isEncrypted,
   };
 
   await messagesCol.add(msgDoc);
 
-  // Actualizar metadata de la conversación
-  await adminDb
+  await getAdminDb()
     .collection(COLECCION_TUTOR)
     .doc(userId)
     .collection(SUBCOLECCION_CONVERSACIONES)
     .doc(convId)
-    .update({
+    .set({
       updatedAt: FieldValue.serverTimestamp(),
       messageCount: FieldValue.increment(1),
-    });
+      createdAt: FieldValue.serverTimestamp(),
+    }, { merge: true });
+}
+
+export async function persistSecureMessage(
+  userId: string,
+  convId: string,
+  message: { role: string; content: string; imageUrls?: string[] }
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    await persistConversationMessage(userId, convId, message);
+    return { success: true };
+  } catch (error) {
+    console.error('[Dra. Hilda] Error persistiendo mensaje seguro:', error);
+    return { success: false, error: 'No se pudo persistir el mensaje en el servidor.' };
+  }
 }
 
 /**
@@ -235,10 +312,14 @@ export async function persistSecureMessage(
  */
 export async function getSecureMessages(idToken: string, convId: string) {
   try {
-    const decodedToken = await adminAuth.verifyIdToken(idToken);
+    if (!idToken || !convId) {
+      return [];
+    }
+
+    const decodedToken = await getAdminAuth().verifyIdToken(idToken);
     const userId = decodedToken.uid;
 
-    const snap = await adminDb
+    const snap = await getAdminDb()
       .collection(COLECCION_TUTOR)
       .doc(userId)
       .collection(SUBCOLECCION_CONVERSACIONES)
@@ -254,12 +335,12 @@ export async function getSecureMessages(idToken: string, convId: string) {
         role: data.role,
         content: data.isEncrypted ? decryptField(data.content) : data.content,
         imageUrls: data.imageUrls || [],
-        timestamp: data.timestamp.toDate(),
+        timestamp: data.timestamp?.toDate?.() ?? new Date(),
       };
     });
   } catch (error) {
     console.error('[Dra. Hilda] Error recuperando mensajes:', error);
-    throw new Error('No se pudieron recuperar los mensajes.');
+    return [];
   }
 }
 
@@ -283,7 +364,7 @@ export async function sendTeleorientacionMessage(
 
     let decodedToken;
     try {
-      decodedToken = await adminAuth.verifyIdToken(idToken);
+      decodedToken = await getAdminAuth().verifyIdToken(idToken);
     } catch (authError) {
       console.error('[Dra. Hilda] Error de verificación de token:', authError);
       return {
@@ -294,6 +375,15 @@ export async function sendTeleorientacionMessage(
     }
 
     const userId = decodedToken.uid;
+
+    const tokenState = await getUserTokenState(userId);
+    if (!tokenState.available) {
+      return {
+        success: false,
+        message: '',
+        error: 'No tienes tokens disponibles para iniciar una nueva consulta.',
+      };
+    }
 
     /* ---- Rate Limiting (V#8) ---- */
     const rateLimit = await checkRateLimit(userId);
@@ -325,7 +415,27 @@ export async function sendTeleorientacionMessage(
     }
 
     /* ---- Construir mensajes para la API ---- */
-    const messages: { role: string; content: string }[] = [
+    type MessageContent =
+      | string
+      | Array<{ type: 'text'; text: string } | { type: 'image_url'; image_url: { url: string } }>;
+
+    // La API de Abacus (routellm) NO acepta URLs remotas en image_url — solo un data URI
+    // en base64 ("data:image/...;base64,..."). Hay que descargar cada imagen del Storage
+    // y convertirla antes de enviarla.
+    async function toDataUri(url: string): Promise<string | null> {
+      try {
+        const res = await fetch(url);
+        if (!res.ok) return null;
+        const contentType = res.headers.get('content-type') || 'image/jpeg';
+        const buf = Buffer.from(await res.arrayBuffer());
+        return `data:${contentType};base64,${buf.toString('base64')}`;
+      } catch (err) {
+        console.error('[Dra. Hilda] Error descargando imagen para la IA:', err);
+        return null;
+      }
+    }
+
+    const messages: { role: string; content: MessageContent }[] = [
       { role: 'system', content: SYSTEM_PROMPT },
     ];
 
@@ -344,16 +454,24 @@ export async function sendTeleorientacionMessage(
       content: `Contexto del paciente actual:\n${sanitizedPatientInfo}`,
     });
 
-    // Agregar historial de conversación (Asegurarse de que el contenido enviado al LLM sea texto plano)
+    // Agregar historial de conversación.
+    // Los mensajes con imágenes se envían en formato multimodal (content como array
+    // con bloques de texto + image_url en base64) para que el modelo con visión pueda
+    // verlas realmente, en vez de solo recibir la URL como texto plano.
     for (const msg of conversationHistory) {
       // El historial que recibe esta función ya debe estar descifrado si venía de DB
-      let content = msg.content;
+      let content: MessageContent = msg.content;
 
       if (msg.imageUrls?.length) {
-        const imageNote = msg.imageUrls
-          .map((url, i) => `[Imagen adjunta ${i + 1}: ${url}]`)
-          .join('\n');
-        content = `${content}\n\n${imageNote}`;
+        const dataUris = await Promise.all(msg.imageUrls.map(toDataUri));
+        const imageBlocks = dataUris
+          .filter((uri): uri is string => uri !== null)
+          .map((uri) => ({ type: 'image_url' as const, image_url: { url: uri } }));
+
+        content = [
+          { type: 'text', text: msg.content || 'Adjunto imágenes para orientación clínica.' },
+          ...imageBlocks,
+        ];
       }
 
       messages.push({
@@ -401,6 +519,18 @@ export async function sendTeleorientacionMessage(
         success: false,
         message: '',
         error: 'No se recibió respuesta del asistente. Intenta de nuevo.',
+      };
+    }
+
+    const tokenConsumed = await decrementTokenForConsultation(userId, {
+      description: 'Consumo por consulta completada',
+    });
+
+    if (!tokenConsumed) {
+      return {
+        success: false,
+        message: '',
+        error: 'No hay tokens disponibles para completar esta consulta.',
       };
     }
 

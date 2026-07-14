@@ -21,6 +21,7 @@ interface ChatInterfaceProps {
   memberSex?: string;
   onMenuToggle: () => void;
   onNewSession?: () => void;
+  disabled?: boolean;
 }
 
 export default function ChatInterface({
@@ -32,6 +33,7 @@ export default function ChatInterface({
   memberSex,
   onMenuToggle,
   onNewSession,
+  disabled = false,
 }: ChatInterfaceProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -75,7 +77,7 @@ export default function ChatInterface({
 
       <ChatInput
         onSend={onSendMessage}
-        disabled={isLoading}
+        disabled={isLoading || disabled}
         memberName={memberName}
       />
     </div>

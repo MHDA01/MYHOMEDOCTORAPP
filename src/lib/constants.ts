@@ -19,3 +19,14 @@ export const SUBCOLECCION_INTEGRANTES = 'Integrantes';
 export const SUBCOLECCION_HISTORIAL  = 'historial';
 export const DOC_HISTORIAL           = 'registro';
 export const SUBCOLECCION_CONVERSACIONES = 'conversaciones';
+
+// ─────────────────────────────────────────────────────────
+// Token & Payment Collections
+// ─────────────────────────────────────────────────────────
+export const DOC_TOKENS               = 'tokens';
+export const SUBCOLECCION_TRANSACTIONS = 'transactions';
+
+// ─────────────────────────────────────────────────────────
+// Growth Agent (herramienta interna, solo fundador)
+// ─────────────────────────────────────────────────────────
+export const COLECCION_GROWTH_DRAFTS = 'growth_drafts';
