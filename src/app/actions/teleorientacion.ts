@@ -198,7 +198,7 @@ import { getAdminAuth, getAdminDb } from '@/lib/firebase-admin';
 import { encryptField, decryptField } from '@/lib/crypto';
 import { COLECCION_TUTOR, SUBCOLECCION_CONVERSACIONES } from '@/lib/constants';
 import { Timestamp, FieldValue } from 'firebase-admin/firestore';
-import { decrementTokenForConsultation, getUserTokenState } from '@/lib/token-system';
+import { getUserTokenState } from '@/lib/token-system';
 
 export interface PatientStructuredContext {
   firstName: string;
@@ -522,18 +522,9 @@ export async function sendTeleorientacionMessage(
       };
     }
 
-    const tokenConsumed = await decrementTokenForConsultation(userId, {
-      description: 'Consumo por consulta completada',
-    });
-
-    if (!tokenConsumed) {
-      return {
-        success: false,
-        message: '',
-        error: 'No hay tokens disponibles para completar esta consulta.',
-      };
-    }
-
+    // El token de la consulta se descuenta una sola vez, cuando la conversación
+    // completa se cierra (ver consumeTokenOnConsultationEnd) — no en cada mensaje.
+    // La disponibilidad ya se verificó arriba con getUserTokenState.
     return {
       success: true,
       message: assistantMessage,

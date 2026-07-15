@@ -45,8 +45,8 @@ export function LoginForm() {
       console.error(error);
       toast({
         variant: 'destructive',
-        title: 'Error de Autenticaci\u00f3n',
-        description: 'Las credenciales no son v\u00e1lidas. Por favor, int\u00e9ntalo de nuevo.',
+        title: 'Error de Autenticación',
+        description: 'Las credenciales no son válidas. Por favor, inténtalo de nuevo.',
       });
     } finally {
       setIsLoading(false);

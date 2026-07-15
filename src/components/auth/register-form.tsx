@@ -30,7 +30,7 @@ export function RegisterForm() {
     if (password !== confirmPassword) {
       toast({
         variant: 'destructive',
-        title: 'Las contrase\u00f1as no coinciden',
+        title: 'Las contraseñas no coinciden',
       });
       return;
     }
@@ -157,15 +157,15 @@ export function RegisterForm() {
               <Input id="name" name="name" type="text" placeholder="John Doe" required value={name} onChange={e => setName(e.target.value)} autoComplete="name" />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="register-email">Correo Electr\u00f3nico</Label>
+              <Label htmlFor="register-email">Correo Electrónico</Label>
               <Input id="register-email" name="email" type="email" placeholder="nombre@ejemplo.com" required value={email} onChange={e => setEmail(e.target.value)} autoComplete="email" />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="register-password">Contrase\u00f1a</Label>
+              <Label htmlFor="register-password">Contraseña</Label>
               <Input id="register-password" name="password" type="password" required value={password} onChange={e => setPassword(e.target.value)} autoComplete="new-password" />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="confirm-password">Confirmar Contrase\u00f1a</Label>
+              <Label htmlFor="confirm-password">Confirmar Contraseña</Label>
               <Input id="confirm-password" name="confirm-password" type="password" required value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} autoComplete="new-password" />
             </div>
             <Button type="submit" className="w-full" disabled={isLoading}>
@@ -176,9 +176,9 @@ export function RegisterForm() {
         </CardContent>
         <CardFooter className="justify-center text-sm">
           <p>
-            \u00bfYa tienes una cuenta?{' '}
+            ¿Ya tienes una cuenta?{' '}
             <Link href="/login" className="font-semibold text-primary underline-offset-4 hover:underline">
-              Iniciar Sesi\u00f3n
+              Iniciar Sesión
             </Link>
           </p>
         </CardFooter>

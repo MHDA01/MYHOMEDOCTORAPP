@@ -1,8 +1,14 @@
 import { getAdminDb } from '@/lib/firebase-admin';
 import { COLECCION_TUTOR, DOC_TOKENS, SUBCOLECCION_TRANSACTIONS } from '@/lib/constants';
-import { FieldValue, Timestamp } from 'firebase-admin/firestore';
+import { Timestamp } from 'firebase-admin/firestore';
 
 const db = getAdminDb();
+
+// Nota: functions/src/tokens.ts (Cloud Functions, deploy separado) tiene su
+// propia constante FREE_TOKENS_PER_DAY para la renovación diaria — si cambias
+// estos valores, ajusta también ese archivo para que coincidan.
+const FREE_TOKENS_PER_DAY = parseInt(process.env.FREE_TOKENS_PER_DAY || '2', 10);
+const FREE_TOKEN_PERIOD_DAYS = parseInt(process.env.FREE_TOKEN_PERIOD_DAYS || '3', 10);
 
 function toDate(value: any): Date {
   if (!value) return new Date();
@@ -28,9 +34,9 @@ async function ensureTokenDocument(uid: string) {
   }
 
   const now = new Date();
-  const freePeriodEnds = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000);
+  const freePeriodEnds = new Date(now.getTime() + FREE_TOKEN_PERIOD_DAYS * 24 * 60 * 60 * 1000);
   const initialTokens = {
-    free: 6,
+    free: FREE_TOKENS_PER_DAY * FREE_TOKEN_PERIOD_DAYS,
     paid: 0,
     dailyReset: now,
     freePeriodEnds,
@@ -46,6 +52,7 @@ export async function getUserTokenState(uid: string) {
   const paid = tokenData.paid || 0;
   const totalTokens = free + paid;
   const freePeriodEnds = toDate(tokenData.freePeriodEnds);
+  const dailyReset = toDate(tokenData.dailyReset);
   const now = new Date();
   const trialExpired = now > freePeriodEnds;
   const needsPayment = trialExpired && paid === 0;
@@ -55,53 +62,9 @@ export async function getUserTokenState(uid: string) {
     tokens: { free, paid },
     needsPayment,
     freePeriodEnds,
+    dailyReset,
     trialExpired,
   };
-}
-
-export async function decrementTokenForConsultation(uid: string, details?: { description?: string }) {
-  const ref = getTokensRef(uid);
-  const transactionRef = getTransactionsRef(uid).doc();
-
-  const result = await db.runTransaction(async (transaction) => {
-    const tokenSnap = await transaction.get(ref);
-    if (!tokenSnap.exists) {
-      await ensureTokenDocument(uid);
-      return false;
-    }
-
-    const tokenData = tokenSnap.data() as any;
-    const free = tokenData.free || 0;
-    const paid = tokenData.paid || 0;
-    const totalTokens = free + paid;
-
-    if (totalTokens <= 0) {
-      return false;
-    }
-
-    const update: Record<string, any> = {};
-    if (paid > 0) {
-      update.paid = FieldValue.increment(-1);
-    } else if (free > 0) {
-      update.free = FieldValue.increment(-1);
-    } else {
-      return false;
-    }
-
-    transaction.update(ref, update);
-    transaction.set(transactionRef, {
-      userId: uid,
-      type: 'consumption',
-      tokens: -1,
-      status: 'completed',
-      description: details?.description || 'Consumo de token por consulta',
-      createdAt: Timestamp.now(),
-    }, { merge: true });
-
-    return true;
-  });
-
-  return result;
 }
 
 export async function logPaymentTransaction(uid: string, payload: Record<string, any>) {

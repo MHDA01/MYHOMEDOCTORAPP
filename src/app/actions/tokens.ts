@@ -1,6 +1,7 @@
 "use server";
 
 import { getAdminDb } from "@/lib/firebase-admin";
+import { getUserTokenState } from "@/lib/token-system";
 import { TokenSystem } from "@/lib/types";
 
 const db = getAdminDb();
@@ -17,62 +18,22 @@ function toDate(value: any): Date {
 
 /**
  * Verificar si el usuario tiene tokens disponibles para una consulta.
- * 
+ * Delega en getUserTokenState (src/lib/token-system.ts), que es la única
+ * fuente de verdad para el estado de tokens — evita que esta lógica se
+ * duplique y se desincronice entre archivos.
+ *
  * @param uid - ID del usuario (tutor)
  * @returns { available: boolean, tokens: { free, paid }, needsPayment: boolean }
  */
 export async function checkTokenAvailability(uid: string) {
   try {
-    const tokensRef = db
-      .collection("Cuentas_Tutor")
-      .doc(uid)
-      .collection("tokens")
-      .doc("config");
-
-    const tokenSnap = await tokensRef.get();
-
-    // Si no tiene documento de tokens, crear uno (caso de usuario antiguo)
-    if (!tokenSnap.exists) {
-      console.warn(`[TOKENS] Usuario ${uid} no tiene documento de tokens. Creando...`);
-      
-      const now = new Date();
-      const freePeriodEnds = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000); // +3 días
-
-      const initialTokens: TokenSystem = {
-        free: 6, // 2 consultas/día × 3 días
-        paid: 0,
-        dailyReset: now,
-        freePeriodEnds,
-      };
-
-      await tokensRef.set(initialTokens);
-      return {
-        available: true,
-        tokens: { free: 6, paid: 0 },
-        needsPayment: false,
-      };
-    }
-
-    const tokenData = tokenSnap.data() as TokenSystem;
-    const totalTokens = (tokenData.free || 0) + (tokenData.paid || 0);
-    const hasTokens = totalTokens > 0;
-
-    // Verificar si el período de prueba expiró y no tiene tokens pagos
-    const freePeriodEnds = toDate(tokenData.freePeriodEnds);
-    const now = new Date();
-    const trialExpired = now > freePeriodEnds;
-    const needsPayment = trialExpired && (tokenData.paid || 0) === 0;
-
+    const state = await getUserTokenState(uid);
     return {
-      available: hasTokens,
-      tokens: {
-        free: tokenData.free || 0,
-        paid: tokenData.paid || 0,
-      },
-      needsPayment,
-      freePeriodEnds,
+      available: state.available,
+      tokens: state.tokens,
+      needsPayment: state.needsPayment,
+      freePeriodEnds: state.freePeriodEnds,
     };
-
   } catch (error) {
     console.error("[TOKENS] Error en checkTokenAvailability:", error);
     throw error;
@@ -82,27 +43,15 @@ export async function checkTokenAvailability(uid: string) {
 /**
  * Obtener información completa de tokens del usuario.
  */
-export async function getTokenInfo(uid: string) {
+export async function getTokenInfo(uid: string): Promise<TokenSystem> {
   try {
-    const tokensRef = db
-      .collection("Cuentas_Tutor")
-      .doc(uid)
-      .collection("tokens")
-      .doc("config");
-
-    const tokenSnap = await tokensRef.get();
-
-    if (!tokenSnap.exists) {
-      return {
-        free: 0,
-        paid: 0,
-        dailyReset: new Date(),
-        freePeriodEnds: new Date(),
-      } as TokenSystem;
-    }
-
-    return tokenSnap.data() as TokenSystem;
-
+    const state = await getUserTokenState(uid);
+    return {
+      free: state.tokens.free,
+      paid: state.tokens.paid,
+      dailyReset: state.dailyReset,
+      freePeriodEnds: state.freePeriodEnds,
+    };
   } catch (error) {
     console.error("[TOKENS] Error en getTokenInfo:", error);
     return {
@@ -110,7 +59,7 @@ export async function getTokenInfo(uid: string) {
       paid: 0,
       dailyReset: new Date(),
       freePeriodEnds: new Date(),
-    } as TokenSystem;
+    };
   }
 }
 

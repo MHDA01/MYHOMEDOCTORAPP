@@ -19,6 +19,11 @@ try {
 
 const db = admin.firestore();
 
+// Debe coincidir con FREE_TOKENS_PER_DAY en src/lib/token-system.ts (Next.js,
+// deploy separado) — ese archivo controla el otorgamiento inicial de tokens
+// gratis; esta constante controla su renovación diaria.
+const FREE_TOKENS_PER_DAY = 2;
+
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
@@ -72,14 +77,14 @@ export const renewDailyFreeTokens = functions
           continue;
         }
 
-        // Renovar: sumar 2 tokens y actualizar dailyReset
+        // Renovar: sumar los tokens gratis diarios y actualizar dailyReset
         const promise = tokensRef.update({
-          free: admin.firestore.FieldValue.increment(2),
+          free: admin.firestore.FieldValue.increment(FREE_TOKENS_PER_DAY),
           dailyReset: now,
         })
           .then(() => {
             console.log(
-              `[TOKENS] ✅ Renovación completada para ${userDoc.id}: +2 tokens`
+              `[TOKENS] ✅ Renovación completada para ${userDoc.id}: +${FREE_TOKENS_PER_DAY} tokens`
             );
           })
           .catch(err => {
@@ -115,50 +120,52 @@ export async function decrementTokenOnConsultationComplete(
   uid: string,
   convId: string
 ): Promise<boolean> {
+  const tokensRef = db.collection("Cuentas_Tutor").doc(uid).collection("tokens").doc("config");
+  const convRef = db.collection("Cuentas_Tutor").doc(uid).collection("conversaciones").doc(convId);
+
   try {
-    // 1. Verificar que hay tokens disponibles
-    const tokensRef = db.collection("Cuentas_Tutor").doc(uid).collection("tokens").doc("config");
-    const tokenSnap = await tokensRef.get();
+    // Transacción: lectura y escritura del saldo deben resolverse de forma atómica.
+    // Sin esto, dos llamadas casi simultáneas (dos pestañas, doble clic, reintento
+    // de red) podrían leer el mismo saldo antes de que cualquiera escriba, y
+    // ambas restar — dejando el saldo en negativo.
+    const result = await db.runTransaction(async (transaction) => {
+      const tokenSnap = await transaction.get(tokensRef);
 
-    if (!tokenSnap.exists) {
-      throw new Error("Token document not found");
+      if (!tokenSnap.exists) {
+        throw new Error("Token document not found");
+      }
+
+      const tokenData = tokenSnap.data() as any;
+      const paidTokens = tokenData.paid || 0;
+      const freeTokens = tokenData.free || 0;
+      const availableTokens = freeTokens + paidTokens;
+
+      if (availableTokens <= 0) {
+        console.warn(`[TOKENS] Usuario ${uid} sin tokens disponibles`);
+        return false;
+      }
+
+      // Decidir qué token decontar: primero los pagos, luego los gratis
+      const tokenUpdate: any = {};
+      if (paidTokens > 0) {
+        tokenUpdate.paid = admin.firestore.FieldValue.increment(-1);
+        console.log(`[TOKENS] Decontando token PAGADO para ${uid}`);
+      } else {
+        tokenUpdate.free = admin.firestore.FieldValue.increment(-1);
+        console.log(`[TOKENS] Decontando token GRATIS para ${uid}`);
+      }
+
+      transaction.update(tokensRef, tokenUpdate);
+      transaction.update(convRef, { status: "completed", tokenConsumed: true, completedAt: new Date() });
+
+      return true;
+    });
+
+    if (result) {
+      console.log(`[TOKENS] ✅ Token decontado para consulta ${convId}`);
     }
 
-    const tokenData = tokenSnap.data() as any;
-    const availableTokens = (tokenData.free || 0) + (tokenData.paid || 0);
-
-    if (availableTokens <= 0) {
-      console.warn(`[TOKENS] Usuario ${uid} sin tokens disponibles`);
-      return false;
-    }
-
-    // 2. Decidir qué token decontar: primero los pagos, luego los gratis
-    const paidTokens = tokenData.paid || 0;
-    const freeTokens = tokenData.free || 0;
-
-    const tokenUpdate: any = {};
-
-    if (paidTokens > 0) {
-      tokenUpdate.paid = admin.firestore.FieldValue.increment(-1);
-      console.log(`[TOKENS] Decontando token PAGADO para ${uid}`);
-    } else {
-      tokenUpdate.free = admin.firestore.FieldValue.increment(-1);
-      console.log(`[TOKENS] Decontando token GRATIS para ${uid}`);
-    }
-
-    // 3. Actualizar tokens y marcar consulta como completada
-    await Promise.all([
-      tokensRef.update(tokenUpdate),
-      db
-        .collection("Cuentas_Tutor")
-        .doc(uid)
-        .collection("conversaciones")
-        .doc(convId)
-        .update({ status: "completed", tokenConsumed: true, completedAt: new Date() }),
-    ]);
-
-    console.log(`[TOKENS] ✅ Token decontado para consulta ${convId}`);
-    return true;
+    return result;
 
   } catch (error) {
     console.error(`[TOKENS] Error decontando token:`, error);
