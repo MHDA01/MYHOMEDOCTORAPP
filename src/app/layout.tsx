@@ -2,60 +2,13 @@
 'use client';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster"
-import { useEffect } from 'react';
+import { AppUpdateManager } from "@/components/app-update-manager"
 
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-
-  useEffect(() => {
-    if (!('serviceWorker' in navigator)) {
-      return;
-    }
-
-    let isRefreshing = false;
-    const hadController = Boolean(navigator.serviceWorker.controller);
-
-    const handleControllerChange = () => {
-      if (!hadController || isRefreshing) {
-        return;
-      }
-      isRefreshing = true;
-      window.location.reload();
-    };
-
-    navigator.serviceWorker.addEventListener('controllerchange', handleControllerChange);
-
-    navigator.serviceWorker
-      .register('/sw.js')
-      .then((registration) => {
-        if (registration.waiting) {
-          registration.waiting.postMessage({ type: 'SKIP_WAITING' });
-        }
-
-        registration.addEventListener('updatefound', () => {
-          const installingWorker = registration.installing;
-          if (!installingWorker) {
-            return;
-          }
-
-          installingWorker.addEventListener('statechange', () => {
-            if (installingWorker.state === 'installed' && navigator.serviceWorker.controller && registration.waiting) {
-              registration.waiting.postMessage({ type: 'SKIP_WAITING' });
-            }
-          });
-        });
-
-        return registration.update();
-      })
-      .catch(() => undefined);
-
-    return () => {
-      navigator.serviceWorker.removeEventListener('controllerchange', handleControllerChange);
-    };
-  }, []);
 
   return (
     <html lang="es" suppressHydrationWarning>
@@ -78,6 +31,7 @@ export default function RootLayout({
       </head>
       <body className="font-body antialiased">
         {children}
+        <AppUpdateManager />
         <Toaster />
       </body>
     </html>

@@ -1,5 +1,5 @@
 const CACHE_PREFIX = 'my-home-doctor-app-cache-';
-const CACHE_NAME = `${CACHE_PREFIX}v6`;
+const CACHE_NAME = `${CACHE_PREFIX}v7`;
 const PRECACHE_URLS = ['/manifest.webmanifest', '/favicon.ico', '/images/LOGO_1_transparent.png'];
 
 self.addEventListener('message', (event) => {
@@ -9,14 +9,13 @@ self.addEventListener('message', (event) => {
 });
 
 self.addEventListener('install', (event) => {
-  // skipWaiting: que el SW nuevo (con estrategia network-first) tome control cuanto
-  // antes, para sacar a los usuarios que quedaron pegados en un build viejo.
-  event.waitUntil(
-    caches
-      .open(CACHE_NAME)
-      .then((cache) => cache.addAll(PRECACHE_URLS))
-      .then(() => self.skipWaiting())
-  );
+  // Sin skipWaiting() aquí a propósito: el SW nuevo se queda en espera hasta que
+  // la app le manda SKIP_WAITING (ver components/app-update-manager.tsx). Antes
+  // tomaba el control solo, y al hacerlo la página se recargaba encima del
+  // usuario — en una app de chat eso significa perder lo que estaba escribiendo.
+  // Ahora la actualización se aplica cuando la persona está fuera de la app, o
+  // cuando ella misma acepta el aviso.
+  event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(PRECACHE_URLS)));
 });
 
 self.addEventListener('activate', (event) => {
