@@ -5,9 +5,11 @@ import { UserContext } from '@/context/user-context';
 import { requestNotificationPermission } from '@/lib/push-notifications';
 import { Button } from '@/components/ui/button';
 import { Bell, X } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
 export function NotificationPermissionBanner() {
   const context = useContext(UserContext);
+  const { toast } = useToast();
   const [visible, setVisible] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -25,8 +27,23 @@ export function NotificationPermissionBanner() {
     setLoading(true);
     const result = await requestNotificationPermission(context.user!.uid);
     setLoading(false);
-    setVisible(false);
-    return result;
+
+    if (result.granted) {
+      toast({
+        title: 'Notificaciones activadas',
+        description: 'Vas a recibir tu consejo de salud diario y tus recordatorios.',
+      });
+      setVisible(false);
+      return;
+    }
+
+    // Antes el banner se ocultaba pasara lo que pasara, así que un fallo era
+    // indistinguible de un éxito y nadie se enteraba de que no quedó activado.
+    toast({
+      variant: 'destructive',
+      title: 'No se pudieron activar las notificaciones',
+      description: result.error ?? 'Intenta de nuevo más tarde.',
+    });
   };
 
   return (

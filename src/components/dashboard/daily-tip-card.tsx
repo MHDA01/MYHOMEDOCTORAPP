@@ -2,7 +2,7 @@
 
 import { useContext, useEffect, useState } from 'react';
 import { doc, getDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { app, db } from '@/lib/firebase';
 import { UserContext } from '@/context/user-context';
 import { COLECCION_TUTOR } from '@/lib/constants';
 import { Card, CardContent } from '@/components/ui/card';
@@ -25,18 +25,37 @@ export function DailyTipCard() {
     const uid = context?.user?.uid;
     if (!uid) return;
 
+    let cancelado = false;
+
     const load = async () => {
       try {
         const snap = await getDoc(doc(db, COLECCION_TUTOR, uid, 'dailyTips', todayDocId()));
         if (snap.exists()) {
-          setTip(snap.data().content as string);
+          if (!cancelado) setTip(snap.data().content as string);
+          return;
         }
+
+        // No existe el de hoy: el cron solo pregenera para quien tiene push
+        // activado, así que aquí se pide bajo demanda. Así el costo de IA sigue
+        // al uso real en vez de generarle un consejo cada mañana a quien no entra.
+        const { getFunctions, httpsCallable } = await import('firebase/functions');
+        const generar = httpsCallable<void, { content: string | null }>(
+          getFunctions(app, 'us-central1'),
+          'generateDailyTipNow'
+        );
+        const { data } = await generar();
+        if (!cancelado && data?.content) setTip(data.content);
       } catch (error) {
+        // Silencioso a propósito: el consejo del día es un extra: si falla, la
+        // tarjeta simplemente no se muestra y el dashboard sigue funcionando.
         console.error('[DailyTipCard] Error cargando consejo del día:', error);
       }
     };
 
     load();
+    return () => {
+      cancelado = true;
+    };
   }, [context?.user?.uid]);
 
   if (!tip) return null;

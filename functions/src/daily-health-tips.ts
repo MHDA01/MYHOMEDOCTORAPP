@@ -167,6 +167,52 @@ async function generateTipForUser(uid: string): Promise<string | null> {
   }
 }
 
+/**
+ * Genera el consejo del día, lo guarda en Firestore y, si se le pasa un token,
+ * manda el push. Compartido por el cron de las 7am y por la generación bajo
+ * demanda, para que el prompt y el formato del documento no se dupliquen.
+ */
+async function createAndStoreTip(
+  userRef: admin.firestore.DocumentReference,
+  uid: string,
+  dateId: string,
+  pushToken?: string
+): Promise<string | null> {
+  const content = await generateTipForUser(uid);
+  if (!content) return null;
+
+  const authUser = await admin.auth().getUser(uid).catch(() => null);
+  const createdAt = authUser ? new Date(authUser.metadata.creationTime) : new Date();
+  const isNewUser = (Date.now() - createdAt.getTime()) / (1000 * 60 * 60 * 24) <= NEW_USER_WINDOW_DAYS;
+
+  let pushSent = false;
+  if (pushToken) {
+    try {
+      await messaging.send({
+        notification: {
+          title: "Tu consejo de salud de hoy 💙",
+          body: "Abre la app para verlo.",
+        },
+        data: { type: "daily_health_tip", date: dateId },
+        token: pushToken,
+      });
+      pushSent = true;
+    } catch (err) {
+      console.error(`[DailyTips] Error enviando push a ${uid}:`, err);
+    }
+  }
+
+  await userRef.collection("dailyTips").doc(dateId).set({
+    content,
+    isNewUser,
+    date: dateId,
+    generatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    pushSent,
+  });
+
+  return content;
+}
+
 function todayDocId(): string {
   const now = new Date();
   const bogota = new Date(now.toLocaleString("en-US", { timeZone: "America/Bogota" }));
@@ -194,46 +240,29 @@ export const sendDailyHealthTips = functions
     const usersSnapshot = await db.collection("Cuentas_Tutor").get();
     console.log(`[DailyTips] ${usersSnapshot.size} usuarios encontrados.`);
 
-    for (const userDoc of usersSnapshot.docs) {
+    // Solo se pregenera para quien puede recibir la notificación. Para el resto,
+    // pregenerar es gasto puro: el consejo se queda en Firestore esperando a que
+    // la persona entre por su cuenta, y si entra, generateDailyTipNow se lo crea
+    // en ese momento (más fresco y sin costo si nunca entra).
+    const conToken = usersSnapshot.docs.filter((d) => {
+      const t = d.data().notificationToken;
+      return typeof t === "string" && t.length > 0;
+    });
+    console.log(`[DailyTips] ${conToken.length} con token de notificación; el resto se genera bajo demanda.`);
+
+    for (const userDoc of conToken) {
       const uid = userDoc.id;
 
       try {
         const existing = await userDoc.ref.collection("dailyTips").doc(dateId).get();
         if (existing.exists) continue; // ya generado hoy (re-ejecución segura)
 
-        const content = await generateTipForUser(uid);
-        if (!content) continue;
-
-        const authUser = await admin.auth().getUser(uid).catch(() => null);
-        const createdAt = authUser ? new Date(authUser.metadata.creationTime) : new Date();
-        const isNewUser = (Date.now() - createdAt.getTime()) / (1000 * 60 * 60 * 24) <= NEW_USER_WINDOW_DAYS;
-
-        const token = userDoc.data().notificationToken as string | undefined;
-        let pushSent = false;
-
-        if (token) {
-          try {
-            await messaging.send({
-              notification: {
-                title: "Tu consejo de salud de hoy 💙",
-                body: "Abre la app para verlo.",
-              },
-              data: { type: "daily_health_tip", date: dateId },
-              token,
-            });
-            pushSent = true;
-          } catch (err) {
-            console.error(`[DailyTips] Error enviando push a ${uid}:`, err);
-          }
-        }
-
-        await userDoc.ref.collection("dailyTips").doc(dateId).set({
-          content,
-          isNewUser,
-          date: dateId,
-          generatedAt: admin.firestore.FieldValue.serverTimestamp(),
-          pushSent,
-        });
+        await createAndStoreTip(
+          userDoc.ref,
+          uid,
+          dateId,
+          userDoc.data().notificationToken as string | undefined
+        );
       } catch (error) {
         console.error(`[DailyTips] Error procesando usuario ${uid}:`, error);
       }
@@ -241,4 +270,41 @@ export const sendDailyHealthTips = functions
 
     console.log("[DailyTips] Generación de consejos diarios completada.");
     return null;
+  });
+
+/**
+ * Generación bajo demanda: la llama la tarjeta del dashboard cuando el usuario
+ * abre la app y todavía no existe el consejo de hoy.
+ *
+ * Es la contraparte del filtro por token en el cron. Con esto el costo de IA
+ * sigue al uso real en vez de generarle un consejo cada mañana a gente que no
+ * entra hace meses. No manda push: quien la invoca ya está dentro de la app.
+ */
+export const generateDailyTipNow = functions
+  .region("us-central1")
+  .runWith({ timeoutSeconds: 60, memory: "512MB" })
+  .https.onCall(async (_data, context) => {
+    const uid = context.auth?.uid;
+    if (!uid) {
+      throw new functions.https.HttpsError("unauthenticated", "Debes iniciar sesión.");
+    }
+
+    const dateId = todayDocId();
+    const userRef = db.collection("Cuentas_Tutor").doc(uid);
+
+    // Si el cron ya lo generó (usuario con push), se devuelve ese mismo.
+    const existing = await userRef.collection("dailyTips").doc(dateId).get();
+    if (existing.exists) {
+      return { content: (existing.data()?.content as string) ?? null };
+    }
+
+    const userSnap = await userRef.get();
+    if (!userSnap.exists) return { content: null };
+
+    try {
+      return { content: await createAndStoreTip(userRef, uid, dateId) };
+    } catch (error) {
+      console.error(`[DailyTips] Error generando bajo demanda para ${uid}:`, error);
+      return { content: null };
+    }
   });

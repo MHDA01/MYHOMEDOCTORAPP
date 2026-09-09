@@ -81,7 +81,11 @@ const nextConfig: NextConfig = {
               "default-src 'self'",
               // 'unsafe-eval' es requerido solo en desarrollo: los bundles de dev de Next.js (webpack y Turbopack)
               // usan eval() para envolver módulos; sin esto el CSP bloquea todo el JS del cliente y la app no hidrata.
-              `script-src 'self' 'unsafe-inline' ${isDev ? "'unsafe-eval' " : ''}https://*.firebaseapp.com https://*.googleapis.com`,
+              // www.gstatic.com es necesario para los importScripts() del
+              // service worker de FCM (public/firebase-messaging-sw.js). Sin él
+              // la CSP bloqueaba el registro del worker y las notificaciones
+              // no podían activarse aunque el permiso se concediera.
+              `script-src 'self' 'unsafe-inline' ${isDev ? "'unsafe-eval' " : ''}https://*.firebaseapp.com https://*.googleapis.com https://www.gstatic.com`,
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com",
               "img-src 'self' data: https:",
               "font-src 'self' https://fonts.gstatic.com",

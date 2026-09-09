@@ -13,7 +13,7 @@ import {
   sendRenewalReminders,
   chargeMonthlySubscriptions,
 } from "./subscription";
-import { sendDailyHealthTips } from "./daily-health-tips";
+import { sendDailyHealthTips, generateDailyTipNow } from "./daily-health-tips";
 import { whatsappWebhook } from "./sales-agent/whatsapp-webhook";
 import { instagramWebhook } from "./sales-agent/instagram-webhook";
 import { leadWompiWebhook } from "./sales-agent/lead-payment-webhook";
@@ -39,6 +39,7 @@ export {
   chargeMonthlySubscriptions,
   // Consejos de salud diarios personalizados
   sendDailyHealthTips,
+  generateDailyTipNow,
   // Agente de ventas conversacional (WhatsApp + Instagram)
   whatsappWebhook,
   instagramWebhook,

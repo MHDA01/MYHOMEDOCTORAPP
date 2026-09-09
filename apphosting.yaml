@@ -70,6 +70,16 @@ env:
     availability:
       - BUILD
       - RUNTIME
+
+  # Clave pública del certificado push web (VAPID) del proyecto, creada el
+  # 30-ago-2025. Sin ella requestNotificationPermission() abortaba antes de
+  # pedir permiso, y por eso ningún usuario tenía token de notificación.
+  # Es pública por diseño: viaja al navegador para suscribirse a FCM.
+  - variable: NEXT_PUBLIC_FIREBASE_VAPID_KEY
+    value: BAQf8lZ9QyRd4PCOhden33ox18bwZbh0bt7s6fSVACmPJcxjrnwizG6SJrQ9UEJxp0TYY7jKCcB_kimv0O3dTA4
+    availability:
+      - BUILD
+      - RUNTIME
   - variable: NEXT_PUBLIC_WOMPI_PUBLIC_KEY
     value: pub_prod_HEfS9EpvKwmC8QL9UojA5uBUHOyeKSu2
     availability:
