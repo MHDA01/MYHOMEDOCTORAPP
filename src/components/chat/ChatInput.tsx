@@ -49,6 +49,36 @@ export default function ChatInput({
   } = useSpeechRecognition();
   const [micErrorFx, setMicErrorFx] = useState(false);
 
+  // Borrador del mensaje en curso.
+  //
+  // La app se actualiza sola y recarga la página en cuanto detecta una versión
+  // nueva (ver components/app-update-manager.tsx). Sin esto, a un paciente que
+  // estuviera describiendo sus síntomas se le perdería el texto.
+  //
+  // Se usa sessionStorage y no localStorage a propósito: sobrevive la recarga,
+  // que es lo único que hace falta, pero no deja texto clínico guardado en el
+  // dispositivo una vez cerrada la pestaña.
+  const claveBorrador = `mhda:borrador-chat:${memberName || 'principal'}`;
+
+  useEffect(() => {
+    try {
+      const guardado = sessionStorage.getItem(claveBorrador);
+      if (guardado) setText(guardado);
+    } catch {
+      // sessionStorage puede fallar (modo privado, permisos bloqueados). El
+      // borrador es un extra: si no está disponible, el chat funciona igual.
+    }
+  }, [claveBorrador]);
+
+  useEffect(() => {
+    try {
+      if (text) sessionStorage.setItem(claveBorrador, text);
+      else sessionStorage.removeItem(claveBorrador);
+    } catch {
+      // Ver nota anterior.
+    }
+  }, [text, claveBorrador]);
+
   useEffect(() => {
     // Solo el dictado por voz debe sobreescribir el input. Sin este guard, un transcript
     // remanente de una sesión de micrófono anterior podía pisar el texto que el usuario
