@@ -24,8 +24,21 @@ export interface TeleorientacionResponse {
 /*  Constantes                                                         */
 /* ------------------------------------------------------------------ */
 const MODEL_ID = process.env.TELEORIENTACION_MODEL || DEFAULT_GEMINI_MODEL;
-const MAX_TOKENS = 2048;
+const MAX_TOKENS = 4096;
 const TEMPERATURE = 0.4;
+
+/**
+ * La teleorientación es el único punto donde el modelo hace triage clínico, así
+ * que aquí sí se le deja razonar antes de responder (-1 = presupuesto dinámico,
+ * lo decide el modelo). El resto de los usos —consejo diario, agente de
+ * contenido, agente de ventas— siguen con el razonamiento apagado.
+ *
+ * Por eso MAX_TOKENS sube de 2048 a 4096: el razonamiento se descuenta del mismo
+ * presupuesto que la respuesta. Medido en un turno real, el modelo gastó ~890
+ * tokens pensando y ~670 respondiendo; con 2048 cabía, pero un caso clínico
+ * largo dejaría la respuesta sin aire. Solo se factura lo que realmente se usa.
+ */
+const THINKING_BUDGET = -1;
 
 /**
  * System prompt de la Dra. Hilda.
@@ -495,6 +508,7 @@ ${sanitizedPatientInfo}`;
       model: MODEL_ID,
       maxTokens: MAX_TOKENS,
       temperature: TEMPERATURE,
+      thinkingBudget: THINKING_BUDGET,
       timeoutMs: 60_000,
     });
 
