@@ -47,18 +47,19 @@ async function callGemini(
   const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
   try {
-    const generationConfig: Record<string, unknown> = {
-      temperature: options.temperature ?? 0.7,
-      maxOutputTokens: options.maxTokens ?? 1000,
-      thinkingConfig: { thinkingBudget: options.thinkingBudget ?? 0 },
-    };
-    if (responseMimeType) {
-      generationConfig.responseMimeType = responseMimeType;
-    }
+    const post = (withThinking: boolean) => {
+      const generationConfig: Record<string, unknown> = {
+        temperature: options.temperature ?? 0.7,
+        maxOutputTokens: options.maxTokens ?? 1000,
+      };
+      if (withThinking) {
+        generationConfig.thinkingConfig = { thinkingBudget: options.thinkingBudget ?? 0 };
+      }
+      if (responseMimeType) {
+        generationConfig.responseMimeType = responseMimeType;
+      }
 
-    const response = await fetch(
-      `${GEMINI_API_BASE}/${model}:generateContent?key=${apiKey}`,
-      {
+      return fetch(`${GEMINI_API_BASE}/${model}:generateContent?key=${apiKey}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -67,8 +68,17 @@ async function callGemini(
           generationConfig,
         }),
         signal: controller.signal,
-      }
-    );
+      });
+    };
+
+    // No todos los modelos aceptan thinkingBudget: gemini-3.6-flash y las
+    // variantes -lite devuelven 400 si se les manda. Si eso pasa, se reintenta
+    // sin el parámetro (esos modelos no razonan por defecto, así que el
+    // presupuesto de salida se respeta igual).
+    let response = await post(true);
+    if (response.status === 400) {
+      response = await post(false);
+    }
 
     if (!response.ok) {
       throw new Error(`Gemini API error ${response.status}: ${await response.text()}`);

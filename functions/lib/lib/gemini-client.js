@@ -19,39 +19,52 @@ function resolveApiKey() {
     return apiKey;
 }
 async function callGemini(system, userMessage, options, responseMimeType) {
-    var _a, _b, _c, _d, _e, _f, _g, _h;
+    var _a, _b, _c, _d, _e;
     const apiKey = resolveApiKey();
     const model = options.model || DEFAULT_MODEL_ID;
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
     try {
-        const generationConfig = {
-            temperature: (_a = options.temperature) !== null && _a !== void 0 ? _a : 0.7,
-            maxOutputTokens: (_b = options.maxTokens) !== null && _b !== void 0 ? _b : 1000,
-            thinkingConfig: { thinkingBudget: (_c = options.thinkingBudget) !== null && _c !== void 0 ? _c : 0 },
+        const post = (withThinking) => {
+            var _a, _b, _c;
+            const generationConfig = {
+                temperature: (_a = options.temperature) !== null && _a !== void 0 ? _a : 0.7,
+                maxOutputTokens: (_b = options.maxTokens) !== null && _b !== void 0 ? _b : 1000,
+            };
+            if (withThinking) {
+                generationConfig.thinkingConfig = { thinkingBudget: (_c = options.thinkingBudget) !== null && _c !== void 0 ? _c : 0 };
+            }
+            if (responseMimeType) {
+                generationConfig.responseMimeType = responseMimeType;
+            }
+            return fetch(`${GEMINI_API_BASE}/${model}:generateContent?key=${apiKey}`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    systemInstruction: { parts: [{ text: system }] },
+                    contents: [{ role: "user", parts: [{ text: userMessage }] }],
+                    generationConfig,
+                }),
+                signal: controller.signal,
+            });
         };
-        if (responseMimeType) {
-            generationConfig.responseMimeType = responseMimeType;
+        // No todos los modelos aceptan thinkingBudget: gemini-3.6-flash y las
+        // variantes -lite devuelven 400 si se les manda. Si eso pasa, se reintenta
+        // sin el parámetro (esos modelos no razonan por defecto, así que el
+        // presupuesto de salida se respeta igual).
+        let response = await post(true);
+        if (response.status === 400) {
+            response = await post(false);
         }
-        const response = await fetch(`${GEMINI_API_BASE}/${model}:generateContent?key=${apiKey}`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                systemInstruction: { parts: [{ text: system }] },
-                contents: [{ role: "user", parts: [{ text: userMessage }] }],
-                generationConfig,
-            }),
-            signal: controller.signal,
-        });
         if (!response.ok) {
             throw new Error(`Gemini API error ${response.status}: ${await response.text()}`);
         }
         const data = (await response.json());
-        const blockReason = (_d = data.promptFeedback) === null || _d === void 0 ? void 0 : _d.blockReason;
+        const blockReason = (_a = data.promptFeedback) === null || _a === void 0 ? void 0 : _a.blockReason;
         if (blockReason) {
             throw new Error(`Gemini bloqueó la petición por seguridad: ${blockReason}`);
         }
-        const content = ((_h = (_g = (_f = (_e = data.candidates) === null || _e === void 0 ? void 0 : _e[0]) === null || _f === void 0 ? void 0 : _f.content) === null || _g === void 0 ? void 0 : _g.parts) !== null && _h !== void 0 ? _h : [])
+        const content = ((_e = (_d = (_c = (_b = data.candidates) === null || _b === void 0 ? void 0 : _b[0]) === null || _c === void 0 ? void 0 : _c.content) === null || _d === void 0 ? void 0 : _d.parts) !== null && _e !== void 0 ? _e : [])
             .map((part) => { var _a; return (_a = part === null || part === void 0 ? void 0 : part.text) !== null && _a !== void 0 ? _a : ""; })
             .join("")
             .trim();
