@@ -9,12 +9,11 @@ self.addEventListener('message', (event) => {
 });
 
 self.addEventListener('install', (event) => {
-  // Sin skipWaiting() aquí a propósito: el SW nuevo se queda en espera hasta que
-  // la app le manda SKIP_WAITING (ver components/app-update-manager.tsx). Antes
-  // tomaba el control solo, y al hacerlo la página se recargaba encima del
-  // usuario — en una app de chat eso significa perder lo que estaba escribiendo.
-  // Ahora la actualización se aplica cuando la persona está fuera de la app, o
-  // cuando ella misma acepta el aviso.
+  // Sin skipWaiting() aquí a propósito: quien decide cuándo activar el SW nuevo
+  // es la app, mandándole SKIP_WAITING (ver components/app-update-manager.tsx).
+  // Hoy lo hace de inmediato en cuanto detecta una versión nueva, así que el
+  // efecto es el mismo que antes; la diferencia es que ahora también se detecta
+  // sin recargar (revisión cada 20 min y al volver a la app), no solo al cargar.
   event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(PRECACHE_URLS)));
 });
 
