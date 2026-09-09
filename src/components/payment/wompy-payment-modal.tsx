@@ -169,7 +169,7 @@ export function WompyPaymentModal({
                 <div className="mt-3 space-y-2 text-sm text-gray-700">
                   <div className="flex justify-between">
                     <span>Consultas por día:</span>
-                    <span className="font-semibold">Hasta 5</span>
+                    <span className="font-semibold">Hasta 7</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Duración:</span>
@@ -189,7 +189,7 @@ export function WompyPaymentModal({
                   $19.900<span className="text-lg"> COP</span>
                 </p>
                 <p className="mt-2 text-center text-xs text-gray-500">
-                  Aproximadamente 1 consulta por día
+                  Hasta 7 consultas por día · 210 tokens/mes
                 </p>
               </div>
 

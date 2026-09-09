@@ -11,9 +11,9 @@ import { getAdminDb } from '@/lib/firebase-admin';
 import { COLECCION_GROWTH_DRAFTS } from '@/lib/constants';
 import { FieldValue } from 'firebase-admin/firestore';
 import { verifyFounderAccess } from '@/lib/founder-access';
+import { generateWithGemini, DEFAULT_GEMINI_MODEL } from '@/lib/gemini';
 
-const ABACUS_API_URL = 'https://routellm.abacus.ai/v1/chat/completions';
-const MODEL_ID = 'claude-3-5-sonnet-20241022';
+const MODEL_ID = process.env.GROWTH_AGENT_MODEL || DEFAULT_GEMINI_MODEL;
 const MAX_TOKENS = 1536;
 const TEMPERATURE = 0.6;
 
@@ -100,48 +100,32 @@ export async function generateGrowthDraft(
     return { success: false, error: 'Describe el contexto para generar el borrador.' };
   }
 
-  const apiKey = process.env.ABACUS_API_KEY;
+  const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
-    console.error('[GrowthAgent] ABACUS_API_KEY no configurada');
+    console.error('[GrowthAgent] GEMINI_API_KEY no configurada');
     return { success: false, error: 'Error de configuración del servidor. Contacta al administrador.' };
   }
 
   try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 60_000);
-
-    const response = await fetch(ABACUS_API_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: MODEL_ID,
-        messages: [
-          { role: 'system', content: SYSTEM_PROMPTS[mode] },
-          { role: 'user', content: context },
-        ],
-        max_tokens: MAX_TOKENS,
-        temperature: TEMPERATURE,
-      }),
-      signal: controller.signal,
+    const result = await generateWithGemini({
+      system: SYSTEM_PROMPTS[mode],
+      contents: [{ role: 'user', parts: [{ text: context }] }],
+      model: MODEL_ID,
+      maxTokens: MAX_TOKENS,
+      temperature: TEMPERATURE,
+      timeoutMs: 60_000,
     });
 
-    clearTimeout(timeoutId);
-
-    if (!response.ok) {
-      const errorText = await response.text().catch(() => 'Sin detalle');
-      console.error(`[GrowthAgent] Error API ${response.status}: ${errorText}`);
-      return { success: false, error: `Error del servicio de IA (${response.status}). Intenta de nuevo.` };
+    if (!result.ok) {
+      if (result.kind === 'timeout') {
+        return { success: false, error: 'La solicitud tardó demasiado. Intenta de nuevo.' };
+      }
+      const statusLabel = result.status ? ` ${result.status}` : '';
+      console.error(`[GrowthAgent] Error de Gemini (${result.kind}${statusLabel}): ${result.detail}`);
+      return { success: false, error: `Error del servicio de IA${statusLabel}. Intenta de nuevo.` };
     }
 
-    const data = await response.json();
-    const draftText = data.choices?.[0]?.message?.content?.trim() ?? '';
-
-    if (!draftText) {
-      return { success: false, error: 'No se recibió respuesta del agente. Intenta de nuevo.' };
-    }
+    const draftText = result.text;
 
     const draftDoc = {
       mode,

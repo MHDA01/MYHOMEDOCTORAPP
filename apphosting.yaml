@@ -6,8 +6,8 @@ runConfig:
   memoryMiB: 512
 
 env:
-  - variable: ABACUS_API_KEY
-    secret: ABACUS_API_KEY
+  - variable: GEMINI_API_KEY
+    secret: GEMINI_API_KEY
     availability:
       - RUNTIME
   - variable: MHD_FIREBASE_PROJECT_ID

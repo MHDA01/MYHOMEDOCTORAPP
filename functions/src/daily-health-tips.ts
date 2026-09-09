@@ -1,14 +1,15 @@
 /**
  * @fileoverview Cloud Function programada: consejo de salud diario personalizado.
  * Genera un consejo de bienestar por usuario (perfil + historial + conversación
- * reciente) vía Abacus AI, lo guarda en Firestore para mostrarlo dentro de la app,
+ * reciente) vía la API de Gemini, lo guarda en Firestore para mostrarlo dentro de la app,
  * y envía una notificación push GENÉRICA (el contenido real nunca va en el cuerpo
  * del push, para no exponer datos de salud en la pantalla de bloqueo).
  */
 
-import * as functions from "firebase-functions";
+import * as functions from "firebase-functions/v1";
 import * as admin from "firebase-admin";
 import { decryptField } from "./lib/crypto";
+import { callGeminiText } from "./lib/gemini-client";
 
 try {
   admin.initializeApp();
@@ -19,8 +20,7 @@ try {
 const db = admin.firestore();
 const messaging = admin.messaging();
 
-const ABACUS_API_URL = "https://routellm.abacus.ai/v1/chat/completions";
-const MODEL_ID = "claude-3-5-sonnet-20241022";
+const MODEL_ID = process.env.DAILY_TIPS_MODEL || "gemini-3.5-flash";
 const MAX_TOKENS = 250;
 const TEMPERATURE = 0.7;
 const NEW_USER_WINDOW_DAYS = 7;
@@ -108,7 +108,7 @@ async function getRecentConversationSummary(uid: string): Promise<string> {
   return lines.length ? lines.join("\n") : "Sin conversaciones previas.";
 }
 
-async function generateTipForUser(uid: string, apiKey: string): Promise<string | null> {
+async function generateTipForUser(uid: string): Promise<string | null> {
   const userDoc = await db.collection("Cuentas_Tutor").doc(uid).get();
   if (!userDoc.exists) return null;
 
@@ -138,40 +138,14 @@ async function generateTipForUser(uid: string, apiKey: string): Promise<string |
     .filter(Boolean)
     .join("\n");
 
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 30_000);
-
   try {
-    const response = await fetch(ABACUS_API_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: MODEL_ID,
-        messages: [
-          { role: "system", content: buildSystemPrompt(isNewUser) },
-          { role: "user", content: userContext },
-        ],
-        max_tokens: MAX_TOKENS,
-        temperature: TEMPERATURE,
-      }),
-      signal: controller.signal,
+    const content = await callGeminiText(buildSystemPrompt(isNewUser), userContext, {
+      model: MODEL_ID,
+      maxTokens: MAX_TOKENS,
+      temperature: TEMPERATURE,
     });
-
-    clearTimeout(timeoutId);
-
-    if (!response.ok) {
-      console.error(`[DailyTips] Error API ${response.status} para ${uid}`);
-      return null;
-    }
-
-    const responseData = (await response.json()) as any;
-    const content = responseData.choices?.[0]?.message?.content?.trim();
     return content || null;
   } catch (error) {
-    clearTimeout(timeoutId);
     console.error(`[DailyTips] Error generando consejo para ${uid}:`, error);
     return null;
   }
@@ -192,9 +166,9 @@ export const sendDailyHealthTips = functions
   .pubsub.schedule("0 7 * * *")
   .timeZone("America/Bogota")
   .onRun(async (_context) => {
-    const apiKey = process.env.ABACUS_API_KEY;
+    const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
-      console.error("[DailyTips] ABACUS_API_KEY no configurada. Abortando.");
+      console.error("[DailyTips] GEMINI_API_KEY no configurada. Abortando.");
       return null;
     }
 
@@ -211,7 +185,7 @@ export const sendDailyHealthTips = functions
         const existing = await userDoc.ref.collection("dailyTips").doc(dateId).get();
         if (existing.exists) continue; // ya generado hoy (re-ejecución segura)
 
-        const content = await generateTipForUser(uid, apiKey);
+        const content = await generateTipForUser(uid);
         if (!content) continue;
 
         const authUser = await admin.auth().getUser(uid).catch(() => null);

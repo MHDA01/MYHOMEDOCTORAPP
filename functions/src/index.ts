@@ -14,6 +14,11 @@ import {
   chargeMonthlySubscriptions,
 } from "./subscription";
 import { sendDailyHealthTips } from "./daily-health-tips";
+import { whatsappWebhook } from "./sales-agent/whatsapp-webhook";
+import { instagramWebhook } from "./sales-agent/instagram-webhook";
+import { leadWompiWebhook } from "./sales-agent/lead-payment-webhook";
+import { manualAgentReply, manualAgentConsole } from "./sales-agent/manual-console";
+import { generateWeeklyContentPlan, generateContentPlanNow } from "./content-agent";
 
 export {
   // Reminders
@@ -34,4 +39,14 @@ export {
   chargeMonthlySubscriptions,
   // Consejos de salud diarios personalizados
   sendDailyHealthTips,
+  // Agente de ventas conversacional (WhatsApp + Instagram)
+  whatsappWebhook,
+  instagramWebhook,
+  leadWompiWebhook,
+  // Consola manual (mientras Meta sigue bloqueado)
+  manualAgentReply,
+  manualAgentConsole,
+  // Agente de contenido semanal (borradores por correo, no publica solo)
+  generateWeeklyContentPlan,
+  generateContentPlanNow,
 };

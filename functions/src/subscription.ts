@@ -15,7 +15,7 @@
  *   directamente; este backend nunca recibe ni almacena el PAN.
  */
 
-import * as functions from "firebase-functions";
+import * as functions from "firebase-functions/v1";
 import * as admin from "firebase-admin";
 import * as crypto from "crypto";
 import { wompiRequest } from "./wompi-client";

@@ -50,7 +50,7 @@ var __importStar = (this && this.__importStar) || (function () {
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.chargeMonthlySubscriptions = exports.sendRenewalReminders = exports.cancelAutoRenewal = exports.createPaymentSource = void 0;
-const functions = __importStar(require("firebase-functions"));
+const functions = __importStar(require("firebase-functions/v1"));
 const admin = __importStar(require("firebase-admin"));
 const crypto = __importStar(require("crypto"));
 const wompi_client_1 = require("./wompi-client");

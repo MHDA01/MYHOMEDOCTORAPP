@@ -1,7 +1,7 @@
 // ============================================================
 // app/actions/teleorientacion.ts — Server Action: Dra. Hilda AI
-// Conexión directa a Abacus AI (routellm) sin rate-limiting ni pruning.
-// Versión estable restaurada (rollback quirúrgico).
+// Conexión directa a la API de Gemini sin rate-limiting ni pruning.
+// Migrado desde Abacus AI (routellm), que dejó de responder con HTTP 402.
 // ============================================================
 'use server';
 
@@ -23,8 +23,7 @@ export interface TeleorientacionResponse {
 /* ------------------------------------------------------------------ */
 /*  Constantes                                                         */
 /* ------------------------------------------------------------------ */
-const ABACUS_API_URL = 'https://routellm.abacus.ai/v1/chat/completions';
-const MODEL_ID = 'claude-3-5-sonnet-20241022';
+const MODEL_ID = process.env.TELEORIENTACION_MODEL || DEFAULT_GEMINI_MODEL;
 const MAX_TOKENS = 2048;
 const TEMPERATURE = 0.4;
 
@@ -199,6 +198,12 @@ import { encryptField, decryptField } from '@/lib/crypto';
 import { COLECCION_TUTOR, SUBCOLECCION_CONVERSACIONES } from '@/lib/constants';
 import { Timestamp, FieldValue } from 'firebase-admin/firestore';
 import { getUserTokenState } from '@/lib/token-system';
+import {
+  generateWithGemini,
+  DEFAULT_GEMINI_MODEL,
+  type GeminiContent,
+  type GeminiPart,
+} from '@/lib/gemini';
 
 export interface PatientStructuredContext {
   firstName: string;
@@ -345,7 +350,7 @@ export async function getSecureMessages(idToken: string, convId: string) {
 }
 
 /**
- * Envía el historial de conversación a Abacus AI...
+ * Envía el historial de conversación a Gemini...
  */
 export async function sendTeleorientacionMessage(
   conversationHistory: TeleorientacionMessage[],
@@ -396,9 +401,9 @@ export async function sendTeleorientacionMessage(
     }
 
     /* ---- Validación básica ---- */
-    const apiKey = process.env.ABACUS_API_KEY;
+    const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
-      console.error('[Dra. Hilda] ABACUS_API_KEY no configurada');
+      console.error('[Dra. Hilda] GEMINI_API_KEY no configurada');
       return {
         success: false,
         message: '',
@@ -414,32 +419,23 @@ export async function sendTeleorientacionMessage(
       };
     }
 
-    /* ---- Construir mensajes para la API ---- */
-    type MessageContent =
-      | string
-      | Array<{ type: 'text'; text: string } | { type: 'image_url'; image_url: { url: string } }>;
-
-    // La API de Abacus (routellm) NO acepta URLs remotas en image_url — solo un data URI
-    // en base64 ("data:image/...;base64,..."). Hay que descargar cada imagen del Storage
-    // y convertirla antes de enviarla.
-    async function toDataUri(url: string): Promise<string | null> {
+    /* ---- Construir el contenido para la API ---- */
+    // Gemini no acepta URLs remotas en las imágenes: hay que descargar cada una
+    // del Storage y enviarla como inlineData en base64.
+    async function toInlinePart(url: string): Promise<GeminiPart | null> {
       try {
         const res = await fetch(url);
         if (!res.ok) return null;
-        const contentType = res.headers.get('content-type') || 'image/jpeg';
+        const mimeType = res.headers.get('content-type') || 'image/jpeg';
         const buf = Buffer.from(await res.arrayBuffer());
-        return `data:${contentType};base64,${buf.toString('base64')}`;
+        return { inlineData: { mimeType, data: buf.toString('base64') } };
       } catch (err) {
         console.error('[Dra. Hilda] Error descargando imagen para la IA:', err);
         return null;
       }
     }
 
-    const messages: { role: string; content: MessageContent }[] = [
-      { role: 'system', content: SYSTEM_PROMPT },
-    ];
-
-    // Inyectar contexto del paciente estructurado (Sanitizado)
+    // Contexto del paciente estructurado (sanitizado).
     // Nota: El contexto llega ya descifrado (si venía de Firestore) o se maneja en memoria
     const sanitizedPatientInfo = [
       `Nombre: ${patientContext.firstName} ${patientContext.lastName}`,
@@ -449,70 +445,88 @@ export async function sendTeleorientacionMessage(
       patientContext.medications?.length ? `Medicamentos: ${patientContext.medications.join(', ')}` : null,
     ].filter(Boolean).join('\n');
 
-    messages.push({
-      role: 'system',
-      content: `Contexto del paciente actual:\n${sanitizedPatientInfo}`,
-    });
+    // El prompt de sistema y el contexto del paciente van juntos en systemInstruction,
+    // que es donde Gemini espera lo que no es un turno de diálogo.
+    const systemInstruction = `${SYSTEM_PROMPT}
 
-    // Agregar historial de conversación.
-    // Los mensajes con imágenes se envían en formato multimodal (content como array
-    // con bloques de texto + image_url en base64) para que el modelo con visión pueda
-    // verlas realmente, en vez de solo recibir la URL como texto plano.
+Contexto del paciente actual:
+${sanitizedPatientInfo}`;
+
+    // Historial de conversación. Los mensajes con imágenes se envían como partes
+    // multimodales (texto + inlineData) para que el modelo con visión las vea de
+    // verdad, en vez de recibir solo la URL como texto plano.
+    const contents: GeminiContent[] = [];
+
     for (const msg of conversationHistory) {
       // El historial que recibe esta función ya debe estar descifrado si venía de DB
-      let content: MessageContent = msg.content;
+      const parts: GeminiPart[] = [];
+      const text = msg.content?.trim() ?? '';
 
       if (msg.imageUrls?.length) {
-        const dataUris = await Promise.all(msg.imageUrls.map(toDataUri));
-        const imageBlocks = dataUris
-          .filter((uri): uri is string => uri !== null)
-          .map((uri) => ({ type: 'image_url' as const, image_url: { url: uri } }));
-
-        content = [
-          { type: 'text', text: msg.content || 'Adjunto imágenes para orientación clínica.' },
-          ...imageBlocks,
-        ];
+        parts.push({ text: text || 'Adjunto imágenes para orientación clínica.' });
+        const inlineParts = await Promise.all(msg.imageUrls.map(toInlinePart));
+        for (const part of inlineParts) {
+          if (part) parts.push(part);
+        }
+      } else if (text) {
+        parts.push({ text });
       }
 
-      messages.push({
-        role: msg.role === 'assistant' ? 'assistant' : 'user',
-        content,
+      if (!parts.length) continue;
+
+      contents.push({
+        role: msg.role === 'assistant' ? 'model' : 'user',
+        parts,
       });
     }
 
-    /* ---- Llamada a la API de Abacus AI ---- */
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 60_000);
-
-    const response = await fetch(ABACUS_API_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: MODEL_ID,
-        messages,
-        max_tokens: MAX_TOKENS,
-        temperature: TEMPERATURE,
-      }),
-      signal: controller.signal,
-    });
-
-    clearTimeout(timeoutId);
-
-    if (!response.ok) {
-      const errorText = await response.text().catch(() => 'Sin detalle');
-      console.error(`[Dra. Hilda] Error API ${response.status}: ${errorText}`);
+    if (!contents.length) {
       return {
         success: false,
         message: '',
-        error: `Error del servicio de IA (${response.status}). Intenta de nuevo en unos segundos.`,
+        error: 'No se recibió ningún mensaje.',
       };
     }
 
-    const data = await response.json();
-    const assistantMessage = data.choices?.[0]?.message?.content?.trim() ?? '';
+    /* ---- Llamada a la API de Gemini ---- */
+    const result = await generateWithGemini({
+      system: systemInstruction,
+      contents,
+      model: MODEL_ID,
+      maxTokens: MAX_TOKENS,
+      temperature: TEMPERATURE,
+      timeoutMs: 60_000,
+    });
+
+    if (!result.ok) {
+      if (result.kind === 'timeout') {
+        return {
+          success: false,
+          message: '',
+          error: 'La solicitud tardó demasiado. Verifica tu conexión e intenta de nuevo.',
+        };
+      }
+
+      const statusLabel = result.status ? ` ${result.status}` : '';
+      console.error(`[Dra. Hilda] Error de Gemini (${result.kind}${statusLabel}): ${result.detail}`);
+
+      if (result.kind === 'blocked') {
+        return {
+          success: false,
+          message: '',
+          error: 'No puedo responder a ese contenido. Reformula tu consulta, por favor.',
+        };
+      }
+
+      return {
+        success: false,
+        message: '',
+        error: `Error del servicio de IA${statusLabel}. Intenta de nuevo en unos segundos.`,
+      };
+    }
+
+    const assistantMessage = result.text;
+
 
     if (!assistantMessage) {
       return {

@@ -50,11 +50,15 @@ export default function ChatInput({
   const [micErrorFx, setMicErrorFx] = useState(false);
 
   useEffect(() => {
+    // Solo el dictado por voz debe sobreescribir el input. Sin este guard, un transcript
+    // remanente de una sesión de micrófono anterior podía pisar el texto que el usuario
+    // escribe a mano (pérdida intermitente de caracteres — riesgo de integridad clínica).
+    if (!isListening) return;
     const mergedTranscript = `${transcript} ${interimTranscript}`.trim();
     if (mergedTranscript) {
       setText(mergedTranscript);
     }
-  }, [transcript, interimTranscript]);
+  }, [transcript, interimTranscript, isListening]);
 
   useEffect(() => {
     if (!speechError) return;

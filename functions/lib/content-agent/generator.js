@@ -1,0 +1,54 @@
+"use strict";
+/**
+ * @fileoverview Genera los 3 posts semanales vía la API de Gemini (misma llave
+ * que ya usa daily-health-tips.ts) — pide JSON puro y lo parsea.
+ */
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.generateWeeklyPosts = generateWeeklyPosts;
+const gemini_client_1 = require("../lib/gemini-client");
+const prompt_1 = require("./prompt");
+const topics_1 = require("./topics");
+const OUTPUT_FORMAT_INSTRUCTIONS = `
+## Formato de salida — OBLIGATORIO
+Responde ÚNICAMENTE con un objeto JSON válido, sin bloques de markdown (sin \`\`\`),
+sin texto antes ni después. Estructura exacta:
+
+{
+  "posts": [
+    { "weekday": "...", "hook": "...", "caption": "...", "production_note": "..." },
+    { "weekday": "...", "hook": "...", "caption": "...", "production_note": "..." },
+    { "weekday": "...", "hook": "...", "caption": "...", "production_note": "..." }
+  ]
+}
+
+Deben ser exactamente 3 posts, en el mismo orden en que se te asignaron día/formato/tema.
+`.trim();
+async function generateWeeklyPosts(topics) {
+    const assignment = topics_1.WEEK_FORMATS.map((f, i) => ({
+        weekday: f.day,
+        format_label: f.label,
+        hook_example: f.hookExample,
+        feature: f.feature,
+        topic: topics[i],
+    }));
+    const system = `${prompt_1.CONTENT_SYSTEM_PROMPT}\n\n${OUTPUT_FORMAT_INSTRUCTIONS}`;
+    const userMessage = "Genera los 3 posts de esta semana con esta asignación fija (no cambies día, formato ni tema):\n" +
+        JSON.stringify(assignment, null, 2);
+    const raw = await (0, gemini_client_1.callGeminiJson)(system, userMessage, {
+        model: process.env.CONTENT_AGENT_MODEL,
+        maxTokens: 3000,
+    });
+    const posts = raw.posts || [];
+    if (posts.length !== topics_1.WEEK_FORMATS.length) {
+        throw new Error(`Se esperaban ${topics_1.WEEK_FORMATS.length} posts, llegaron ${posts.length}.`);
+    }
+    return posts.map((p, i) => ({
+        weekday: p.weekday || topics_1.WEEK_FORMATS[i].day,
+        formatLabel: topics_1.WEEK_FORMATS[i].label,
+        topic: topics[i],
+        hook: p.hook || "",
+        caption: p.caption || "",
+        productionNote: p.production_note || "",
+    }));
+}
+//# sourceMappingURL=generator.js.map

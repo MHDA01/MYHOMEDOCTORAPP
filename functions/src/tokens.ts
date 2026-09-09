@@ -8,7 +8,7 @@
  * - Después: pago por Wompy → 210 tokens (7 consultas/día × 30 días)
  */
 
-import * as functions from "firebase-functions";
+import * as functions from "firebase-functions/v1";
 import * as admin from "firebase-admin";
 
 try {

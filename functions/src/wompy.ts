@@ -12,7 +12,7 @@
  * pero el proveedor real es Wompi (Bancolombia): api en production.wompi.co.
  */
 
-import * as functions from "firebase-functions";
+import * as functions from "firebase-functions/v1";
 import * as admin from "firebase-admin";
 import * as crypto from "crypto";
 import { wompiRequest } from "./wompi-client";

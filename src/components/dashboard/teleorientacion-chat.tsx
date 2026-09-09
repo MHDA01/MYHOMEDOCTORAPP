@@ -47,7 +47,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
-import { MessageSquarePlus, Trash2, Settings, LogOut } from 'lucide-react';
+import { MessageSquarePlus, Trash2, Settings, LogOut, Stethoscope, FileText } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
@@ -260,31 +260,48 @@ function ConversationSidebar({
 
         {/* Navigation items */}
         <nav className="flex flex-col gap-0.5 px-3 flex-shrink-0">
-          <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-[rgba(16,185,129,0.15)]">
-            <i className="ti ti-stethoscope text-[#6ee7b7] text-base flex-shrink-0"></i>
+          <Link
+            href="/dashboard/teleorientacion"
+            onClick={onClose}
+            className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-[rgba(16,185,129,0.15)]"
+          >
+            <Stethoscope className="h-4 w-4 text-[#6ee7b7] flex-shrink-0" />
             <span className="text-xs font-semibold text-white">Teleorientación</span>
-          </div>
-          <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[#cbd5e1] hover:bg-[rgba(255,255,255,0.08)] transition-colors cursor-pointer">
-            <i className="ti ti-file-text text-[#94a3b8] text-base flex-shrink-0"></i>
+          </Link>
+          <Link
+            href="/dashboard/reportes"
+            onClick={onClose}
+            className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[#cbd5e1] hover:bg-[rgba(255,255,255,0.08)] transition-colors cursor-pointer"
+          >
+            <FileText className="h-4 w-4 text-[#94a3b8] flex-shrink-0" />
             <span className="text-xs text-[#cbd5e1]">Informes</span>
-          </div>
+          </Link>
         </nav>
 
         {/* Tokens libres card */}
-        <div className="mx-3 my-2.5 p-2 rounded-lg bg-[rgba(16,185,129,0.12)] border border-[rgba(16,185,129,0.3)]">
-          <div className="flex items-center justify-between mb-1">
-            <span className="text-[11px] font-semibold text-[#6ee7b7]">Tokens gratis</span>
-            <span className="text-[11px] font-semibold text-[#6ee7b7]">{freeTokens} / {freeTokensTotal}</span>
-          </div>
-          <div className="flex gap-1">
-            {[...Array(freeTokensTotal)].map((_, i) => (
-              <div
-                key={i}
-                className={`flex-1 h-1 rounded-sm ${i < freeTokens ? 'bg-[#10b981]' : 'bg-[rgba(16,185,129,0.25)]'}`}
-              />
-            ))}
-          </div>
-        </div>
+        {(() => {
+          // El denominador (cupo inicial) es un valor de referencia del cliente; el backend
+          // puede otorgar más tokens gratis (p. ej. promociones). Tomamos el mayor entre el
+          // cupo de referencia y los tokens disponibles para que el numerador nunca supere
+          // al denominador ("10 / 6" era lógicamente inconsistente y generaba desconfianza).
+          const displayTotal = Math.max(freeTokensTotal, freeTokens);
+          return (
+            <div className="mx-3 my-2.5 p-2 rounded-lg bg-[rgba(16,185,129,0.12)] border border-[rgba(16,185,129,0.3)]">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-[11px] font-semibold text-[#6ee7b7]">Tokens gratis</span>
+                <span className="text-[11px] font-semibold text-[#6ee7b7]">{freeTokens} / {displayTotal}</span>
+              </div>
+              <div className="flex gap-1">
+                {[...Array(displayTotal)].map((_, i) => (
+                  <div
+                    key={i}
+                    className={`flex-1 h-1 rounded-sm ${i < freeTokens ? 'bg-[#10b981]' : 'bg-[rgba(16,185,129,0.25)]'}`}
+                  />
+                ))}
+              </div>
+            </div>
+          );
+        })()}
 
         {/* Conversation history */}
         <p className="text-[10px] text-[#64748b] mb-0.5 mx-3">últimos 7 dias</p>
@@ -773,6 +790,13 @@ export function TeleorientacionChatPage() {
 
   useEffect(() => {
     if (!user || !selectedConv || !selectedMember || isHistoryLoading || members.length === 0) return;
+
+    // Evita saludar con el nombre del integrante anterior: al crear/cambiar a una
+    // conversación de otro miembro, `selectedConv` se actualiza un render antes que
+    // `selectedMember` (que se resuelve en otro efecto). Si el saludo se dispara en ese
+    // instante usaría el nombre viejo y quedaría fijado por initialGreetingTriggeredRef.
+    // Esperamos a que el miembro resuelto corresponda a la conversación actual.
+    if (selectedMember.id !== selectedConv.memberId) return;
 
     const convKey = selectedConv.id;
     if (initialGreetingTriggeredRef.current[convKey]) return;

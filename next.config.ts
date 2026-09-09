@@ -81,11 +81,11 @@ const nextConfig: NextConfig = {
               "default-src 'self'",
               // 'unsafe-eval' es requerido solo en desarrollo: los bundles de dev de Next.js (webpack y Turbopack)
               // usan eval() para envolver módulos; sin esto el CSP bloquea todo el JS del cliente y la app no hidrata.
-              `script-src 'self' 'unsafe-inline' ${isDev ? "'unsafe-eval' " : ''}https://*.firebaseapp.com https://*.googleapis.com https://*.abacus.ai`,
+              `script-src 'self' 'unsafe-inline' ${isDev ? "'unsafe-eval' " : ''}https://*.firebaseapp.com https://*.googleapis.com`,
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com",
               "img-src 'self' data: https:",
               "font-src 'self' https://fonts.gstatic.com",
-              "connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://*.abacus.ai https://routellm.abacus.ai https://us-central1-myhomedoctorapp.cloudfunctions.net https://firestore.googleapis.com https://*.cloudfunctions.net https://production.wompi.co",
+              "connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://us-central1-myhomedoctorapp.cloudfunctions.net https://firestore.googleapis.com https://*.cloudfunctions.net https://production.wompi.co",
               "frame-src 'self' https://*.firebaseapp.com",
               "object-src 'none'",
               "base-uri 'self'",
