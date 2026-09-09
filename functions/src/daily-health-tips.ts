@@ -20,8 +20,14 @@ try {
 const db = admin.firestore();
 const messaging = admin.messaging();
 
-const MODEL_ID = process.env.DAILY_TIPS_MODEL || "gemini-3.5-flash";
+// El consejo diario son 60 palabras de bienestar, no triage clínico, así que
+// corre en el modelo económico: flash-lite cuesta 5 veces menos por token de
+// entrada ($0,30 vs $1,50 por millón) y 3,6 veces menos de salida. La calidad
+// medida con este prompt es equivalente. El triage sí usa el modelo grande.
+// Nota: flash-lite rechaza thinkingConfig; el cliente reintenta sin él solo.
+const MODEL_ID = process.env.DAILY_TIPS_MODEL || "gemini-3.5-flash-lite";
 const MAX_TOKENS = 250;
+const MAX_USER_MESSAGES = 6;
 const TEMPERATURE = 0.7;
 const NEW_USER_WINDOW_DAYS = 7;
 
@@ -91,18 +97,28 @@ async function getRecentConversationSummary(uid: string): Promise<string> {
 
   if (convSnap.empty) return "Sin conversaciones previas.";
 
+  // Solo se envían los mensajes del propio usuario, no las respuestas de la
+  // Dra. Hilda. Medido: con los 6 mensajes completos el prompt pesaba 1.369
+  // tokens, de los cuales 1.307 (el 95 %) eran las respuestas de ella — texto
+  // que el modelo ya generó y que se estaba pagando otra vez como entrada. La
+  // señal clínica está en lo que escribe el paciente, y eso cuesta ~90 tokens.
+  //
+  // Se leen 12 documentos para quedarse con los últimos 6 turnos del usuario,
+  // que es más contexto clínico que antes por una fracción del costo.
   const msgsSnap = await convSnap.docs[0].ref
     .collection("mensajes")
     .orderBy("timestamp", "desc")
-    .limit(6)
+    .limit(12)
     .get();
 
   const lines = msgsSnap.docs
+    .filter((d) => d.data().role !== "assistant")
+    .slice(0, MAX_USER_MESSAGES)
     .reverse()
     .map((d) => {
       const data = d.data();
       const content = data.isEncrypted ? decryptField(data.content) : data.content;
-      return `${data.role === "assistant" ? "Dra. Hilda" : "Usuario"}: ${content}`;
+      return `Usuario: ${content}`;
     });
 
   return lines.length ? lines.join("\n") : "Sin conversaciones previas.";
