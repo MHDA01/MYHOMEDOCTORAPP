@@ -43,7 +43,7 @@ export default function ChatInterface({
   }, [messages, isLoading]);
 
   return (
-    <div className="flex h-full min-h-0 flex-col bg-slate-50">
+    <div className="flex h-full min-h-0 flex-col bg-sky-50">
       <ChatHeader
         memberName={memberName}
         memberAge={memberAge}
@@ -58,8 +58,8 @@ export default function ChatInterface({
         {messages.length === 0 && (
           <div className="flex h-full items-center justify-center px-6 text-center">
             <div className="max-w-xl">
-              <h3 className="mb-2 text-2xl font-semibold text-slate-800">Hola, soy la Dra. Hilda</h3>
-              <p className="text-sm leading-7 text-slate-500">
+              <h3 className="mb-2 text-2xl font-semibold text-foreground">Hola, soy la Dra. Hilda</h3>
+              <p className="text-sm leading-7 text-muted-foreground">
                 Estoy lista para orientarte en salud familiar. Cuéntame qué está pasando y te acompaño paso a paso.
               </p>
             </div>

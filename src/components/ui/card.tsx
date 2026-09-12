@@ -9,7 +9,8 @@ const Card = React.forwardRef<
   <div
     ref={ref}
     className={cn(
-      "rounded-lg border bg-card text-card-foreground shadow-sm",
+      // Sombra muy suave y esquinas amplias: el lenguaje de tarjeta del mockup.
+      "rounded-lg border border-border/70 bg-card text-card-foreground shadow-card",
       className
     )}
     {...props}
@@ -36,7 +37,7 @@ const CardTitle = React.forwardRef<
   <div
     ref={ref}
     className={cn(
-      "text-2xl font-semibold leading-none tracking-tight",
+      "text-xl font-bold leading-tight tracking-tight text-brand-900 dark:text-foreground",
       className
     )}
     {...props}

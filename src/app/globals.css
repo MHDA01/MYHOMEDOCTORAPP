@@ -8,76 +8,170 @@
 @tailwind utilities;
 
 @layer base {
+  /* ============================================================
+     Identidad visual MyHomeDoctorApp
+     Azul profundo = autoridad y títulos · Turquesa = acción e interacción
+     Azul claro = fondos de sección · Blanco = superficies
+
+     El turquesa se mapea a --primary a propósito: en shadcn ese token
+     gobierna botones, anillos de foco y estados activos, así que la
+     identidad se propaga sola a las 35 primitivas sin tocarlas una a una.
+     ============================================================ */
   :root {
+    /* --- Escalas de marca --- */
+    --brand-50: 195 62% 95%;
+    --brand-100: 205 60% 92%;
+    --brand-200: 205 55% 84%;
+    --brand-300: 206 50% 72%;
+    --brand-400: 207 48% 58%;
+    --brand-500: 208 48% 50%;
+    --brand-600: 209 48% 45%;
+    --brand-700: 209 62% 34%;
+    --brand-800: 208 78% 27%;
+    --brand-900: 209 81% 23%;
+    --brand-950: 209 81% 16%;
+
+    --teal-50: 174 45% 96%;
+    --teal-100: 174 44% 90%;
+    --teal-200: 174 46% 80%;
+    --teal-300: 174 58% 64%;
+    --teal-400: 174 78% 46%;
+    --teal-500: 174 81% 38%;
+    --teal-600: 174 84% 33%;
+    --teal-700: 174 85% 27%;
+    --teal-800: 174 82% 22%;
+    --teal-900: 174 78% 17%;
+    --teal-950: 174 80% 11%;
+
+    --sky-50: 190 55% 96%;
+    --sky-100: 195 62% 95%;
+    --sky-200: 196 58% 88%;
+    --sky-300: 198 55% 78%;
+    --sky-400: 200 52% 66%;
+    --sky-500: 202 52% 52%;
+    --sky-600: 205 55% 43%;
+    --sky-700: 207 58% 35%;
+    --sky-800: 208 62% 28%;
+    --sky-900: 209 72% 22%;
+    --sky-950: 209 80% 15%;
+    /* --- Mapeo semántico --- */
     --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    --foreground: 209 45% 17%;
+
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 209 45% 17%;
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 215 56% 23%;
+    --popover-foreground: 209 45% 17%;
+
+    /* Acción: turquesa */
+    --primary: 174 81% 38%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 204 45% 98%;
-    --secondary-foreground: 217 33% 17%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 221.2 83.2% 53.3%;
-    --chart-1: 12 76% 61%;
-    --chart-2: 173 58% 39%;
-    --chart-3: 197 37% 24%;
-    --chart-4: 43 74% 66%;
-    --chart-5: 27 87% 67%;
-    --radius: 0.75rem;
-    --sidebar-background: 215 56% 23%;
+
+    /* Fondos de sección: azul muy claro */
+    --secondary: 190 55% 96%;
+    --secondary-foreground: 209 81% 23%;
+
+    --muted: 205 30% 96%;
+    --muted-foreground: 209 18% 46%;
+
+    --accent: 195 62% 95%;
+    --accent-foreground: 209 81% 23%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --success: 160 72% 38%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 209 45% 17%;
+
+    --border: 205 32% 90%;
+    --input: 205 32% 88%;
+    --ring: 174 81% 38%;
+
+    --chart-1: 174 81% 38%;
+    --chart-2: 209 81% 23%;
+    --chart-3: 209 48% 45%;
+    --chart-4: 38 92% 50%;
+    --chart-5: 160 72% 38%;
+
+    /* Esquinas generosas, como en el mockup */
+    --radius: 1rem;
+
+    /* Sidebar: azul profundo con acciones turquesa */
+    --sidebar-background: 209 81% 23%;
     --sidebar-foreground: 0 0% 100%;
-    --sidebar-primary: 160 84% 39%;
+    --sidebar-primary: 174 81% 38%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 4.8% 95.9%;
-    --sidebar-accent-foreground: 240 5.9% 10%;
-    --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-accent: 208 60% 30%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 208 50% 32%;
+    --sidebar-ring: 174 81% 38%;
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-    --chart-1: 220 70% 50%;
-    --chart-2: 160 60% 45%;
-    --chart-3: 30 80% 55%;
-    --chart-4: 280 65% 60%;
-    --chart-5: 340 75% 55%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --background: 209 45% 8%;
+    --foreground: 195 30% 95%;
+
+    --card: 209 42% 11%;
+    --card-foreground: 195 30% 95%;
+    --popover: 209 42% 11%;
+    --popover-foreground: 195 30% 95%;
+
+    --primary: 174 78% 46%;
+    --primary-foreground: 209 45% 8%;
+
+    --secondary: 209 38% 16%;
+    --secondary-foreground: 195 30% 95%;
+
+    --muted: 209 34% 18%;
+    --muted-foreground: 205 18% 68%;
+
+    --accent: 209 38% 18%;
+    --accent-foreground: 195 30% 95%;
+
+    --destructive: 0 62% 46%;
+    --destructive-foreground: 0 0% 100%;
+
+    --success: 160 60% 42%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 88% 55%;
+    --warning-foreground: 209 45% 8%;
+
+    --border: 209 30% 22%;
+    --input: 209 30% 24%;
+    --ring: 174 78% 46%;
+
+    --chart-1: 174 78% 46%;
+    --chart-2: 205 60% 62%;
+    --chart-3: 209 48% 52%;
+    --chart-4: 38 88% 55%;
+    --chart-5: 160 60% 42%;
+
+    --sidebar-background: 209 50% 10%;
+    --sidebar-foreground: 195 30% 95%;
+    --sidebar-primary: 174 78% 46%;
+    --sidebar-primary-foreground: 209 45% 8%;
+    --sidebar-accent: 209 38% 18%;
+    --sidebar-accent-foreground: 195 30% 95%;
+    --sidebar-border: 209 30% 22%;
+    --sidebar-ring: 174 78% 46%;
   }
+
+  /* Jerarquía tipográfica: azul profundo para títulos y elementos de
+     autoridad, como pide la identidad. En oscuro se vuelve al foreground
+     porque el azul de marca no tendría contraste suficiente. */
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-bold tracking-tight text-brand-900;
+  }
+
+  .dark h1, .dark h2, .dark h3, .dark h4, .dark h5, .dark h6 {
+    @apply text-foreground;
+  }
+
+  h1 { @apply text-[28px] leading-tight md:text-[34px]; }
+  h2 { @apply text-[22px] leading-snug md:text-[26px]; }
+  h3 { @apply text-lg leading-snug md:text-xl; }
 
   html {
     -webkit-font-smoothing: antialiased;

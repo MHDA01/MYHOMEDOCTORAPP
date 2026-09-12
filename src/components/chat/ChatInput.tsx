@@ -176,40 +176,40 @@ export default function ChatInput({
     : 'Escribe tu consulta...';
 
   return (
-    <div className="sticky bottom-0 z-20 border-t border-slate-200 bg-white/95 px-3 pb-[max(12px,env(safe-area-inset-bottom))] pt-3 backdrop-blur md:px-6">
+    <div className="sticky bottom-0 z-20 border-t border-border bg-white/95 px-3 pb-[max(12px,env(safe-area-inset-bottom))] pt-3 backdrop-blur md:px-6">
       {speechError && (
-        <div className="mb-2 px-1 text-xs text-red-600">
+        <div className="mb-2 px-1 text-xs text-destructive">
           {speechError}
         </div>
       )}
 
       {isListening && (
-        <div className="mb-2 flex items-center justify-between rounded-lg border border-red-200 bg-red-50 px-3 py-2">
-          <div className="flex items-center gap-2 text-xs font-medium text-red-700">
-            <span className="inline-flex h-2 w-2 rounded-full bg-red-500 animate-pulse" />
+        <div className="mb-2 flex items-center justify-between rounded-lg border border-destructive/25 bg-destructive/10 px-3 py-2">
+          <div className="flex items-center gap-2 text-xs font-medium text-destructive">
+            <span className="inline-flex h-2 w-2 rounded-full bg-destructive animate-pulse" />
             Grabando en tiempo real
           </div>
-          <p className="max-w-[65%] truncate text-[11px] text-red-700/90">
+          <p className="max-w-[65%] truncate text-[11px] text-destructive/90">
             {(interimTranscript || transcript).trim() || 'Escuchando...'}
           </p>
         </div>
       )}
 
       {imageError && (
-        <div className="mb-2 px-1 text-xs text-red-600">
+        <div className="mb-2 px-1 text-xs text-destructive">
           {imageError}
         </div>
       )}
 
       {selectedImages.length > 0 && (
-        <div className="mb-2 flex flex-wrap gap-2 rounded-lg border border-blue-100 bg-blue-50 p-2">
+        <div className="mb-2 flex flex-wrap gap-2 rounded-lg border border-border bg-sky-50 p-2">
           {selectedImages.map((file, index) => (
-            <div key={`${file.name}-${index}`} className="flex items-center gap-2 rounded-md bg-white px-2 py-1 text-xs text-slate-700">
+            <div key={`${file.name}-${index}`} className="flex items-center gap-2 rounded-md bg-white px-2 py-1 text-xs text-foreground">
               <span className="max-w-[140px] truncate">{file.name}</span>
               <button
                 type="button"
                 onClick={() => removeSelectedImage(index)}
-                className="text-slate-400 hover:text-slate-700"
+                className="text-muted-foreground/70 hover:text-foreground"
                 aria-label="Quitar imagen"
               >
                 ×
@@ -219,7 +219,7 @@ export default function ChatInput({
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="flex items-end gap-2 rounded-2xl border border-slate-200 bg-white p-2">
+      <form onSubmit={handleSubmit} className="flex items-end gap-2 rounded-2xl border border-border bg-white p-2">
         {/* Textarea */}
         <div className="relative flex-1">
           <textarea
@@ -232,7 +232,7 @@ export default function ChatInput({
             placeholder={placeholder || defaultPlaceholder}
             disabled={disabled}
             rows={1}
-            className="w-full resize-none rounded-2xl border border-transparent bg-white px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-slate-200 focus:outline-none focus:ring-0 disabled:opacity-50 transition-all"
+            className="w-full resize-none rounded-2xl border border-transparent bg-white px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/70 focus:border-primary/40 focus:outline-none focus:ring-0 disabled:opacity-50 transition-all"
           />
         </div>
 
@@ -268,7 +268,7 @@ export default function ChatInput({
               type="button"
               disabled={disabled}
               aria-label="Tomar o subir foto"
-              className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-blue-500 bg-blue-50 text-blue-600 transition-all duration-200 hover:bg-blue-100 disabled:opacity-50"
+              className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-primary/40 bg-sky-50 text-primary transition-all duration-200 hover:bg-sky-100 disabled:opacity-50"
             >
               <Camera className="h-5 w-5" />
             </button>
@@ -294,7 +294,7 @@ export default function ChatInput({
             aria-label={isListening ? 'Detener micrófono' : 'Activar micrófono'}
             className={`relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full border transition-all duration-200 ${
               isListening && hasPermission
-                ? 'border-red-400 bg-red-500 text-white animate-pulse-ring'
+                ? 'border-destructive/40 bg-destructive text-white animate-pulse-ring'
                 : 'border-teal-500 bg-teal-50 text-teal-600 hover:bg-teal-100'
             } ${micErrorFx ? 'animate-shake-x' : ''} disabled:opacity-50`}
           >
@@ -312,7 +312,7 @@ export default function ChatInput({
             </svg>
           </button>
         ) : (
-          <p className="px-2 text-[11px] text-slate-500">Tu navegador no soporta el micrófono. Usa Chrome.</p>
+          <p className="px-2 text-[11px] text-muted-foreground">Tu navegador no soporta el micrófono. Usa Chrome.</p>
         )}
 
         {/* Botón de enviar — siempre visible */}
@@ -320,7 +320,7 @@ export default function ChatInput({
           type="submit"
           disabled={disabled}
           aria-label="Enviar mensaje"
-          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-slate-900 text-white transition-all duration-200 hover:bg-slate-700 disabled:opacity-40 disabled:hover:bg-slate-900"
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary text-white transition-all duration-200 hover:bg-teal-600 disabled:opacity-40 disabled:hover:bg-primary"
         >
           {/* Send icon */}
           <svg
@@ -335,7 +335,7 @@ export default function ChatInput({
       </form>
 
       {/* Disclaimer */}
-      <p className="mt-2 text-center text-[11px] text-slate-400">
+      <p className="mt-2 text-center text-[11px] text-muted-foreground/70">
         Este asistente no diagnostica ni receta. Para evaluación clínica, agenda una teleconsulta.
       </p>
     </div>

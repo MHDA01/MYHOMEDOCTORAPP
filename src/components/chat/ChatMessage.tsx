@@ -32,7 +32,7 @@ function renderInline(text: string, keyPrefix: string): React.ReactNode[] {
       nodes.push(<em key={`${keyPrefix}-i${i}`}>{match[3]}</em>);
     } else if (match[4] !== undefined) {
       nodes.push(
-        <code key={`${keyPrefix}-c${i}`} className="rounded bg-slate-100 px-1 py-0.5 text-[0.85em]">
+        <code key={`${keyPrefix}-c${i}`} className="rounded bg-muted px-1 py-0.5 text-[0.85em]">
           {match[4]}
         </code>
       );
@@ -117,11 +117,11 @@ export default function ChatMessage({ message }: ChatMessageProps) {
         <div
           className={`max-w-[90%] rounded-2xl px-3 py-2 text-sm leading-6 transition-colors sm:max-w-[90%] sm:px-4 sm:py-3 sm:text-base md:max-w-[75%] md:px-5 md:py-4 ${
             isUser
-              ? 'bg-slate-100 text-slate-900 group-hover:bg-slate-200/80'
-              : 'border border-slate-200 bg-white text-slate-800 group-hover:bg-slate-50'
+              ? 'bg-muted text-foreground group-hover:bg-muted/70'
+              : 'border border-border bg-white text-foreground group-hover:bg-sky-50'
           }`}
         >
-          {!isUser && <p className="mb-1 text-xs font-semibold tracking-wide text-slate-500 sm:mb-2">Dra. Hilda</p>}
+          {!isUser && <p className="mb-1 text-xs font-semibold tracking-wide text-muted-foreground sm:mb-2">Dra. Hilda</p>}
           {isUser ? (
             <div className="whitespace-pre-wrap">{message.content}</div>
           ) : (
@@ -130,13 +130,13 @@ export default function ChatMessage({ message }: ChatMessageProps) {
           {message.imageUrls?.length ? (
             <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
               {message.imageUrls.map((url) => (
-                <a key={url} href={url} target="_blank" rel="noreferrer" className="block overflow-hidden rounded-xl border border-slate-200">
+                <a key={url} href={url} target="_blank" rel="noreferrer" className="block overflow-hidden rounded-xl border border-border">
                   <img src={url} alt="Adjunto clínico" className="h-auto w-full object-cover" />
                 </a>
               ))}
             </div>
           ) : null}
-          <p className={`mt-2 text-[11px] ${isUser ? 'text-slate-500 text-right' : 'text-slate-400'}`}>
+          <p className={`mt-2 text-[11px] ${isUser ? 'text-muted-foreground text-right' : 'text-muted-foreground/70'}`}>
             {message.timestamp.toLocaleTimeString('es-CO', {
               hour: '2-digit',
               minute: '2-digit',
