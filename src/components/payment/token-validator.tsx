@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useContext } from "react";
 import { UserContext } from "@/context/user-context";
+import { auth } from "@/lib/firebase";
 import { checkTokenAvailability } from "@/app/actions/tokens";
 import { WompyPaymentModal } from "./wompy-payment-modal";
 import { AlertCircle } from "lucide-react";
@@ -31,7 +32,9 @@ export function TokenValidator({
 
     try {
       setLoading(true);
-      const result = await checkTokenAvailability(user.uid);
+      const idToken = await auth.currentUser?.getIdToken();
+      if (!idToken) return;
+      const result = await checkTokenAvailability(idToken);
 
       setHasTokens(result.available);
       setTokenInfo(result);
@@ -123,7 +126,9 @@ export function useTokenCheck() {
 
     try {
       setLoading(true);
-      const result = await checkTokenAvailability(user.uid);
+      const idToken = await auth.currentUser?.getIdToken();
+      if (!idToken) return null;
+      const result = await checkTokenAvailability(idToken);
       setHasTokens(result.available);
       return result;
     } catch (error) {

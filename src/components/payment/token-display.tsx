@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useContext } from "react";
 import { UserContext } from "@/context/user-context";
+import { auth } from "@/lib/firebase";
 import { getTokenInfo } from "@/app/actions/tokens";
 import { Zap, AlertTriangle } from "lucide-react";
 
@@ -24,7 +25,9 @@ export function TokenDisplay({ onPaymentNeeded }: TokenDisplayProps) {
 
     const fetchTokens = async () => {
       try {
-        const info = await getTokenInfo(user.uid);
+        const idToken = await auth.currentUser?.getIdToken();
+        if (!idToken) return;
+        const info = await getTokenInfo(idToken);
         setTokens(info ?? { free: 0, paid: 0, freePeriodEnds: new Date(), dailyReset: new Date() });
 
         // Verificar si necesita pago

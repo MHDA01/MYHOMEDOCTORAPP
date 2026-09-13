@@ -330,12 +330,40 @@ async function persistConversationMessage(
     }, { merge: true });
 }
 
+/**
+ * Server Action pública: el uid sale del token verificado, nunca del cliente, y
+ * solo se escribe en una conversación que ya exista bajo esa cuenta.
+ */
 export async function persistSecureMessage(
-  userId: string,
+  idToken: string,
   convId: string,
   message: { role: string; content: string; imageUrls?: string[] }
 ): Promise<{ success: boolean; error?: string }> {
+  if (!idToken || !convId || convId.includes('/')) {
+    return { success: false, error: 'Solicitud inválida.' };
+  }
+
+  let userId: string;
   try {
+    const decodedToken = await getAdminAuth().verifyIdToken(idToken);
+    userId = decodedToken.uid;
+  } catch (authError) {
+    console.error('[Dra. Hilda] Error de verificación de token:', authError);
+    return { success: false, error: 'Sesión inválida o expirada. Por favor, inicia sesión de nuevo.' };
+  }
+
+  try {
+    const convSnap = await getAdminDb()
+      .collection(COLECCION_TUTOR)
+      .doc(userId)
+      .collection(SUBCOLECCION_CONVERSACIONES)
+      .doc(convId)
+      .get();
+
+    if (!convSnap.exists) {
+      return { success: false, error: 'Conversación no encontrada.' };
+    }
+
     await persistConversationMessage(userId, convId, message);
     return { success: true };
   } catch (error) {
