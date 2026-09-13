@@ -61,23 +61,56 @@ const messaging = admin.messaging();
 const MODEL_ID = process.env.DAILY_TIPS_MODEL || "gemini-3.5-flash-lite";
 const MAX_TOKENS = 250;
 const MAX_USER_MESSAGES = 6;
-const TEMPERATURE = 0.7;
+// 0,4 y no 0,7: con contenido de salud importa más que no se aparte de las
+// reglas clínicas que la variedad del texto. Es el mismo valor del chat.
+const TEMPERATURE = 0.4;
 const NEW_USER_WINDOW_DAYS = 7;
-function buildSystemPrompt(isNewUser) {
+// Un tema por día, de una lista cerrada de hábitos de promoción y prevención
+// que recomiendan la OMS/OPS y el Ministerio de Salud. Con temperatura baja y
+// sin tema, el modelo daba casi el mismo consejo todos los días; así hay
+// variedad sin dejarlo inventar de qué hablar.
+const TEMAS_DEL_DIA = [
+    "moverse más durante el día y pasar menos tiempo sentado",
+    "dormir bien con horarios regulares de sueño",
+    "comer más frutas y verduras",
+    "reducir el azúcar y la sal en las comidas",
+    "preferir agua en vez de bebidas azucaradas",
+    "cuidar la salud mental: manejar el estrés y buscar apoyo cuando se necesita",
+    "no fumar y evitar el humo de otros",
+    "reducir o evitar el consumo de alcohol",
+    "tener las vacunas al día (puede preguntar en su EPS o IPS)",
+    "asistir a los controles preventivos que corresponden a su edad",
+    "lavarse las manos con frecuencia",
+    "consultar a tiempo: contarle a la Dra. Hilda en el chat cualquier síntoma nuevo",
+];
+function temaDeHoy() {
+    const bogota = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Bogota" }));
+    const inicioDelAno = new Date(bogota.getFullYear(), 0, 0);
+    const dia = Math.floor((bogota.getTime() - inicioDelAno.getTime()) / 86400000);
+    return TEMAS_DEL_DIA[dia % TEMAS_DEL_DIA.length];
+}
+function buildSystemPrompt(isNewUser, tema) {
     const base = `Eres Dra. Hilda, la asistente de orientación en salud de myhomedoctorapp.
 Vas a escribir UN consejo de bienestar breve (máximo 60 palabras) y personalizado para el usuario, en español, tono cálido y cercano.
 
-Reglas clínicas (igual que en el chat de orientación):
-- NO diagnostiques ni prescribas medicamentos o dosis.
-- NO des indicaciones que reemplacen una consulta médica presencial.
-- Si el contexto sugiere algo urgente, en vez de un consejo recuérdale acudir a su médico o a urgencias (línea 123).
+Qué puede ser el consejo: un hábito general de promoción de la salud o de prevención, sobre el tema del día que se indica al final. Personalízalo con su nombre y su contexto, pero el consejo debe seguir siendo un hábito general.
+
+Reglas clínicas (obligatorias, sin excepciones):
+- NUNCA menciones medicamentos: no sugieras iniciar, suspender, cambiar, sustituir ni ajustar ningún medicamento, suplemento o producto natural.
+- NO recomiendes remedios caseros, plantas, tés, productos naturales ni terapias alternativas.
+- NO des tratamiento para síntomas o enfermedades concretas (dolor, fiebre, tos, presión alta...): eso se orienta en el chat. Si la conversación reciente menciona un síntoma, invítalo a contarle a la Dra. Hilda en el chat cómo sigue, sin sugerir qué hacer para el síntoma y sin decir que el hábito del consejo le ayudará con ese síntoma.
+- NO diagnostiques ni atribuyas causas a sus síntomas.
+- Respeta sus alergias y antecedentes: nunca propongas nada que los contradiga.
+- No cites estudios, organismos, cifras ni niveles de evidencia.
+- Si el contexto sugiere algo urgente, en vez de un consejo recuérdale acudir a urgencias o llamar a la línea 123.
 - Usa lenguaje probabilístico, nunca certeza absoluta.
+- No uses saludos que dependan de la hora ("buenos días", "buenas noches"): el consejo puede leerse a cualquier hora.
 
 Devuelve SOLO el texto del consejo, sin encabezados ni explicaciones.`;
     const toneNote = isNewUser
         ? "\nEste es un usuario NUEVO (menos de 7 días registrado): dale un consejo de bienvenida/educativo sobre cómo cuidar su salud y cómo usar la orientación de la app."
         : "\nEste es un usuario ya establecido: dale un consejo de refuerzo de hábito, breve y accionable.";
-    return base + toneNote;
+    return `${base}${toneNote}\nTema del consejo de hoy: ${tema}.`;
 }
 function safeDecryptJsonArray(value) {
     if (typeof value !== "string" || !value)
@@ -171,7 +204,7 @@ async function generateTipForUser(uid) {
         .filter(Boolean)
         .join("\n");
     try {
-        const content = await (0, gemini_client_1.callGeminiText)(buildSystemPrompt(isNewUser), userContext, {
+        const content = await (0, gemini_client_1.callGeminiText)(buildSystemPrompt(isNewUser, temaDeHoy()), userContext, {
             model: MODEL_ID,
             maxTokens: MAX_TOKENS,
             temperature: TEMPERATURE,
