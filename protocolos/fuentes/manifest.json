@@ -1,0 +1,41 @@
+{
+  "descripcion": "Biblioteca cerrada de fuentes para los protocolos de la Dra. Hilda. Un protocolo solo puede afirmar lo que esté citado literalmente de uno de estos documentos. El sha256 permite comprobar que el PDF no cambió desde que se citó.",
+  "fuentes": [
+    {
+      "id": "gpc-eda-2013",
+      "titulo": "Guía de práctica clínica para prevención, diagnóstico y tratamiento de la enfermedad diarreica aguda en niños menores de 5 años. Guía completa, Guía No. 8",
+      "entidad": "Ministerio de Salud y Protección Social - Colciencias - CINETS",
+      "anio": 2013,
+      "metodologia_calificacion": "GRADE",
+      "url": "https://minsalud.gov.co/sites/rid/Lists/BibliotecaDigital/RIDE/INEC/IETS/GPC_Comple_EDA.pdf",
+      "archivo": "gpc-eda-2013.pdf",
+      "sha256": "6bb0281977dbd95a65ae6c9129d4fb27dfda418bececbf2ea3113c55abf32980",
+      "uso": "Documento público del Ministerio de Salud.",
+      "nota": "Publicada en 2013: verificar si hay actualización antes de aprobar protocolos."
+    },
+    {
+      "id": "gpc-neumonia-bronquiolitis-2014",
+      "titulo": "Guía de práctica clínica para la evaluación del riesgo y manejo inicial de la neumonía en niños y niñas menores de 5 años y bronquiolitis en niños y niñas menores de 2 años. Guía No. 42",
+      "entidad": "Ministerio de Salud y Protección Social - Universidad de Antioquia",
+      "anio": 2014,
+      "metodologia_calificacion": "GRADE",
+      "url": "https://www.minsalud.gov.co/sites/rid/Lists/BibliotecaDigital/RIDE/DE/CA/gpc-completa-neumonia-bronquiolitis.pdf",
+      "archivo": "gpc-neumonia-bronquiolitis-2014.pdf",
+      "sha256": "88784c94b20edd13880f0a8a68f2f9b4db7a7c8a26810f3aebc8a06a02fdc12b",
+      "uso": "Documento público del Ministerio de Salud.",
+      "nota": "Publicada en 2014: verificar si hay actualización antes de aprobar protocolos."
+    },
+    {
+      "id": "aiepi-guia-facilitador",
+      "titulo": "Atención Integrada a las Enfermedades Prevalentes de la Infancia (AIEPI). Guía del facilitador clínico",
+      "entidad": "Ministerio de Salud y Protección Social - OPS/OMS",
+      "anio": null,
+      "metodologia_calificacion": "Sin calificación GRADE por recomendación (material de estrategia AIEPI)",
+      "url": "https://www.minsalud.gov.co/sites/rid/Lists/BibliotecaDigital/RIDE/VS/PP/guia-facilitador-atencion-integrada-enfermedades.pdf",
+      "archivo": "aiepi-guia-facilitador.pdf",
+      "sha256": "dd37d79143c947a2671e679e64a4cb70570cb7902c263667da732a7ce2489987",
+      "uso": "Documento público del Ministerio de Salud.",
+      "nota": "Es la guía del facilitador, no el libro clínico AIEPI: falta ubicar el libro clínico oficial vigente."
+    }
+  ]
+}

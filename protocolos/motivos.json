@@ -1,0 +1,13 @@
+{
+  "descripcion": "Motivos de consulta para los que se generan protocolos. El médico responsable elige cuáles entran; cada uno declara sus fuentes de la biblioteca cerrada.",
+  "motivos": [
+    {
+      "id": "diarrea-primera-infancia",
+      "motivo": "Diarrea",
+      "curso_de_vida": "primera_infancia",
+      "edad": "menores de 5 años",
+      "fuentes": ["gpc-eda-2013"],
+      "estado": "piloto"
+    }
+  ]
+}

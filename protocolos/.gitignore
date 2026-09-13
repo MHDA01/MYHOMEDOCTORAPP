@@ -1,0 +1,5 @@
+# Los PDF y su texto extraído se regeneran desde fuentes/manifest.json
+fuentes/pdf/
+fuentes/texto/
+borradores/*.raw.json
+__pycache__/
