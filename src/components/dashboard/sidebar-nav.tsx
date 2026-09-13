@@ -12,7 +12,7 @@ import {
   SidebarMenuButton,
   SidebarFooter,
 } from '@/components/ui/sidebar';
-import { BrandLockup } from '@/components/brand-lockup';
+import { LogoCompleto } from '@/components/brand-lockup';
 import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -99,8 +99,8 @@ export function SidebarNav() {
   if (context?.loading || !context?.personalInfo) {
     return (
         <>
-            <SidebarHeader className="px-4 py-5">
-                <BrandLockup />
+            <SidebarHeader className="items-center px-4 pb-3 pt-6">
+                <LogoCompleto />
             </SidebarHeader>
             <SidebarContent className="p-2 space-y-2">
                <Skeleton className="h-8 w-full" />
@@ -130,8 +130,8 @@ export function SidebarNav() {
 
   return (
     <>
-      <SidebarHeader className="px-4 py-5">
-        <BrandLockup />
+      <SidebarHeader className="items-center px-4 pb-3 pt-6">
+        <LogoCompleto />
       </SidebarHeader>
       <SidebarContent className="px-3">
         {tokenLoading ? (

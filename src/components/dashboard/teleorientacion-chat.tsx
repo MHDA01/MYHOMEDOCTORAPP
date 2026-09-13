@@ -50,7 +50,7 @@ import {
 import { MessageSquarePlus, Trash2, Settings, LogOut, X, Coins, ChevronLeft, History } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { BrandLockup } from '@/components/brand-lockup';
+import { LogoCompleto } from '@/components/brand-lockup';
 import DraHildaAvatar from '@/components/ui/avatar';
 import { GROWTH_NAV_ITEM, MAIN_NAV_ITEMS, isNavItemActive } from '@/components/dashboard/nav-items';
 import {
@@ -245,13 +245,13 @@ function ConversationSidebar({
         }`}
       >
         {/* Logo */}
-        <div className="flex shrink-0 items-center justify-between px-4 py-5">
+        <div className="relative flex shrink-0 items-center justify-center px-4 pb-3 pt-6">
           <Link href="/dashboard" onClick={onClose} aria-label="Ir al inicio">
-            <BrandLockup />
+            <LogoCompleto />
           </Link>
           <button
             onClick={onClose}
-            className="flex h-10 w-10 items-center justify-center rounded-full text-muted-foreground hover:bg-sky-50 hover:text-brand-900 lg:hidden"
+            className="absolute right-2 top-2 flex h-10 w-10 items-center justify-center rounded-full text-muted-foreground hover:bg-sky-50 hover:text-brand-900 lg:hidden"
             aria-label="Cerrar menú"
           >
             <X className="h-5 w-5" />

@@ -33,6 +33,13 @@ const QUICK_ACCESS: QuickAccess[] = [
   { href: '/dashboard/cuenta', title: 'Mi cuenta', description: 'Tu plan y consultas', icon: UserRound },
 ];
 
+// Muchos nombres están guardados en mayúsculas ("ALEXANDER"); solo se ajusta
+// cómo se muestran, el dato no se toca.
+function nombrePropio(nombre: string | undefined): string {
+  if (!nombre) return '';
+  return nombre.charAt(0).toLocaleUpperCase('es-CO') + nombre.slice(1).toLocaleLowerCase('es-CO');
+}
+
 function initials(member: FamilyProfile): string {
   return `${member.firstName?.charAt(0) ?? ''}${member.lastName?.charAt(0) ?? ''}`.toUpperCase() || '?';
 }
@@ -40,7 +47,7 @@ function initials(member: FamilyProfile): string {
 export function Inicio() {
   const context = useContext(UserContext);
   const user = context?.user ?? null;
-  const firstName = context?.personalInfo?.firstName?.split(' ')[0];
+  const firstName = nombrePropio(context?.personalInfo?.firstName?.split(' ')[0]);
   const [members, setMembers] = useState<FamilyProfile[]>([]);
 
   // Misma lectura que hace el chat para el selector de integrante.
@@ -67,8 +74,8 @@ export function Inicio() {
   return (
     <div className="mx-auto w-full max-w-5xl px-4 pb-8 md:px-8 md:pt-8">
       {/* Barra superior del celular; en computador el logo está en el menú lateral */}
-      <div className="flex h-14 items-center justify-between md:hidden">
-        <BrandLockup size="sm" />
+      <div className="flex h-[76px] items-center justify-between md:hidden">
+        <BrandLockup />
         <SidebarTrigger className="h-10 w-10 text-brand-900 [&_svg]:size-5" />
       </div>
 
@@ -145,7 +152,7 @@ export function Inicio() {
                         {initials(m)}
                       </span>
                       <span className="w-full truncate text-xs font-semibold text-brand-900">
-                        {m.esTitular ? 'Tú' : m.firstName}
+                        {m.esTitular ? 'Tú' : nombrePropio(m.firstName?.split(' ')[0])}
                       </span>
                       <span className="-mt-1 w-full truncate text-[11px] text-muted-foreground">
                         {m.esTitular ? 'Titular' : m.relationship}

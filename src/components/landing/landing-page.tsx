@@ -32,7 +32,7 @@ export function LandingPage() {
     <div className="min-h-screen bg-white text-foreground">
       <header className="absolute inset-x-0 top-0 z-20 px-5 py-4 sm:px-10 lg:px-16">
         <div className="mx-auto flex w-full max-w-6xl items-center justify-between">
-          <BrandLockup />
+          <BrandLockup size="lg" />
           <div className="flex items-center gap-2">
             <Link
               href="/login"
@@ -51,7 +51,7 @@ export function LandingPage() {
       </header>
 
       <main>
-        <section className="relative overflow-hidden bg-gradient-to-b from-sky-100 via-sky-50 to-white px-5 pb-16 pt-28 sm:px-10 lg:px-16 lg:pb-24 lg:pt-32">
+        <section className="relative overflow-hidden bg-gradient-to-b from-sky-100 via-sky-50 to-white px-5 pb-16 pt-32 sm:px-10 sm:pt-40 lg:px-16 lg:pb-24 lg:pt-44">
           <span aria-hidden className="pointer-events-none absolute -right-24 -top-24 h-96 w-96 rounded-full bg-primary/10 blur-3xl" />
           <span aria-hidden className="pointer-events-none absolute -left-32 bottom-0 h-80 w-80 rounded-full bg-brand-700/5 blur-3xl" />
 

@@ -28,8 +28,8 @@ export function DashboardHeader() {
   return (
     <header className="sticky top-0 z-10 border-b border-border/70 bg-white/90 backdrop-blur">
       {/* En celular el logo va arriba, como en el mockup; en computador ya está en el menú lateral. */}
-      <div className="flex h-14 items-center justify-between px-4 md:hidden">
-        <BrandLockup size="sm" />
+      <div className="flex h-[76px] items-center justify-between px-4 md:hidden">
+        <BrandLockup />
         <SidebarTrigger className="h-10 w-10 text-brand-900 [&_svg]:size-5" />
       </div>
       <div className="flex items-center px-4 pb-3 md:h-16 md:px-8 md:pb-0">
