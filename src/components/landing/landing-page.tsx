@@ -13,7 +13,7 @@ const FEATURES = [
   {
     icon: ShieldCheck,
     title: 'Confianza Médica',
-    text: 'Orientación basada en ciencia y protocolos de nivel 1A.',
+    text: 'Orientación basada en guías de práctica clínica reconocidas.',
   },
   {
     icon: Lock,
