@@ -61,12 +61,14 @@ export function DailyTipCard() {
   if (!tip) return null;
 
   return (
-    <Card className="mx-4 mt-2 border-emerald-100 bg-emerald-50 md:mx-6">
-      <CardContent className="flex items-start gap-3 p-2.5">
-        <HeartPulse className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600" />
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">Consejo del día</p>
-          <p className="mt-1 text-sm text-emerald-900">{tip}</p>
+    <Card className="overflow-hidden border-border/70">
+      <CardContent className="flex items-start gap-3 p-4 sm:p-5">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+          <HeartPulse className="h-5 w-5" />
+        </span>
+        <div className="min-w-0">
+          <p className="text-xs font-bold uppercase tracking-wider text-primary">Consejo del día</p>
+          <p className="mt-1.5 text-[15px] leading-relaxed text-foreground">{tip}</p>
         </div>
       </CardContent>
     </Card>

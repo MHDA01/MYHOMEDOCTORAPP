@@ -103,25 +103,31 @@ function FormattedMessage({ content }: { content: string }) {
   }
   flushList();
 
-  return <div className="space-y-0.5 leading-6">{blocks}</div>;
+  return <div className="space-y-1">{blocks}</div>;
 }
 
 export default function ChatMessage({ message }: ChatMessageProps) {
   const isUser = message.role === 'user';
+  const hora = message.timestamp.toLocaleTimeString('es-CO', {
+    hour: '2-digit',
+    minute: '2-digit',
+  });
 
+  // Como en el mockup: el paciente en azul profundo a la derecha, la Dra. Hilda
+  // en una burbuja clara a la izquierda con su avatar. El nombre ya está en la
+  // cabecera, así que no se repite dentro de cada burbuja.
   return (
-    <div className={`group flex w-full px-4 py-3 sm:py-4 md:px-8 ${isUser ? 'justify-end' : 'justify-start'}`}>
-      <div className={`flex w-full max-w-5xl gap-2 sm:gap-4 ${isUser ? 'justify-end' : 'justify-start'}`}>
-        {!isUser && <DraHildaAvatar size="sm" className="mt-1 sm:[&>img]:h-12 sm:[&>img]:w-12" />}
+    <div className={`flex w-full gap-2.5 py-1.5 ${isUser ? 'justify-end' : 'justify-start'}`}>
+      {!isUser && <DraHildaAvatar size="sm" className="mt-0.5 self-start" />}
 
+      <div className={`flex min-w-0 max-w-[85%] flex-col sm:max-w-[78%] ${isUser ? 'items-end' : 'items-start'}`}>
         <div
-          className={`max-w-[90%] rounded-2xl px-3 py-2 text-sm leading-6 transition-colors sm:max-w-[90%] sm:px-4 sm:py-3 sm:text-base md:max-w-[75%] md:px-5 md:py-4 ${
+          className={`min-w-0 max-w-full break-words rounded-3xl px-4 py-3 text-[15px] leading-relaxed ${
             isUser
-              ? 'bg-muted text-foreground group-hover:bg-muted/70'
-              : 'border border-border bg-white text-foreground group-hover:bg-sky-50'
+              ? 'rounded-br-lg bg-brand-900 text-white'
+              : 'rounded-tl-lg bg-muted text-foreground'
           }`}
         >
-          {!isUser && <p className="mb-1 text-xs font-semibold tracking-wide text-muted-foreground sm:mb-2">Dra. Hilda</p>}
           {isUser ? (
             <div className="whitespace-pre-wrap">{message.content}</div>
           ) : (
@@ -130,19 +136,14 @@ export default function ChatMessage({ message }: ChatMessageProps) {
           {message.imageUrls?.length ? (
             <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
               {message.imageUrls.map((url) => (
-                <a key={url} href={url} target="_blank" rel="noreferrer" className="block overflow-hidden rounded-xl border border-border">
+                <a key={url} href={url} target="_blank" rel="noreferrer" className="block overflow-hidden rounded-2xl border border-border/60">
                   <img src={url} alt="Adjunto clínico" className="h-auto w-full object-cover" />
                 </a>
               ))}
             </div>
           ) : null}
-          <p className={`mt-2 text-[11px] ${isUser ? 'text-muted-foreground text-right' : 'text-muted-foreground/70'}`}>
-            {message.timestamp.toLocaleTimeString('es-CO', {
-              hour: '2-digit',
-              minute: '2-digit',
-            })}
-          </p>
         </div>
+        <p className="mt-1 px-2 text-[11px] text-muted-foreground">{hora}</p>
       </div>
     </div>
   );

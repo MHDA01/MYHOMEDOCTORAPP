@@ -176,52 +176,108 @@ export default function ChatInput({
     : 'Escribe tu consulta...';
 
   return (
-    <div className="sticky bottom-0 z-20 border-t border-border bg-white/95 px-3 pb-[max(12px,env(safe-area-inset-bottom))] pt-3 backdrop-blur md:px-6">
-      {speechError && (
-        <div className="mb-2 px-1 text-xs text-destructive">
-          {speechError}
-        </div>
-      )}
-
-      {isListening && (
-        <div className="mb-2 flex items-center justify-between rounded-lg border border-destructive/25 bg-destructive/10 px-3 py-2">
-          <div className="flex items-center gap-2 text-xs font-medium text-destructive">
-            <span className="inline-flex h-2 w-2 rounded-full bg-destructive animate-pulse" />
-            Grabando en tiempo real
+    <div className="z-20 bg-white px-3 pb-[max(10px,env(safe-area-inset-bottom))] pt-2 sm:px-6">
+      <div className="mx-auto w-full max-w-3xl">
+        {speechError && (
+          <div className="mb-2 px-2 text-xs text-destructive">
+            {speechError}
           </div>
-          <p className="max-w-[65%] truncate text-[11px] text-destructive/90">
-            {(interimTranscript || transcript).trim() || 'Escuchando...'}
-          </p>
-        </div>
-      )}
+        )}
 
-      {imageError && (
-        <div className="mb-2 px-1 text-xs text-destructive">
-          {imageError}
-        </div>
-      )}
+        {isListening && (
+          <div className="mb-2 flex items-center justify-between rounded-2xl border border-destructive/25 bg-destructive/10 px-3 py-2">
+            <div className="flex items-center gap-2 text-xs font-medium text-destructive">
+              <span className="inline-flex h-2 w-2 rounded-full bg-destructive animate-pulse" />
+              Grabando en tiempo real
+            </div>
+            <p className="max-w-[65%] truncate text-[11px] text-destructive/90">
+              {(interimTranscript || transcript).trim() || 'Escuchando...'}
+            </p>
+          </div>
+        )}
 
-      {selectedImages.length > 0 && (
-        <div className="mb-2 flex flex-wrap gap-2 rounded-lg border border-border bg-sky-50 p-2">
-          {selectedImages.map((file, index) => (
-            <div key={`${file.name}-${index}`} className="flex items-center gap-2 rounded-md bg-white px-2 py-1 text-xs text-foreground">
-              <span className="max-w-[140px] truncate">{file.name}</span>
+        {imageError && (
+          <div className="mb-2 px-2 text-xs text-destructive">
+            {imageError}
+          </div>
+        )}
+
+        {!isSupported && (
+          <p className="mb-2 px-2 text-[11px] text-muted-foreground">Tu navegador no soporta el micrófono. Usa Chrome.</p>
+        )}
+
+        {selectedImages.length > 0 && (
+          <div className="mb-2 flex flex-wrap gap-2 rounded-2xl border border-border bg-sky-50 p-2">
+            {selectedImages.map((file, index) => (
+              <div key={`${file.name}-${index}`} className="flex items-center gap-2 rounded-full bg-white px-3 py-1 text-xs text-foreground shadow-soft">
+                <span className="max-w-[140px] truncate">{file.name}</span>
+                <button
+                  type="button"
+                  onClick={() => removeSelectedImage(index)}
+                  className="text-base leading-none text-muted-foreground hover:text-foreground"
+                  aria-label="Quitar imagen"
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Una sola barra, como en el mockup: cámara, texto, micrófono y enviar. */}
+        <form
+          onSubmit={handleSubmit}
+          className="flex items-end gap-1 rounded-[28px] border border-border bg-white p-1.5 shadow-soft transition-colors focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/15"
+        >
+          {/* Input oculto: cámara — fuerza la app de cámara en móvil */}
+          <input
+            id="chat-camera-capture"
+            name="chat-camera-capture"
+            ref={cameraInputRef}
+            type="file"
+            accept="image/jpeg,image/jpg,image/png"
+            capture="environment"
+            className="hidden"
+            onChange={handleImageSelection}
+            aria-label="Tomar foto"
+          />
+
+          {/* Input oculto: galería / explorador de archivos */}
+          <input
+            id="chat-image-upload"
+            name="chat-image-upload"
+            ref={galleryInputRef}
+            type="file"
+            accept="image/jpeg,image/jpg,image/png"
+            multiple
+            className="hidden"
+            onChange={handleImageSelection}
+            aria-label="Subir imagen clínica"
+          />
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild disabled={disabled}>
               <button
                 type="button"
-                onClick={() => removeSelectedImage(index)}
-                className="text-muted-foreground/70 hover:text-foreground"
-                aria-label="Quitar imagen"
+                disabled={disabled}
+                aria-label="Tomar o subir foto"
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-sky-50 hover:text-primary disabled:opacity-50"
               >
-                ×
+                <Camera className="h-[22px] w-[22px]" />
               </button>
-            </div>
-          ))}
-        </div>
-      )}
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" side="top">
+              <DropdownMenuItem onClick={handleTakePhotoClick}>
+                <Aperture className="mr-2 h-4 w-4" />
+                Tomar foto
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleUploadFileClick}>
+                <ImagePlus className="mr-2 h-4 w-4" />
+                Subir archivo
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
 
-      <form onSubmit={handleSubmit} className="flex items-end gap-2 rounded-2xl border border-border bg-white p-2">
-        {/* Textarea */}
-        <div className="relative flex-1">
           <textarea
             id="chat-message-input"
             name="chat-message"
@@ -232,112 +288,60 @@ export default function ChatInput({
             placeholder={placeholder || defaultPlaceholder}
             disabled={disabled}
             rows={1}
-            className="w-full resize-none rounded-2xl border border-transparent bg-white px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/70 focus:border-primary/40 focus:outline-none focus:ring-0 disabled:opacity-50 transition-all"
+            className="min-h-[44px] min-w-0 flex-1 resize-none border-0 bg-transparent px-1 py-[11px] text-[15px] leading-[22px] text-foreground placeholder:text-muted-foreground/80 placeholder:overflow-hidden placeholder:text-ellipsis placeholder:whitespace-nowrap focus:outline-none focus:ring-0 disabled:opacity-50"
           />
-        </div>
 
-        {/* Input oculto: cámara — fuerza la app de cámara en móvil */}
-        <input
-          id="chat-camera-capture"
-          name="chat-camera-capture"
-          ref={cameraInputRef}
-          type="file"
-          accept="image/jpeg,image/jpg,image/png"
-          capture="environment"
-          className="hidden"
-          onChange={handleImageSelection}
-          aria-label="Tomar foto"
-        />
-
-        {/* Input oculto: galería / explorador de archivos */}
-        <input
-          id="chat-image-upload"
-          name="chat-image-upload"
-          ref={galleryInputRef}
-          type="file"
-          accept="image/jpeg,image/jpg,image/png"
-          multiple
-          className="hidden"
-          onChange={handleImageSelection}
-          aria-label="Subir imagen clínica"
-        />
-
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild disabled={disabled}>
+          {/* Botón de micrófono */}
+          {isSupported && (
             <button
               type="button"
+              onClick={handleMicClick}
               disabled={disabled}
-              aria-label="Tomar o subir foto"
-              className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-primary/40 bg-sky-50 text-primary transition-all duration-200 hover:bg-sky-100 disabled:opacity-50"
+              aria-label={isListening ? 'Detener micrófono' : 'Activar micrófono'}
+              className={`relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition-all duration-200 ${
+                isListening && hasPermission
+                  ? 'bg-destructive text-white animate-pulse-ring'
+                  : 'text-muted-foreground hover:bg-sky-50 hover:text-primary'
+              } ${micErrorFx ? 'animate-shake-x' : ''} disabled:opacity-50`}
             >
-              <Camera className="h-5 w-5" />
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+                className="h-[22px] w-[22px]"
+              >
+                {isListening && hasPermission ? (
+                  <path d="M6 6h12v12H6z" />
+                ) : (
+                  <path d="M12 14a3 3 0 003-3V5a3 3 0 10-6 0v6a3 3 0 003 3zm5-3a5 5 0 01-10 0H5a7 7 0 0014 0h-2zm-5 9a1 1 0 01-1-1v-1.07A7.007 7.007 0 015 11H3a9.009 9.009 0 008 8.93V20a1 1 0 011-1h0a1 1 0 011 1v0z" />
+                )}
+              </svg>
             </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" side="top">
-            <DropdownMenuItem onClick={handleTakePhotoClick}>
-              <Aperture className="mr-2 h-4 w-4" />
-              Tomar foto
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={handleUploadFileClick}>
-              <ImagePlus className="mr-2 h-4 w-4" />
-              Subir archivo
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+          )}
 
-        {/* Botón de micrófono */}
-        {isSupported ? (
+          {/* Botón de enviar — siempre visible */}
           <button
-            type="button"
-            onClick={handleMicClick}
+            type="submit"
             disabled={disabled}
-            aria-label={isListening ? 'Detener micrófono' : 'Activar micrófono'}
-            className={`relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full border transition-all duration-200 ${
-              isListening && hasPermission
-                ? 'border-destructive/40 bg-destructive text-white animate-pulse-ring'
-                : 'border-teal-500 bg-teal-50 text-teal-600 hover:bg-teal-100'
-            } ${micErrorFx ? 'animate-shake-x' : ''} disabled:opacity-50`}
+            aria-label="Enviar mensaje"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary text-white shadow-soft transition-all duration-200 hover:bg-teal-600 active:scale-95 disabled:opacity-40 disabled:hover:bg-primary"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
               viewBox="0 0 24 24"
               fill="currentColor"
-              className="h-5 w-5"
+              className="h-5 w-5 -rotate-45 translate-x-[1px]"
             >
-              {isListening && hasPermission ? (
-                <path d="M6 6h12v12H6z" />
-              ) : (
-                <path d="M12 14a3 3 0 003-3V5a3 3 0 10-6 0v6a3 3 0 003 3zm5-3a5 5 0 01-10 0H5a7 7 0 0014 0h-2zm-5 9a1 1 0 01-1-1v-1.07A7.007 7.007 0 015 11H3a9.009 9.009 0 008 8.93V20a1 1 0 011-1h0a1 1 0 011 1v0z" />
-              )}
+              <path d="M3.478 2.405a.75.75 0 00-.926.94l2.432 7.905H13.5a.75.75 0 010 1.5H4.984l-2.432 7.905a.75.75 0 00.926.94 60.519 60.519 0 0018.445-8.986.75.75 0 000-1.218A60.517 60.517 0 003.478 2.405z" />
             </svg>
           </button>
-        ) : (
-          <p className="px-2 text-[11px] text-muted-foreground">Tu navegador no soporta el micrófono. Usa Chrome.</p>
-        )}
+        </form>
 
-        {/* Botón de enviar — siempre visible */}
-        <button
-          type="submit"
-          disabled={disabled}
-          aria-label="Enviar mensaje"
-          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary text-white transition-all duration-200 hover:bg-teal-600 disabled:opacity-40 disabled:hover:bg-primary"
-        >
-          {/* Send icon */}
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            fill="currentColor"
-            className="h-5 w-5 -rotate-45"
-          >
-            <path d="M3.478 2.405a.75.75 0 00-.926.94l2.432 7.905H13.5a.75.75 0 010 1.5H4.984l-2.432 7.905a.75.75 0 00.926.94 60.519 60.519 0 0018.445-8.986.75.75 0 000-1.218A60.517 60.517 0 003.478 2.405z" />
-          </svg>
-        </button>
-      </form>
-
-      {/* Disclaimer */}
-      <p className="mt-2 text-center text-[11px] text-muted-foreground/70">
-        Este asistente no diagnostica ni receta. Para evaluación clínica, agenda una teleconsulta.
-      </p>
+        {/* Disclaimer */}
+        <p className="mt-1.5 px-2 text-center text-[11px] leading-snug text-muted-foreground">
+          Este asistente no diagnostica ni receta. Para evaluación clínica, agenda una teleconsulta.
+        </p>
+      </div>
     </div>
   );
 }

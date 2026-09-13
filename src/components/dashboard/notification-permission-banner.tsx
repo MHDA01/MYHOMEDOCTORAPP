@@ -47,16 +47,24 @@ export function NotificationPermissionBanner() {
   };
 
   return (
-    <div className="mx-4 mt-2 flex items-center justify-between gap-3 rounded-xl border border-blue-100 bg-blue-50 px-3 py-1.5 text-xs md:mx-6">
-      <div className="flex items-center gap-2 text-blue-900">
-        <Bell className="h-3.5 w-3.5 shrink-0" />
-        <span>Activa las notificaciones para recibir tu consejo de salud diario y recordatorios.</span>
-      </div>
-      <div className="flex items-center gap-1">
+    <div className="flex items-center gap-3 rounded-2xl border border-border bg-white p-3 shadow-soft sm:p-4">
+      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-sky-100 text-primary">
+        <Bell className="h-5 w-5" />
+      </span>
+      <p className="min-w-0 flex-1 text-sm leading-snug text-brand-900">
+        Activa las notificaciones para recibir tu consejo de salud diario y recordatorios.
+      </p>
+      <div className="flex shrink-0 items-center gap-1">
         <Button size="sm" onClick={handleEnable} disabled={loading}>
           Activar
         </Button>
-        <Button size="sm" variant="ghost" onClick={() => setVisible(false)}>
+        <Button
+          size="icon"
+          variant="ghost"
+          onClick={() => setVisible(false)}
+          aria-label="Cerrar aviso"
+          className="h-9 w-9 text-muted-foreground"
+        >
           <X className="h-4 w-4" />
         </Button>
       </div>

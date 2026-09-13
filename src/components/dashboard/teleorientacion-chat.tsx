@@ -47,9 +47,12 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
-import { MessageSquarePlus, Trash2, Settings, LogOut, Stethoscope, FileText } from 'lucide-react';
+import { MessageSquarePlus, Trash2, Settings, LogOut, X, Coins, ChevronLeft, History } from 'lucide-react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
+import { BrandLockup } from '@/components/brand-lockup';
+import DraHildaAvatar from '@/components/ui/avatar';
+import { GROWTH_NAV_ITEM, MAIN_NAV_ITEMS, isNavItemActive } from '@/components/dashboard/nav-items';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -182,6 +185,7 @@ interface ConversationSidebarProps {
   onClose: () => void;
   freeTokens: number;
   freeTokensTotal: number;
+  onBuyTokens: () => void;
 }
 
 function ConversationSidebar({
@@ -194,12 +198,14 @@ function ConversationSidebar({
   onClose,
   freeTokens,
   freeTokensTotal,
+  onBuyTokens,
 }: ConversationSidebarProps) {
   const grouped = groupConversations(conversations);
   const groupOrder: DateGroup[] = ['Hoy', 'Ayer', 'Últimos 7 días', 'Últimos 30 días', 'Anteriores'];
 
   const userCtx = useContext(UserContext);
   const router = useRouter();
+  const pathname = usePathname();
   const userFullName = userCtx?.personalInfo?.firstName && userCtx?.personalInfo?.lastName
     ? `${userCtx.personalInfo.firstName} ${userCtx.personalInfo.lastName}`
     : (userCtx?.user?.displayName || 'Usuario');
@@ -207,6 +213,8 @@ function ConversationSidebar({
     ? userFullName.split(' ').map((n) => n[0]).join('').substring(0, 2).toUpperCase()
     : 'U';
   const userEmail = userCtx?.user?.email || '';
+  const isFounder = !!process.env.NEXT_PUBLIC_FOUNDER_EMAIL && userEmail === process.env.NEXT_PUBLIC_FOUNDER_EMAIL;
+  const navItems = isFounder ? [...MAIN_NAV_ITEMS, GROWTH_NAV_ITEM] : MAIN_NAV_ITEMS;
 
   const handleLogout = async () => {
     if (userCtx?.signOutUser) {
@@ -215,99 +223,110 @@ function ConversationSidebar({
     }
   };
 
+  // El denominador (cupo inicial) es un valor de referencia del cliente; el backend
+  // puede otorgar más tokens gratis (p. ej. promociones). Tomamos el mayor entre el
+  // cupo de referencia y los tokens disponibles para que el numerador nunca supere
+  // al denominador ("10 / 6" era lógicamente inconsistente y generaba desconfianza).
+  const displayTotal = Math.max(freeTokensTotal, freeTokens);
+
   return (
     <>
       {isOpen && (
         <div
-          className="fixed inset-0 z-[9990] bg-black/50 lg:hidden"
+          className="fixed inset-0 z-[9990] bg-brand-900/40 backdrop-blur-[1px] lg:hidden"
           onClick={onClose}
           aria-hidden="true"
         />
       )}
 
       <aside
-        className={`fixed inset-y-0 left-0 z-[9991] w-[230px] transform border-r border-slate-200 bg-[#1a365d] transition-transform duration-200 lg:relative lg:z-0 lg:translate-x-0 flex flex-col ${
-          isOpen ? 'translate-x-0' : '-translate-x-full'
+        className={`fixed inset-y-0 left-0 z-[9991] flex w-[280px] max-w-[85vw] transform flex-col border-r border-border bg-white transition-transform duration-200 lg:relative lg:z-0 lg:translate-x-0 ${
+          isOpen ? 'translate-x-0 shadow-card' : '-translate-x-full'
         }`}
       >
         {/* Logo */}
-        <div className="relative flex items-center justify-center px-2 py-2 flex-shrink-0">
-          <img
-            src="/images/LOGO_1.png"
-            alt="MyHome DoctorApp"
-            className="h-[150px] w-[150px] flex-shrink-0 object-contain"
-          />
+        <div className="flex shrink-0 items-center justify-between px-4 py-5">
+          <Link href="/dashboard" onClick={onClose} aria-label="Ir al inicio">
+            <BrandLockup />
+          </Link>
           <button
             onClick={onClose}
-            className="absolute right-2 top-2 rounded-lg p-1 text-slate-400 hover:text-slate-200 lg:hidden"
+            className="flex h-10 w-10 items-center justify-center rounded-full text-muted-foreground hover:bg-sky-50 hover:text-brand-900 lg:hidden"
             aria-label="Cerrar menú"
           >
-            ✕
+            <X className="h-5 w-5" />
           </button>
         </div>
 
         {/* Nueva conversación button */}
-        <button
-          onClick={() => {
-            onNewConversation();
-            onClose();
-          }}
-          className="mx-3 mb-2.5 flex items-center justify-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg bg-[#10b981] text-white hover:bg-[#059669] transition-colors"
-        >
-          <MessageSquarePlus className="h-4 w-4" />
-          Nueva conversación
-        </button>
+        <div className="shrink-0 px-3">
+          <button
+            onClick={() => {
+              onNewConversation();
+              onClose();
+            }}
+            className="flex h-11 w-full items-center justify-center gap-2 rounded-full bg-primary text-sm font-semibold text-primary-foreground shadow-soft transition-all hover:bg-teal-600 hover:shadow-card active:scale-[0.98]"
+          >
+            <MessageSquarePlus className="h-4 w-4" />
+            Nueva conversación
+          </button>
+        </div>
 
-        {/* Navigation items */}
-        <nav className="flex flex-col gap-0.5 px-3 flex-shrink-0">
-          <Link
-            href="/dashboard/teleorientacion"
-            onClick={onClose}
-            className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-[rgba(16,185,129,0.15)]"
-          >
-            <Stethoscope className="h-4 w-4 text-[#6ee7b7] flex-shrink-0" />
-            <span className="text-xs font-semibold text-white">Teleorientación</span>
-          </Link>
-          <Link
-            href="/dashboard/reportes"
-            onClick={onClose}
-            className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[#cbd5e1] hover:bg-[rgba(255,255,255,0.08)] transition-colors cursor-pointer"
-          >
-            <FileText className="h-4 w-4 text-[#94a3b8] flex-shrink-0" />
-            <span className="text-xs text-[#cbd5e1]">Informes</span>
-          </Link>
+        {/* Navigation items — la misma lista del menú lateral y la barra inferior */}
+        <nav className="mt-4 flex shrink-0 flex-col gap-0.5 px-3">
+          {navItems.map((item) => {
+            const active = isNavItemActive(pathname, item.href);
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                onClick={onClose}
+                aria-current={active ? 'page' : undefined}
+                className={`flex h-10 items-center gap-3 rounded-full px-4 text-sm font-semibold transition-colors ${
+                  active ? 'bg-sky-100 text-brand-900' : 'text-brand-900/70 hover:bg-sky-50 hover:text-brand-900'
+                }`}
+              >
+                <item.icon className={`h-[18px] w-[18px] shrink-0 ${active ? 'text-primary' : ''}`} />
+                {item.label}
+              </Link>
+            );
+          })}
         </nav>
 
         {/* Tokens libres card */}
-        {(() => {
-          // El denominador (cupo inicial) es un valor de referencia del cliente; el backend
-          // puede otorgar más tokens gratis (p. ej. promociones). Tomamos el mayor entre el
-          // cupo de referencia y los tokens disponibles para que el numerador nunca supere
-          // al denominador ("10 / 6" era lógicamente inconsistente y generaba desconfianza).
-          const displayTotal = Math.max(freeTokensTotal, freeTokens);
-          return (
-            <div className="mx-3 my-2.5 p-2 rounded-lg bg-[rgba(16,185,129,0.12)] border border-[rgba(16,185,129,0.3)]">
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-[11px] font-semibold text-[#6ee7b7]">Tokens gratis</span>
-                <span className="text-[11px] font-semibold text-[#6ee7b7]">{freeTokens} / {displayTotal}</span>
-              </div>
-              <div className="flex gap-1">
-                {[...Array(displayTotal)].map((_, i) => (
-                  <div
-                    key={i}
-                    className={`flex-1 h-1 rounded-sm ${i < freeTokens ? 'bg-[#10b981]' : 'bg-[rgba(16,185,129,0.25)]'}`}
-                  />
-                ))}
-              </div>
-            </div>
-          );
-        })()}
+        <div className="mx-3 mt-4 shrink-0 rounded-2xl bg-sky-50 p-3">
+          <div className="mb-2 flex items-center justify-between">
+            <span className="text-xs font-semibold text-muted-foreground">Tokens gratis</span>
+            <span className="text-xs font-bold text-brand-900">{freeTokens} / {displayTotal}</span>
+          </div>
+          <div className="flex gap-1">
+            {[...Array(displayTotal)].map((_, i) => (
+              <div
+                key={i}
+                className={`h-1.5 flex-1 rounded-full ${i < freeTokens ? 'bg-primary' : 'bg-primary/20'}`}
+              />
+            ))}
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              onBuyTokens();
+              onClose();
+            }}
+            className="mt-3 flex h-9 w-full items-center justify-center gap-1.5 rounded-full border border-border bg-white text-xs font-bold text-brand-900 transition-colors hover:border-primary"
+          >
+            <Coins className="h-4 w-4 text-primary" />
+            Comprar tokens
+          </button>
+        </div>
 
         {/* Conversation history */}
-        <p className="text-[10px] text-[#64748b] mb-0.5 mx-3">últimos 7 dias</p>
-        <nav className="flex-1 overflow-y-auto px-3 pb-2">
+        <p className="mx-4 mb-1 mt-5 shrink-0 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+          Conversaciones
+        </p>
+        <nav className="min-h-0 flex-1 overflow-y-auto px-3 pb-2 [scrollbar-color:hsl(var(--border))_transparent] [scrollbar-width:thin]">
           {conversations.length === 0 && (
-            <p className="px-2 py-4 text-center text-xs text-[#64748b]">
+            <p className="px-2 py-4 text-center text-xs text-muted-foreground">
               No hay conversaciones aún.
             </p>
           )}
@@ -315,16 +334,15 @@ function ConversationSidebar({
             const items = grouped[group];
             if (items.length === 0) return null;
             return (
-              <div key={group} className="mb-1.5">
+              <div key={group} className="mb-2">
+                <p className="px-3 pb-1 pt-2 text-[11px] font-medium text-muted-foreground">{group}</p>
                 {items.map((c) => {
                   const isSelected = c.id === selectedId;
                   return (
                     <div
                       key={c.id}
-                      className={`group mb-0.5 flex items-center rounded-lg transition-colors ${
-                        isSelected
-                          ? 'bg-[rgba(255,255,255,0.08)]'
-                          : 'hover:bg-[rgba(255,255,255,0.04)]'
+                      className={`group mb-0.5 flex items-center rounded-2xl transition-colors ${
+                        isSelected ? 'bg-sky-100' : 'hover:bg-sky-50'
                       }`}
                     >
                       <button
@@ -332,12 +350,12 @@ function ConversationSidebar({
                           onSelect(c);
                           onClose();
                         }}
-                        className="flex-1 min-w-0 px-2.5 py-1.5 text-left"
+                        className="min-w-0 flex-1 px-3 py-2.5 text-left"
                       >
-                        <p className="truncate text-xs font-semibold text-white">
+                        <p className="truncate text-sm font-semibold text-brand-900">
                           {c.title}
                         </p>
-                        <p className="text-[10px] text-[#94a3b8] mt-0.5">
+                        <p className="mt-0.5 truncate text-xs text-muted-foreground">
                           {c.memberName}
                         </p>
                       </button>
@@ -346,10 +364,10 @@ function ConversationSidebar({
                           e.stopPropagation();
                           onDelete(c.id);
                         }}
-                        className="mr-2 rounded-lg p-1 text-[#64748b] opacity-0 transition-opacity hover:text-[#ef4444] group-hover:opacity-100"
+                        className="mr-1.5 flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground opacity-100 transition-opacity hover:bg-destructive/10 hover:text-destructive lg:opacity-0 lg:group-hover:opacity-100"
                         aria-label="Eliminar conversación"
                       >
-                        <Trash2 className="h-3 w-3" />
+                        <Trash2 className="h-3.5 w-3.5" />
                       </button>
                     </div>
                   );
@@ -364,12 +382,12 @@ function ConversationSidebar({
           <DropdownMenuTrigger asChild>
             <button
               type="button"
-              className="mx-3 mb-3 flex items-center gap-2 p-2 rounded-lg border border-[rgba(255,255,255,0.12)] flex-shrink-0 hover:bg-[rgba(255,255,255,0.08)] transition-colors text-left"
+              className="mx-3 mb-3 flex shrink-0 items-center gap-2.5 rounded-2xl border border-border p-2 text-left transition-colors hover:bg-sky-50"
             >
-              <div className="w-6 h-6 rounded-full bg-[#10b981] flex items-center justify-center text-[10px] font-semibold text-white flex-shrink-0">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
                 {userInitials}
               </div>
-              <p className="min-w-0 flex-1 truncate text-xs font-semibold text-white">
+              <p className="min-w-0 flex-1 truncate text-sm font-semibold text-brand-900">
                 {userFullName}
               </p>
             </button>
@@ -429,16 +447,16 @@ function MemberPicker({ open, members, onSelect, onClose }: MemberPickerProps) {
               <button
                 key={m.id}
                 onClick={() => onSelect(m)}
-                className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left transition-colors hover:bg-teal-50"
+                className="flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left transition-colors hover:bg-sky-50"
               >
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-teal-100 text-sm font-bold text-teal-700">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-sky-100 text-sm font-bold text-brand-800">
                   {m.firstName?.charAt(0)?.toUpperCase() ?? '?'}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium text-slate-800">
+                  <p className="truncate text-sm font-semibold text-brand-900">
                     {m.firstName} {m.lastName}
                   </p>
-                  <p className="text-xs text-slate-500">
+                  <p className="text-xs text-muted-foreground">
                     {m.relationship ?? 'Integrante'}
                     {age !== undefined ? ` · ${age} años` : ''}
                   </p>
@@ -1042,8 +1060,8 @@ export function TeleorientacionChatPage() {
     return (
       <div className="flex h-full items-center justify-center">
         <div className="text-center">
-          <div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-2 border-slate-300 border-t-teal-500" />
-          <p className="text-sm text-slate-500">Cargando teleorientación...</p>
+          <div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-2 border-border border-t-primary" />
+          <p className="text-sm text-muted-foreground">Cargando teleorientación...</p>
         </div>
       </div>
     );
@@ -1064,56 +1082,61 @@ export function TeleorientacionChatPage() {
         onClose={() => setSidebarOpen(false)}
         freeTokens={tokenInfo?.free ?? 0}
         freeTokensTotal={FREE_TOKENS_DAILY_LIMIT}
+        onBuyTokens={() => setPaymentModalOpen(true)}
       />
 
       <div className="flex min-w-0 flex-1 flex-col bg-white">
-        {chatDisabledReason && selectedConv && (
-          <div className="border-b border-rose-100 bg-rose-50 px-5 py-3 text-xs text-rose-700">
-            {chatDisabledReason}
-          </div>
-        )}
         {selectedConv ? (
+          // La franja "Comprar tokens" que iba encima del chat pasó a la cabecera
+          // (botón de tokens y menú ⋯) y al menú de conversaciones; abre el mismo modal.
+          <ChatInterface
+            messages={messages}
+            onSendMessage={handleSendMessage}
+            isLoading={isLoading || tokenLoading}
+            memberName={memberName}
+            memberAge={memberAge}
+            memberSex={memberSex}
+            onMenuToggle={() => setSidebarOpen((prev) => !prev)}
+            onNewSession={handleNewSession}
+            onBuyTokens={() => setPaymentModalOpen(true)}
+            tokensAvailable={tokenInfo ? (tokenInfo.free ?? 0) + (tokenInfo.paid ?? 0) : null}
+            notice={chatDisabledReason}
+            disabled={Boolean(chatDisabledReason)}
+          />
+        ) : (
           <div className="flex h-full min-h-0 flex-col">
-            {/* Banner "Comprar tokens" */}
-            <div className="flex items-center justify-between px-3 py-1.5 rounded-lg bg-[#f1f5f9] mx-5 mt-2">
-              <p className="text-[11px] font-semibold text-[#1a365d]">Necesitas mas consultas? Compra tokens.</p>
+            {/* Sin conversación abierta, en celular no había forma de volver ni de abrir el historial */}
+            <div className="flex h-16 shrink-0 items-center justify-between px-2 lg:hidden">
+              <Link
+                href="/dashboard"
+                aria-label="Volver al inicio"
+                className="flex h-10 w-10 items-center justify-center rounded-full text-brand-900 hover:bg-sky-50"
+              >
+                <ChevronLeft className="h-6 w-6" />
+              </Link>
               <button
                 type="button"
-                onClick={() => setPaymentModalOpen(true)}
-                className="px-2.5 py-1 rounded-lg bg-[#1a365d] text-white text-[11px] font-semibold hover:bg-[#0f2a47] transition-colors flex-shrink-0"
+                onClick={() => setSidebarOpen(true)}
+                className="flex h-10 items-center gap-2 rounded-full px-4 text-sm font-semibold text-brand-900 hover:bg-sky-50"
               >
-                Comprar tokens
+                <History className="h-4 w-4" />
+                Mis conversaciones
               </button>
             </div>
-
-            {/* Chat interface */}
-            <ChatInterface
-              messages={messages}
-              onSendMessage={handleSendMessage}
-              isLoading={isLoading || tokenLoading}
-              memberName={memberName}
-              memberAge={memberAge}
-              memberSex={memberSex}
-              onMenuToggle={() => setSidebarOpen((prev) => !prev)}
-              onNewSession={handleNewSession}
-              disabled={Boolean(chatDisabledReason)}
-            />
-          </div>
-        ) : (
-          <div className="flex h-full flex-col items-center justify-center gap-4 px-6 text-center bg-slate-50">
-            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-teal-50">
-              <MessageSquarePlus className="h-8 w-8 text-teal-500" />
+            <div className="flex flex-1 flex-col items-center justify-center gap-4 px-6 text-center">
+              <DraHildaAvatar size="xl" />
+              <div>
+                <h3 className="mb-1 text-2xl font-bold">Bienvenido a Teleorientación</h3>
+                <p className="text-[15px] text-muted-foreground">Inicia una nueva conversación para recibir orientación médica.</p>
+              </div>
+              <button
+                onClick={handleNewSession}
+                className="inline-flex h-12 items-center gap-2 rounded-full bg-primary px-6 text-sm font-semibold text-primary-foreground shadow-soft transition-all hover:bg-teal-600 hover:shadow-card active:scale-[0.98]"
+              >
+                <MessageSquarePlus className="h-4 w-4" />
+                Nueva conversación
+              </button>
             </div>
-            <div>
-              <h3 className="mb-1 text-lg font-semibold text-slate-800">Bienvenido a Teleorientación</h3>
-              <p className="text-sm text-slate-500">Inicia una nueva conversación para recibir orientación médica.</p>
-            </div>
-            <button
-              onClick={handleNewSession}
-              className="rounded-xl bg-teal-600 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-teal-700"
-            >
-              Nueva conversación
-            </button>
           </div>
         )}
       </div>

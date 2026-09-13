@@ -10,8 +10,10 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        body: ['"Inter"', 'system-ui', 'sans-serif'],
-        headline: ['"Inter"', 'system-ui', 'sans-serif'],
+        // Plus Jakarta Sans: geométrica y redondeada como la del mockup, pero
+        // muy legible en pantallas pequeñas. Inter queda de respaldo.
+        body: ['"Plus Jakarta Sans"', '"Inter"', 'system-ui', 'sans-serif'],
+        headline: ['"Plus Jakarta Sans"', '"Inter"', 'system-ui', 'sans-serif'],
         code: ['monospace'],
       },
       colors: {

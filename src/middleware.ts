@@ -15,7 +15,7 @@ export function middleware(request: NextRequest) {
   if ((pathname === '/login' || pathname === '/register' || pathname === '/') && session) {
     
     if (pathname !== '/') {
-        return NextResponse.redirect(new URL('/dashboard/teleorientacion', request.url));
+        return NextResponse.redirect(new URL('/dashboard', request.url));
     }
   }
 

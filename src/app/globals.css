@@ -98,14 +98,16 @@
     /* Esquinas generosas, como en el mockup */
     --radius: 1rem;
 
-    /* Sidebar: azul profundo con acciones turquesa */
-    --sidebar-background: 209 81% 23%;
-    --sidebar-foreground: 0 0% 100%;
+    /* Sidebar claro, como las superficies del mockup. Sobre azul profundo el
+       logo (texto azul y gris) perdía contraste y había que meterlo en una
+       caja crema. El azul queda para textos y el turquesa para el activo. */
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 209 81% 23%;
     --sidebar-primary: 174 81% 38%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 208 60% 30%;
-    --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 208 50% 32%;
+    --sidebar-accent: 190 55% 96%;
+    --sidebar-accent-foreground: 209 81% 23%;
+    --sidebar-border: 205 32% 90%;
     --sidebar-ring: 174 81% 38%;
   }
 

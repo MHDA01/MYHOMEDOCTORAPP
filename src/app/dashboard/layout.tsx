@@ -1,8 +1,12 @@
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { DashboardSidebarGate } from "@/components/dashboard/dashboard-sidebar-gate";
-import { NotificationPermissionBanner } from "@/components/dashboard/notification-permission-banner";
+import { DashboardContent } from "@/components/dashboard/dashboard-content";
+import { BottomNav } from "@/components/dashboard/bottom-nav";
 import { UserProvider } from "@/context/user-context";
 
+// El aviso para activar notificaciones ya no va aquí, encima de todas las
+// pantallas: vive en el Inicio (components/dashboard/inicio.tsx). Encima del
+// chat se comía espacio de la conversación.
 export default function DashboardLayout({
   children,
 }: {
@@ -11,13 +15,13 @@ export default function DashboardLayout({
   return (
     <UserProvider>
       <SidebarProvider>
-        <div className="flex h-dvh overflow-hidden">
+        <div className="flex h-dvh w-full overflow-hidden">
           <DashboardSidebarGate />
-          <SidebarInset className="bg-secondary">
-            <NotificationPermissionBanner />
-            <div className="flex min-h-0 flex-1 flex-col overflow-hidden">{children}</div>
+          <SidebarInset className="bg-sky-50/60">
+            <DashboardContent>{children}</DashboardContent>
           </SidebarInset>
         </div>
+        <BottomNav />
       </SidebarProvider>
     </UserProvider>
   );

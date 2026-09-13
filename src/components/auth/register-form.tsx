@@ -130,7 +130,7 @@ export function RegisterForm() {
 
       // Usar window.location.href en lugar de router.push para asegurar que 
       // el middleware procese la nueva cookie de sesión en la siguiente carga
-      window.location.href = '/dashboard/teleorientacion';
+      window.location.href = '/dashboard';
     } catch (error: any) {
       console.error(error);
        toast({
