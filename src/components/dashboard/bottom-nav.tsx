@@ -1,11 +1,10 @@
 'use client';
 
 import Link from 'next/link';
-import { useContext } from 'react';
 import { usePathname } from 'next/navigation';
-import { UserContext } from '@/context/user-context';
+import { useEsAdmin } from '@/hooks/use-es-admin';
 import { cn } from '@/lib/utils';
-import { GROWTH_NAV_ITEM, MAIN_NAV_ITEMS, isNavItemActive } from './nav-items';
+import { ADMIN_NAV_ITEM, MAIN_NAV_ITEMS, isNavItemActive } from './nav-items';
 
 /**
  * Barra de navegación inferior para celular, tomada del mockup.
@@ -16,13 +15,11 @@ import { GROWTH_NAV_ITEM, MAIN_NAV_ITEMS, isNavItemActive } from './nav-items';
  */
 export function BottomNav() {
   const pathname = usePathname();
-  const context = useContext(UserContext);
+  const esAdmin = useEsAdmin();
 
   if (pathname?.startsWith('/dashboard/teleorientacion')) return null;
 
-  const email = context?.user?.email;
-  const isFounder = !!process.env.NEXT_PUBLIC_FOUNDER_EMAIL && email === process.env.NEXT_PUBLIC_FOUNDER_EMAIL;
-  const items = isFounder ? [...MAIN_NAV_ITEMS, GROWTH_NAV_ITEM] : MAIN_NAV_ITEMS;
+  const items = esAdmin ? [...MAIN_NAV_ITEMS, ADMIN_NAV_ITEM] : MAIN_NAV_ITEMS;
 
   return (
     <nav

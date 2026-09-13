@@ -120,7 +120,7 @@ export function GrowthAgentPanel() {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between gap-2">
           <CardTitle className="text-lg">Agente de Crecimiento</CardTitle>
-          <Link href="/dashboard/growth/tips" className="text-sm font-medium text-primary underline-offset-4 hover:underline">
+          <Link href="/dashboard/admin/consejos" className="text-sm font-medium text-primary underline-offset-4 hover:underline">
             Ver muestra de consejos enviados hoy →
           </Link>
         </CardHeader>

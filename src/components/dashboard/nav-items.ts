@@ -1,4 +1,4 @@
-import { Home, MessageCircleHeart, FileText, UserRound, TrendingUp, type LucideIcon } from 'lucide-react';
+import { Home, MessageCircleHeart, FileText, UserRound, ShieldCheck, type LucideIcon } from 'lucide-react';
 
 /**
  * Destinos de navegación de la app. Es una sola lista para el menú lateral
@@ -23,12 +23,12 @@ export const MAIN_NAV_ITEMS: NavItem[] = [
   { href: '/dashboard/cuenta', label: 'Mi cuenta', shortLabel: 'Cuenta', icon: UserRound },
 ];
 
-/** Solo visible para la cuenta fundadora (NEXT_PUBLIC_FOUNDER_EMAIL). */
-export const GROWTH_NAV_ITEM: NavItem = {
-  href: '/dashboard/growth',
-  label: 'Agente de Crecimiento',
-  shortLabel: 'Crecer',
-  icon: TrendingUp,
+/** Solo visible para administradores (ADMIN_EMAILS, verificado en el servidor con useEsAdmin). */
+export const ADMIN_NAV_ITEM: NavItem = {
+  href: '/dashboard/admin',
+  label: 'Administración',
+  shortLabel: 'Admin',
+  icon: ShieldCheck,
 };
 
 export function isNavItemActive(pathname: string | null, href: string): boolean {

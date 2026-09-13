@@ -7,7 +7,7 @@
 'use server';
 
 import { getAdminDb } from '@/lib/firebase-admin';
-import { verifyFounderAccess } from '@/lib/founder-access';
+import { verifyAdminAccess } from '@/lib/admin-access';
 
 export interface DailyTipSampleItem {
   id: string;
@@ -34,7 +34,7 @@ export async function getDailyTipsSample(
   idToken: string,
   date?: string
 ): Promise<{ success: boolean; items?: DailyTipSampleItem[]; error?: string }> {
-  const access = await verifyFounderAccess(idToken);
+  const access = await verifyAdminAccess(idToken);
   if (!access.ok) {
     return { success: false, error: access.error };
   }

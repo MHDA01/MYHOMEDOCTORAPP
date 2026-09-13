@@ -10,7 +10,7 @@
 import { getAdminDb } from '@/lib/firebase-admin';
 import { COLECCION_GROWTH_DRAFTS } from '@/lib/constants';
 import { FieldValue } from 'firebase-admin/firestore';
-import { verifyFounderAccess } from '@/lib/founder-access';
+import { verifyAdminAccess } from '@/lib/admin-access';
 import { generateWithGemini, DEFAULT_GEMINI_MODEL } from '@/lib/gemini';
 
 const MODEL_ID = process.env.GROWTH_AGENT_MODEL || DEFAULT_GEMINI_MODEL;
@@ -91,7 +91,7 @@ export async function generateGrowthDraft(
   context: string,
   idToken: string
 ): Promise<GrowthDraftResult> {
-  const access = await verifyFounderAccess(idToken);
+  const access = await verifyAdminAccess(idToken);
   if (!access.ok) {
     return { success: false, error: access.error };
   }
@@ -152,7 +152,7 @@ export async function generateGrowthDraft(
 /*  Historial de borradores                                            */
 /* ------------------------------------------------------------------ */
 export async function getGrowthDraftHistory(idToken: string): Promise<GrowthDraftHistoryItem[]> {
-  const access = await verifyFounderAccess(idToken);
+  const access = await verifyAdminAccess(idToken);
   if (!access.ok) {
     return [];
   }
@@ -180,7 +180,7 @@ export async function getGrowthDraftHistory(idToken: string): Promise<GrowthDraf
 /*  Marcar borrador como usado                                         */
 /* ------------------------------------------------------------------ */
 export async function markGrowthDraftAsUsed(idToken: string, draftId: string): Promise<{ success: boolean; error?: string }> {
-  const access = await verifyFounderAccess(idToken);
+  const access = await verifyAdminAccess(idToken);
   if (!access.ok) {
     return { success: false, error: access.error };
   }

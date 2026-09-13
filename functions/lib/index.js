@@ -4,7 +4,7 @@
  * Importa y exporta todas las funciones para que Firebase las despliegue.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.generateContentPlanNow = exports.generateWeeklyContentPlan = exports.manualAgentConsole = exports.manualAgentReply = exports.leadWompiWebhook = exports.instagramWebhook = exports.whatsappWebhook = exports.generateDailyTipNow = exports.sendDailyHealthTips = exports.chargeMonthlySubscriptions = exports.sendRenewalReminders = exports.cancelAutoRenewal = exports.createPaymentSource = exports.wompyWebhook = exports.initializeWompyPayment = exports.consumeTokenOnConsultationEnd = exports.renewDailyFreeTokens = exports.procesarDocumentoMedico = exports.checkMedicationReminders = exports.checkAppointmentReminders = void 0;
+exports.protocolosVerificarBorrador = exports.protocolosRedactarBorrador = exports.generateContentPlanNow = exports.generateWeeklyContentPlan = exports.manualAgentConsole = exports.manualAgentReply = exports.leadWompiWebhook = exports.instagramWebhook = exports.whatsappWebhook = exports.generateDailyTipNow = exports.sendDailyHealthTips = exports.chargeMonthlySubscriptions = exports.sendRenewalReminders = exports.cancelAutoRenewal = exports.createPaymentSource = exports.wompyWebhook = exports.initializeWompyPayment = exports.consumeTokenOnConsultationEnd = exports.renewDailyFreeTokens = exports.procesarDocumentoMedico = exports.checkMedicationReminders = exports.checkAppointmentReminders = void 0;
 const reminders_1 = require("./reminders");
 Object.defineProperty(exports, "checkAppointmentReminders", { enumerable: true, get: function () { return reminders_1.checkAppointmentReminders; } });
 Object.defineProperty(exports, "checkMedicationReminders", { enumerable: true, get: function () { return reminders_1.checkMedicationReminders; } });
@@ -36,4 +36,7 @@ Object.defineProperty(exports, "manualAgentConsole", { enumerable: true, get: fu
 const content_agent_1 = require("./content-agent");
 Object.defineProperty(exports, "generateWeeklyContentPlan", { enumerable: true, get: function () { return content_agent_1.generateWeeklyContentPlan; } });
 Object.defineProperty(exports, "generateContentPlanNow", { enumerable: true, get: function () { return content_agent_1.generateContentPlanNow; } });
+const protocolos_1 = require("./protocolos");
+Object.defineProperty(exports, "protocolosRedactarBorrador", { enumerable: true, get: function () { return protocolos_1.protocolosRedactarBorrador; } });
+Object.defineProperty(exports, "protocolosVerificarBorrador", { enumerable: true, get: function () { return protocolos_1.protocolosVerificarBorrador; } });
 //# sourceMappingURL=index.js.map

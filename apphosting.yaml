@@ -85,12 +85,10 @@ env:
     availability:
       - BUILD
       - RUNTIME
-  - variable: NEXT_PUBLIC_FOUNDER_EMAIL
-    value: marketing@myhomedoctorapp.com
-    availability:
-      - BUILD
-      - RUNTIME
-  - variable: FOUNDER_EMAIL
-    value: marketing@myhomedoctorapp.com
+
+  # Correos con acceso al panel de administración (src/lib/admin-access.ts).
+  # Es un secreto y no un valor escrito aquí porque este repositorio es público.
+  - variable: ADMIN_EMAILS
+    secret: ADMIN_EMAILS
     availability:
       - RUNTIME

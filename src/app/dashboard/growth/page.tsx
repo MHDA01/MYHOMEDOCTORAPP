@@ -1,15 +1,6 @@
-import { DashboardHeader } from '@/components/dashboard/header';
-import { GrowthAgentPanel } from '@/components/dashboard/growth-agent-panel';
+import { redirect } from 'next/navigation';
 
+// El Agente de Crecimiento ahora vive en el panel de administración.
 export default function GrowthPage() {
-  return (
-    <div className="flex h-full flex-col">
-      <DashboardHeader />
-      <main className="flex-1 p-4 md:p-6 lg:p-8">
-        <div className="mx-auto flex w-full max-w-3xl flex-col gap-4">
-          <GrowthAgentPanel />
-        </div>
-      </main>
-    </div>
-  );
+  redirect('/dashboard/admin/crecimiento');
 }

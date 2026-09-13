@@ -22,9 +22,10 @@ import {
   MoreVertical,
   Settings,
 } from 'lucide-react';
-import { GROWTH_NAV_ITEM, MAIN_NAV_ITEMS, isNavItemActive } from './nav-items';
+import { ADMIN_NAV_ITEM, MAIN_NAV_ITEMS, isNavItemActive } from './nav-items';
 import { ACCESO_LIBRE } from '@/config/acceso';
 import { UserContext } from '@/context/user-context';
+import { useEsAdmin } from '@/hooks/use-es-admin';
 import { auth } from '@/lib/firebase';
 import { Skeleton } from '../ui/skeleton';
 
@@ -34,6 +35,7 @@ export function SidebarNav() {
   const pathname = usePathname();
   const router = useRouter();
   const context = useContext(UserContext);
+  const esAdmin = useEsAdmin();
   const [tokenState, setTokenState] = useState<{
     available: boolean;
     tokens: { free: number; paid: number };
@@ -127,8 +129,7 @@ export function SidebarNav() {
   const userFullName = personalInfo?.firstName && personalInfo?.lastName ? `${personalInfo.firstName} ${personalInfo.lastName}` : (user?.displayName || 'Usuario');
   const userInitials = userFullName ? userFullName.split(' ').map(n => n[0]).join('').substring(0,2).toUpperCase() : 'U';
   const userEmail = user?.email || "invitado@ejemplo.com";
-  const isFounder = !!process.env.NEXT_PUBLIC_FOUNDER_EMAIL && user?.email === process.env.NEXT_PUBLIC_FOUNDER_EMAIL;
-  const navItems = isFounder ? [...MAIN_NAV_ITEMS, GROWTH_NAV_ITEM] : MAIN_NAV_ITEMS;
+  const navItems = esAdmin ? [...MAIN_NAV_ITEMS, ADMIN_NAV_ITEM] : MAIN_NAV_ITEMS;
 
   return (
     <>

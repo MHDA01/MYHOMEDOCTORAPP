@@ -3,3 +3,4 @@ fuentes/pdf/
 fuentes/texto/
 borradores/*.raw.json
 __pycache__/
+.paridad/

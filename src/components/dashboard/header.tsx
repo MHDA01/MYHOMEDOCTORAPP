@@ -7,6 +7,7 @@ export function DashboardHeader() {
   const pathname = usePathname();
 
   const getTitle = () => {
+    if (pathname?.startsWith('/dashboard/admin')) return 'Administración';
     switch (pathname) {
       case '/dashboard':
         return 'Inicio';
@@ -14,10 +15,6 @@ export function DashboardHeader() {
         return 'Teleorientación';
       case '/dashboard/reportes':
         return 'Mis informes';
-      case '/dashboard/growth':
-        return 'Agente de Crecimiento';
-      case '/dashboard/growth/tips':
-        return 'Consejos Diarios';
       case '/dashboard/cuenta':
         return 'Mi cuenta';
       default:

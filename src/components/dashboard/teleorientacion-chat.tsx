@@ -52,8 +52,9 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { LogoCompleto } from '@/components/brand-lockup';
 import DraHildaAvatar from '@/components/ui/avatar';
-import { GROWTH_NAV_ITEM, MAIN_NAV_ITEMS, isNavItemActive } from '@/components/dashboard/nav-items';
+import { ADMIN_NAV_ITEM, MAIN_NAV_ITEMS, isNavItemActive } from '@/components/dashboard/nav-items';
 import { ACCESO_LIBRE } from '@/config/acceso';
+import { useEsAdmin } from '@/hooks/use-es-admin';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -214,8 +215,8 @@ function ConversationSidebar({
     ? userFullName.split(' ').map((n) => n[0]).join('').substring(0, 2).toUpperCase()
     : 'U';
   const userEmail = userCtx?.user?.email || '';
-  const isFounder = !!process.env.NEXT_PUBLIC_FOUNDER_EMAIL && userEmail === process.env.NEXT_PUBLIC_FOUNDER_EMAIL;
-  const navItems = isFounder ? [...MAIN_NAV_ITEMS, GROWTH_NAV_ITEM] : MAIN_NAV_ITEMS;
+  const esAdmin = useEsAdmin();
+  const navItems = esAdmin ? [...MAIN_NAV_ITEMS, ADMIN_NAV_ITEM] : MAIN_NAV_ITEMS;
 
   const handleLogout = async () => {
     if (userCtx?.signOutUser) {

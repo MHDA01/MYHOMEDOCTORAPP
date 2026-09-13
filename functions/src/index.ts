@@ -19,6 +19,7 @@ import { instagramWebhook } from "./sales-agent/instagram-webhook";
 import { leadWompiWebhook } from "./sales-agent/lead-payment-webhook";
 import { manualAgentReply, manualAgentConsole } from "./sales-agent/manual-console";
 import { generateWeeklyContentPlan, generateContentPlanNow } from "./content-agent";
+import { protocolosRedactarBorrador, protocolosVerificarBorrador } from "./protocolos";
 
 export {
   // Reminders
@@ -50,4 +51,7 @@ export {
   // Agente de contenido semanal (borradores por correo, no publica solo)
   generateWeeklyContentPlan,
   generateContentPlanNow,
+  // Agente de protocolos: borradores desde la biblioteca cerrada, para revisión médica
+  protocolosRedactarBorrador,
+  protocolosVerificarBorrador,
 };
