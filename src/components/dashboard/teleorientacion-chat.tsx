@@ -53,6 +53,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { LogoCompleto } from '@/components/brand-lockup';
 import DraHildaAvatar from '@/components/ui/avatar';
 import { GROWTH_NAV_ITEM, MAIN_NAV_ITEMS, isNavItemActive } from '@/components/dashboard/nav-items';
+import { ACCESO_LIBRE } from '@/config/acceso';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -293,7 +294,8 @@ function ConversationSidebar({
           })}
         </nav>
 
-        {/* Tokens libres card */}
+        {/* Tokens libres card — oculta en la etapa gratuita (src/config/acceso.ts) */}
+        {!ACCESO_LIBRE && (
         <div className="mx-3 mt-4 shrink-0 rounded-2xl bg-sky-50 p-3">
           <div className="mb-2 flex items-center justify-between">
             <span className="text-xs font-semibold text-muted-foreground">Tokens gratis</span>
@@ -319,6 +321,7 @@ function ConversationSidebar({
             Comprar tokens
           </button>
         </div>
+        )}
 
         {/* Conversation history */}
         <p className="mx-4 mb-1 mt-5 shrink-0 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
@@ -960,7 +963,9 @@ export function TeleorientacionChatPage() {
             setConversationCompleted(true);
             setHasTokens(false);
             setChatDisabledReason(
-              'Has cambiado de tema; token consumido. Inicia nueva conversación para continuar.'
+              ACCESO_LIBRE
+                ? 'Has cambiado de tema. Inicia una nueva conversación para continuar.'
+                : 'Has cambiado de tema; token consumido. Inicia nueva conversación para continuar.'
             );
             await checkTokens();
           }
@@ -1098,8 +1103,8 @@ export function TeleorientacionChatPage() {
             memberSex={memberSex}
             onMenuToggle={() => setSidebarOpen((prev) => !prev)}
             onNewSession={handleNewSession}
-            onBuyTokens={() => setPaymentModalOpen(true)}
-            tokensAvailable={tokenInfo ? (tokenInfo.free ?? 0) + (tokenInfo.paid ?? 0) : null}
+            onBuyTokens={ACCESO_LIBRE ? undefined : () => setPaymentModalOpen(true)}
+            tokensAvailable={!ACCESO_LIBRE && tokenInfo ? (tokenInfo.free ?? 0) + (tokenInfo.paid ?? 0) : null}
             notice={chatDisabledReason}
             disabled={Boolean(chatDisabledReason)}
           />
@@ -1148,15 +1153,17 @@ export function TeleorientacionChatPage() {
         onClose={() => setShowMemberPicker(false)}
       />
 
-      <WompyPaymentModal
-        isOpen={paymentModalOpen}
-        onClose={() => setPaymentModalOpen(false)}
-        uid={user.uid}
-        onPaymentSuccess={async () => {
-          setPaymentModalOpen(false);
-          await checkTokens();
-        }}
-      />
+      {!ACCESO_LIBRE && (
+        <WompyPaymentModal
+          isOpen={paymentModalOpen}
+          onClose={() => setPaymentModalOpen(false)}
+          uid={user.uid}
+          onPaymentSuccess={async () => {
+            setPaymentModalOpen(false);
+            await checkTokens();
+          }}
+        />
+      )}
     </div>
   );
 }

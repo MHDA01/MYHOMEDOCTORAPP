@@ -23,6 +23,7 @@ import {
   Settings,
 } from 'lucide-react';
 import { GROWTH_NAV_ITEM, MAIN_NAV_ITEMS, isNavItemActive } from './nav-items';
+import { ACCESO_LIBRE } from '@/config/acceso';
 import { UserContext } from '@/context/user-context';
 import { auth } from '@/lib/firebase';
 import { Skeleton } from '../ui/skeleton';
@@ -52,7 +53,8 @@ export function SidebarNav() {
     let isMounted = true;
 
     const fetchTokenState = async () => {
-      if (!context?.user) return;
+      // Etapa gratuita: no hay saldo que mostrar (src/config/acceso.ts).
+      if (ACCESO_LIBRE || !context?.user) return;
       setTokenLoading(true);
 
       try {

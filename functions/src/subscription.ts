@@ -21,6 +21,7 @@ import * as crypto from "crypto";
 import { wompiRequest } from "./wompi-client";
 import { sendEmail } from "./email";
 import { CONSULTATION_COST_COP, PAID_TOKENS_PER_MONTH } from "./wompy";
+import { ACCESO_LIBRE } from "./acceso";
 
 try {
   admin.initializeApp();
@@ -120,6 +121,10 @@ export const createPaymentSource = functions
   .https.onCall(async (data, context) => {
     if (!context.auth) {
       throw new functions.https.HttpsError("unauthenticated", "Usuario no autenticado");
+    }
+
+    if (ACCESO_LIBRE) {
+      throw new functions.https.HttpsError("failed-precondition", "MyHomeDoctorApp es gratuita en este momento.");
     }
 
     const uid = context.auth.uid;
@@ -257,6 +262,10 @@ export const sendRenewalReminders = functions
   .pubsub.schedule("0 15 * * *") // 15:00 UTC ≈ 10:00 Bogotá
   .timeZone("UTC")
   .onRun(async () => {
+    if (ACCESO_LIBRE) {
+      console.log("[SUBSCRIPTION] Acceso libre: avisos de renovación omitidos.");
+      return null;
+    }
     console.log("[SUBSCRIPTION] Buscando renovaciones próximas para enviar aviso.");
 
     const now = new Date();
@@ -309,6 +318,11 @@ export const chargeMonthlySubscriptions = functions
   .pubsub.schedule("0 15 * * *") // 15:00 UTC ≈ 10:00 Bogotá
   .timeZone("UTC")
   .onRun(async () => {
+    if (ACCESO_LIBRE) {
+      // Etapa gratuita: nadie debe recibir un cobro por una app gratis.
+      console.log("[SUBSCRIPTION] Acceso libre: cobros automáticos omitidos.");
+      return null;
+    }
     console.log("[SUBSCRIPTION] Procesando cobros automáticos vencidos.");
 
     const now = new Date();

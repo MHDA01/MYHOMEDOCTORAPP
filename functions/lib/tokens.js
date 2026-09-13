@@ -46,6 +46,7 @@ exports.consumeTokenOnConsultationEnd = exports.renewDailyFreeTokens = void 0;
 exports.decrementTokenOnConsultationComplete = decrementTokenOnConsultationComplete;
 const functions = __importStar(require("firebase-functions/v1"));
 const admin = __importStar(require("firebase-admin"));
+const acceso_1 = require("./acceso");
 try {
     admin.initializeApp();
 }
@@ -74,6 +75,11 @@ exports.renewDailyFreeTokens = functions
     .timeZone("UTC")
     .onRun(async (_context) => {
     var _a, _b, _c, _d;
+    if (acceso_1.ACCESO_LIBRE) {
+        // Etapa gratuita: no hay nada que renovar, y así se evita leer todos los usuarios cada noche.
+        console.log("[TOKENS] Acceso libre: renovación diaria omitida.");
+        return null;
+    }
     console.log("[TOKENS] Iniciando renovación diaria de tokens gratis.");
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -196,6 +202,13 @@ exports.consumeTokenOnConsultationEnd = functions
     const { convId } = data;
     if (!convId) {
         throw new functions.https.HttpsError("invalid-argument", "convId es requerido");
+    }
+    if (acceso_1.ACCESO_LIBRE) {
+        // Etapa gratuita: la consulta se cierra igual (el estado "completed" no es
+        // parte del cobro), pero no se descuenta ningún token.
+        await db.collection("Cuentas_Tutor").doc(uid).collection("conversaciones").doc(convId)
+            .update({ status: "completed", tokenConsumed: false, completedAt: new Date() });
+        return { success: true, message: "Consulta cerrada (acceso libre: sin descuento de tokens)" };
     }
     try {
         const success = await decrementTokenOnConsultationComplete(uid, convId);

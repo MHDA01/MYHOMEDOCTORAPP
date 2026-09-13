@@ -3,6 +3,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { ArrowRight, Lock, ShieldCheck, Users } from 'lucide-react';
 import { BrandLockup } from '@/components/brand-lockup';
+import { ACCESO_LIBRE } from '@/config/acceso';
 
 // Página de entrada. Sigue la dirección de arte del mockup (azul profundo,
 // turquesa, superficies claras, tarjetas con íconos en círculo) sin copiar sus
@@ -74,6 +75,9 @@ export function LandingPage() {
                 <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-0.5" />
                 Comenzar orientación ahora
               </Link>
+              {ACCESO_LIBRE && (
+                <p className="text-sm font-semibold text-teal-700">Gratis durante el lanzamiento · Sin tarjeta</p>
+              )}
             </div>
 
             {/* Teléfono con la conversación, como las pantallas del mockup */}

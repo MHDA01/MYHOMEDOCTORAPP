@@ -16,6 +16,7 @@ import * as functions from "firebase-functions/v1";
 import * as admin from "firebase-admin";
 import * as crypto from "crypto";
 import { wompiRequest } from "./wompi-client";
+import { ACCESO_LIBRE } from "./acceso";
 
 try {
   admin.initializeApp();
@@ -48,6 +49,9 @@ const wompyRequest = wompiRequest;
 export const initializeWompyPayment = functions
   .region("us-central1")
   .https.onCall(async (data, context) => {
+    if (ACCESO_LIBRE) {
+      throw new functions.https.HttpsError("failed-precondition", "MyHomeDoctorApp es gratuita en este momento.");
+    }
     // Validar autenticación
     if (!context.auth) {
       throw new functions.https.HttpsError(

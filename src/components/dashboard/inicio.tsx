@@ -10,6 +10,7 @@ import type { FamilyProfile } from '@/lib/types';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { BrandLockup } from '@/components/brand-lockup';
 import DraHildaAvatar from '@/components/ui/avatar';
+import { ACCESO_LIBRE } from '@/config/acceso';
 import { DailyTipCard } from './daily-tip-card';
 import { NotificationPermissionBanner } from './notification-permission-banner';
 
@@ -30,7 +31,7 @@ type QuickAccess = { href: string; title: string; description: string; icon: Luc
 const QUICK_ACCESS: QuickAccess[] = [
   { href: '/dashboard/teleorientacion', title: 'Orientación médica', description: 'Con la Dra. Hilda', icon: MessageCircleHeart },
   { href: '/dashboard/reportes', title: 'Mis informes', description: 'PDF de tus consultas', icon: FileText },
-  { href: '/dashboard/cuenta', title: 'Mi cuenta', description: 'Tu plan y consultas', icon: UserRound },
+  { href: '/dashboard/cuenta', title: 'Mi cuenta', description: ACCESO_LIBRE ? 'Acceso gratuito' : 'Tu plan y consultas', icon: UserRound },
 ];
 
 // Muchos nombres están guardados en mayúsculas ("ALEXANDER"); solo se ajusta

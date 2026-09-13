@@ -8,7 +8,8 @@ import { UserContext } from '@/context/user-context';
 import { DashboardHeader } from '@/components/dashboard/header';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { AlertCircle, CheckCircle2, Loader2, ShieldCheck } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Gift, Loader2, ShieldCheck } from 'lucide-react';
+import { ACCESO_LIBRE } from '@/config/acceso';
 
 type TokenInfo = {
   free?: number;
@@ -84,6 +85,25 @@ export default function CuentaPage() {
       <DashboardHeader />
       <main className="flex-1 p-4 md:p-6 lg:p-8">
         <div className="mx-auto flex w-full max-w-3xl flex-col gap-4">
+      {ACCESO_LIBRE && (
+        <Card>
+          <CardContent className="flex items-start gap-4 p-5 sm:p-6">
+            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+              <Gift className="h-6 w-6" />
+            </span>
+            <div>
+              <p className="text-lg font-bold text-brand-900">Tu cuenta es gratuita</p>
+              <p className="mt-1 text-[15px] leading-relaxed text-muted-foreground">
+                Durante el lanzamiento de MyHomeDoctorApp puedes usar la orientación con la Dra. Hilda sin
+                ningún costo y sin registrar una tarjeta. Si algún día esto cambia, te avisaremos con anticipación.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+      {/* En la etapa gratuita la tarjeta de renovación solo aparece si alguien quedó con una
+          suscripción antigua, para que siempre pueda cancelarla. */}
+      {(!ACCESO_LIBRE || tokenInfo?.paymentSourceId) && (
       <Card>
         <CardHeader>
           <CardTitle>Renovación automática mensual</CardTitle>
@@ -164,6 +184,7 @@ export default function CuentaPage() {
           )}
         </CardContent>
       </Card>
+      )}
         </div>
       </main>
     </div>

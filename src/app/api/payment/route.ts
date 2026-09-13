@@ -1,10 +1,15 @@
 import { NextResponse } from 'next/server';
 import { getAdminAuth } from '@/lib/firebase-admin';
 import { logPaymentTransaction } from '@/lib/token-system';
+import { ACCESO_LIBRE } from '@/config/acceso';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: Request) {
+  // Etapa gratuita: no se crea ningún cobro (src/config/acceso.ts).
+  if (ACCESO_LIBRE) {
+    return NextResponse.json({ error: 'MyHomeDoctorApp es gratuita en este momento.' }, { status: 403 });
+  }
   try {
     const authHeader = request.headers.get('authorization') || '';
     const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : authHeader;

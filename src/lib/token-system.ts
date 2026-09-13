@@ -1,6 +1,7 @@
 import { getAdminDb } from '@/lib/firebase-admin';
 import { COLECCION_TUTOR, DOC_TOKENS, SUBCOLECCION_TRANSACTIONS } from '@/lib/constants';
 import { Timestamp } from 'firebase-admin/firestore';
+import { ACCESO_LIBRE } from '@/config/acceso';
 
 const db = getAdminDb();
 
@@ -54,6 +55,21 @@ export async function getUserTokenState(uid: string) {
   const freePeriodEnds = toDate(tokenData.freePeriodEnds);
   const dailyReset = toDate(tokenData.dailyReset);
   const now = new Date();
+
+  // Etapa gratuita (src/config/acceso.ts): todas las puertas preguntan aquí
+  // (chat, contador, API de tokens), así que abrirla en este punto las abre todas.
+  if (ACCESO_LIBRE) {
+    return {
+      available: true,
+      tokens: { free, paid },
+      needsPayment: false,
+      freePeriodEnds,
+      dailyReset,
+      trialExpired: false,
+      accesoLibre: true,
+    };
+  }
+
   const trialExpired = now > freePeriodEnds;
   const needsPayment = trialExpired && paid === 0;
 
@@ -64,6 +80,7 @@ export async function getUserTokenState(uid: string) {
     freePeriodEnds,
     dailyReset,
     trialExpired,
+    accesoLibre: false,
   };
 }
 
