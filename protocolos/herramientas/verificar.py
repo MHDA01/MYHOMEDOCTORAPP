@@ -20,7 +20,7 @@ import re
 
 from comun import BORRADORES, escribir_json, leer_json, llamar_gemini, normalizar, paginas, sin_espacios
 
-MIN_CITA = 40
+MIN_CITA = 15  # la cita ya debe salir de UNA recomendación concreta: 15 caracteres no dan coincidencias casuales
 VENTANA_CALIFICACION = 2500  # caracteres después de la cita donde debe estar su calificación
 
 PATRONES_MEDICAMENTO = [
@@ -108,8 +108,20 @@ def juez_fidelidad(items: list[dict], modelo: str, motivo: dict) -> tuple[dict, 
     )
     pares = [{"id": it["id"], "texto": it["texto"], "cita": it["cita_literal"], "adaptacion": it.get("adaptacion")}
              for it in items]
+    # Frases trampa: una fiel y una que cambia "y" por "o" (error real del primer piloto).
+    # Si el juez no marca la mala, su revisión de esta corrida no es confiable.
+    pares += [
+        {"id": "canario-fiel", "texto": "Lávese las manos con agua y jabón antes de preparar los alimentos del niño.",
+         "cita": "Se recomienda el lavado de manos con agua y jabón antes de preparar los alimentos del niño.", "adaptacion": None},
+        {"id": "canario-infiel", "texto": "Acuda si tiene 10 o más deposiciones en 24 horas o 5 o más vómitos en 4 horas.",
+         "cita": "factores de riesgo para muerte (diez o más deposiciones diarreicas en las últimas 24 horas y cinco o más vómitos en las últimas 4 horas)",
+         "adaptacion": None},
+    ]
     respuesta, uso = llamar_gemini(modelo, sistema, json.dumps(pares, ensure_ascii=False), temperatura=0.0)
-    return {r["id"]: r for r in json.loads(respuesta).get("items", [])}, uso
+    veredictos = {r["id"]: r for r in json.loads(respuesta).get("items", [])}
+    uso["juez_confiable"] = (veredictos.get("canario-infiel", {}).get("fiel") is False
+                             and veredictos.get("canario-fiel", {}).get("fiel") is True)
+    return veredictos, uso
 
 
 def main() -> None:
@@ -175,6 +187,24 @@ def main() -> None:
 
     sin_decision = [r for rid, r in recs.items() if rid not in vistas]
 
+    # Criterios que la guía une con "y" y la IA separó en frases independientes: cada
+    # frase es fiel a su fragmento, pero el criterio clínico cambia (piloto: "diez o más
+    # deposiciones Y cinco o más vómitos" quedó como dos signos de alarma sueltos).
+    verificables = [i for i in items if i["verificacion"]["estado"] == "verificado"]
+    for a in verificables:
+        for b in verificables:
+            if a is b or a["rec_id"] != b["rec_id"]:
+                continue
+            texto_rec = normalizar(recs[a["rec_id"]]["texto"])
+            for ca in a["citas_literales"]:
+                for cb in b["citas_literales"]:
+                    if f"{normalizar(ca)} y {normalizar(cb)}" in texto_rec:
+                        for it, otro in ((a, b), (b, a)):
+                            aviso = f"fidelidad: la guía exige este criterio JUNTO con {otro['id']} (los une con 'y'); aquí quedaron separados"
+                            if aviso not in it["verificacion"]["alertas"]:
+                                it["verificacion"]["alertas"].append(aviso)
+                                it["revisar_fidelidad"] = True
+
     # Partes de cada recomendación INCLUIDA que ninguna frase usó: así se ve si la
     # IA tomó una parte y omitió otra (p. ej. "algún grado de deshidratación → urgencias").
     partes_no_usadas = []
@@ -189,7 +219,7 @@ def main() -> None:
             # menos la mitad de sus ventanas aparece en alguna cita.
             s = sin_espacios(seg)
             ventanas = [s[k:k + 30] for k in range(0, max(1, len(s) - 29), 10)]
-            return sum(1 for v in ventanas if any(v in u for u in usadas)) >= len(ventanas) / 2
+            return sum(1 for v in ventanas if any(v in u for u in usadas)) >= len(ventanas) * 0.4
 
         faltan = [seg for seg in segmentos if not cubierto(seg)]
         if faltan:

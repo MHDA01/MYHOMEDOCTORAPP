@@ -105,6 +105,9 @@ def main() -> None:
         f"<div><b>{met['requieren_decision_medica']}</b>requieren tu decisión (producto o cantidad)</div>"
         f"<div><b>{met['sin_decision']}</b>recomendaciones que la IA no evaluó</div>"
         "</div>",
+        ('<div class="nota" style="border-color:#f3c0c0;background:#fdf1f1"><b>Atención:</b> el juez de fidelidad '
+         'no detectó una frase trampa conocida en esta corrida; sus marcas no son confiables. Revisa todo con más cuidado.</div>'
+         if (d.get("uso_juez") or {}).get("juez_confiable") is False else ""),
         '<div class="nota"><b>Cómo revisar:</b> lee cada frase contra su cita. Si la frase dice algo que la cita no dice, '
         "recházala. Abre la página del PDF cuando dudes del contexto. Respóndeme con los números: "
         "<i>aprobar i1, i4… · corregir i7: … · rechazar i9</i>.</div>",

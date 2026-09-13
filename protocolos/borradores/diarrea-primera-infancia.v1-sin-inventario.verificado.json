@@ -1,0 +1,324 @@
+{
+  "motivo": {
+    "id": "diarrea-primera-infancia",
+    "motivo": "Diarrea",
+    "curso_de_vida": "primera_infancia",
+    "edad": "menores de 5 años",
+    "fuentes": [
+      "gpc-eda-2013"
+    ],
+    "estado": "piloto"
+  },
+  "estado": "borrador",
+  "generado": "2026-09-13T16:08:32",
+  "uso_redactor": {
+    "promptTokenCount": 190043,
+    "candidatesTokenCount": 2405,
+    "totalTokenCount": 199754,
+    "promptTokensDetails": [
+      {
+        "modality": "TEXT",
+        "tokenCount": 190043
+      }
+    ],
+    "thoughtsTokenCount": 7306,
+    "serviceTier": "standard",
+    "segundos": 80.3,
+    "finishReason": "STOP",
+    "modelo": "gemini-pro-latest"
+  },
+  "uso_juez": {
+    "promptTokenCount": 1502,
+    "candidatesTokenCount": 661,
+    "totalTokenCount": 5541,
+    "promptTokensDetails": [
+      {
+        "modality": "TEXT",
+        "tokenCount": 1502
+      }
+    ],
+    "thoughtsTokenCount": 3378,
+    "serviceTier": "standard",
+    "segundos": 13.6,
+    "finishReason": "STOP",
+    "modelo": "gemini-3.5-flash"
+  },
+  "metricas": {
+    "items_propuestos": 15,
+    "rechazados_por_cita": 0,
+    "verificados": 15,
+    "con_calificacion_verificada": 15,
+    "requieren_decision_medica": 3,
+    "marcados_por_fidelidad": 6,
+    "paginas_corregidas": 0
+  },
+  "vacios": [
+    "No se detallan esquemas de telemedicina específicos ni criterios de seguimiento telefónico a distancia.",
+    "No se mencionan remedios caseros específicos de la cultura popular colombiana más allá de la mención general a curanderos."
+  ],
+  "items": [
+    {
+      "texto": "¿El niño ha tenido 10 o más deposiciones en las últimas 24 horas, o 5 o más vómitos en las últimas 4 horas?",
+      "fuente": "gpc-eda-2013",
+      "pagina": 112,
+      "cita_literal": "Cuando tengan factores de riesgo para muerte (diez o más deposiciones diarreicas en las últimas 24 horas y cinco o más vómitos \nen las últimas 4 horas) permanezcan en el servicio de salud, en observación u hospitalización, hasta que se garantice que se pueda \nmantener la hidratación por vía oral en el hogar.",
+      "calificacion_literal": "Recomendación: Fuerte a favor",
+      "requiere_decision_medica": false,
+      "id": "i1",
+      "seccion": "preguntas_triage",
+      "calificacion_verificada": true,
+      "verificacion": {
+        "estado": "verificado",
+        "razones": [],
+        "alertas": [
+          "fidelidad: Cambio de conjunción: la cita exige ambos criterios ('y') mientras que el texto los presenta como opcionales o alternativos ('o')."
+        ]
+      },
+      "revisar_fidelidad": true
+    },
+    {
+      "texto": "¿El niño se nota muy somnoliento, aletargado o ha presentado convulsiones?",
+      "fuente": "gpc-eda-2013",
+      "pagina": 113,
+      "cita_literal": "Alteraciones neurológicas (somnolencia, letargia o crisis convulsivas).",
+      "calificacion_literal": "Recomendación: Fuerte a favor",
+      "requiere_decision_medica": false,
+      "id": "i2",
+      "seccion": "preguntas_triage",
+      "calificacion_verificada": true,
+      "verificacion": {
+        "estado": "verificado",
+        "razones": [],
+        "alertas": []
+      }
+    },
+    {
+      "texto": "Debe acudir a urgencias de inmediato si el niño presenta disminución de la conciencia, piel pálida o manchada, o extremidades frías.",
+      "fuente": "gpc-eda-2013",
+      "pagina": 113,
+      "cita_literal": "Se recomienda hospitalizar a los niños con:\nDeshidratación grave o con signos choque (disminución del nivel de conciencia, piel pálida o moteada, extremidades frías, \ntaquicardia, taquipnea, pulsos periféricos débiles, tiempo de llenado capilar prolongado y/o hipotensión).",
+      "calificacion_literal": "Recomendación: Fuerte a favor",
+      "requiere_decision_medica": false,
+      "id": "i3",
+      "seccion": "signos_de_alarma",
+      "calificacion_verificada": true,
+      "verificacion": {
+        "estado": "verificado",
+        "razones": [],
+        "alertas": [
+          "fidelidad: Convierte un criterio de hospitalización en una instrucción de acudir a urgencias de inmediato."
+        ]
+      },
+      "revisar_fidelidad": true
+    },
+    {
+      "texto": "Consulte a urgencias si el niño tiene vómito persistente que no le permite retener los líquidos que se le dan por boca.",
+      "fuente": "gpc-eda-2013",
+      "pagina": 113,
+      "cita_literal": "Vomito persistente e incoercible que impide la Terapia de Rehidratación Oral.",
+      "calificacion_literal": "Recomendación: Fuerte a favor",
+      "requiere_decision_medica": false,
+      "id": "i4",
+      "seccion": "signos_de_alarma",
+      "calificacion_verificada": true,
+      "verificacion": {
+        "estado": "verificado",
+        "razones": [],
+        "alertas": [
+          "fidelidad: Añade la instrucción de consultar a urgencias, la cual no está presente en la cita."
+        ]
+      },
+      "revisar_fidelidad": true
+    },
+    {
+      "texto": "Para prevenir la deshidratación, ofrezca líquidos después de cada deposición: de 50 a 100 mL si es menor de dos años, y de 100 a 200 mL si es mayor.",
+      "fuente": "gpc-eda-2013",
+      "pagina": 116,
+      "cita_literal": "Se recomienda ofrecer un líquido adecuado para prevenir la deshidratación en niños con diarrea, después de cada deposición \nasí:\nEn menores de dos años, 50 a 100 mL\nEn niños de dos años o más, 100 a 200 mL",
+      "calificacion_literal": "Recomendación: Fuerte a favor",
+      "requiere_decision_medica": true,
+      "id": "i5",
+      "seccion": "medidas_en_casa",
+      "calificacion_verificada": true,
+      "verificacion": {
+        "estado": "verificado",
+        "razones": [],
+        "alertas": [
+          "menciona medicamento, producto o dosis: 100 mL",
+          "fidelidad: Límite de edad distinto: el texto dice 'si es mayor' (mayor de dos años), lo que excluye a los niños de exactamente dos años, a quienes la cita sí incluye ('de dos años o más')."
+        ]
+      },
+      "revisar_fidelidad": true
+    },
+    {
+      "texto": "Puede darle líquidos como agua de arroz, maíz, cebada, papa o plátano cocidos, o Sales de Rehidratación Oral.",
+      "fuente": "gpc-eda-2013",
+      "pagina": 116,
+      "cita_literal": "Se considerarán líquidos adecuados para tal efecto:\nSales de Rehidratación Oral \nLíquidos preparados mediante cocción de cereales en grano o molidos (arroz, maíz o cebada) y cocinados en agua, o aquellos que \nse preparan con papa o plátano, o arroz*",
+      "calificacion_literal": "Recomendación: Fuerte a favor",
+      "requiere_decision_medica": true,
+      "id": "i6",
+      "seccion": "medidas_en_casa",
+      "calificacion_verificada": true,
+      "verificacion": {
+        "estado": "verificado",
+        "razones": [],
+        "alertas": [
+          "menciona medicamento, producto o dosis: Sales de Rehidrataci"
+        ]
+      }
+    },
+    {
+      "texto": "Continúe dándole al niño su alimentación normal, incluyendo leche materna, fórmula o alimentos sólidos según su edad.",
+      "fuente": "gpc-eda-2013",
+      "pagina": 132,
+      "cita_literal": "Se recomienda continuar con la alimentación habitual y apropiada para la edad: lactancia materna, fórmula láctea y sólidos, según \nla edad del niño; durante el episodio de EDA.",
+      "calificacion_literal": "Recomendación: Fuerte a favor",
+      "requiere_decision_medica": false,
+      "id": "i7",
+      "seccion": "medidas_en_casa",
+      "calificacion_verificada": true,
+      "verificacion": {
+        "estado": "verificado",
+        "razones": [],
+        "alertas": []
+      }
+    },
+    {
+      "texto": "Si el niño tiene vómito, dele las Sales de Rehidratación Oral poco a poco y usando una cuchara.",
+      "fuente": "gpc-eda-2013",
+      "pagina": 157,
+      "cita_literal": "Se recomienda administrar las Sales de Rehidratación Oral, fraccionada y pausadamente con cuchara para contrarrestar el vómito \nen niños menores de 5 años con EDA, en quienes se intenta mantener la hidratación o tratar la deshidratación.",
+      "calificacion_literal": "Recomendación: Fuerte a favor",
+      "requiere_decision_medica": true,
+      "id": "i8",
+      "seccion": "medidas_en_casa",
+      "calificacion_verificada": true,
+      "verificacion": {
+        "estado": "verificado",
+        "razones": [],
+        "alertas": [
+          "menciona medicamento, producto o dosis: Sales de Rehidrataci"
+        ]
+      }
+    },
+    {
+      "texto": "Si el niño no está deshidratado puede cuidarlo en casa, pero debe consultar nuevamente si aparecen signos de alarma.",
+      "fuente": "gpc-eda-2013",
+      "pagina": 112,
+      "cita_literal": "Cuando no tengan deshidratación sean tratados en el hogar, previa instrucción y educación a los padres y cuidadores para que \nreconozcan los signos de alarma para consultar nuevamente.",
+      "calificacion_literal": "Recomendación: Fuerte a favor",
+      "requiere_decision_medica": false,
+      "id": "i9",
+      "seccion": "cuando_consultar",
+      "calificacion_verificada": true,
+      "verificacion": {
+        "estado": "verificado",
+        "razones": [],
+        "alertas": []
+      }
+    },
+    {
+      "texto": "Consulte al médico si la diarrea dura más de 7 días o si nota sangre en las deposiciones del niño.",
+      "fuente": "gpc-eda-2013",
+      "pagina": 107,
+      "cita_literal": "Se sugiere considerar la solicitud de coprológico o coproscópico en los casos de EDA de más de 7 días de duración o en casos de \ndiarrea con sangre.",
+      "calificacion_literal": "Recomendación: Débil a favor",
+      "requiere_decision_medica": false,
+      "id": "i10",
+      "seccion": "cuando_consultar",
+      "calificacion_verificada": true,
+      "verificacion": {
+        "estado": "verificado",
+        "razones": [],
+        "alertas": [
+          "fidelidad: Instrucción que la cita no da: la cita sugiere considerar un examen coprológico/coproscópico, mientras que el texto lo convierte en una instrucción directa de consultar al médico."
+        ]
+      },
+      "revisar_fidelidad": true
+    },
+    {
+      "texto": "No le dé al niño gaseosas, refrescos, bebidas para deportistas ni sueros caseros de agua, sal y azúcar.",
+      "fuente": "gpc-eda-2013",
+      "pagina": 116,
+      "cita_literal": "No se recomienda administrar los siguientes líquidos durante un episodio diarreico:\nBebidas carbonatadas (como gaseosas o refrescos de soda)\nBebidas rehidratantes para deportistas\nSoluciones orales de electrolitos con menos de 40 mmol/L de sodio en su composición\nSolución de agua, sal y azúcar",
+      "calificacion_literal": "Recomendación: Fuerte en contra",
+      "requiere_decision_medica": false,
+      "id": "i11",
+      "seccion": "que_no_hacer",
+      "calificacion_verificada": true,
+      "verificacion": {
+        "estado": "verificado",
+        "razones": [],
+        "alertas": []
+      }
+    },
+    {
+      "texto": "Nunca deje al niño en ayunas durante un episodio de diarrea.",
+      "fuente": "gpc-eda-2013",
+      "pagina": 132,
+      "cita_literal": "No se recomienda nunca el ayuno en los niños menores 5 años con EDA sin deshidratación.",
+      "calificacion_literal": "Recomendación: Fuerte en contra",
+      "requiere_decision_medica": false,
+      "id": "i12",
+      "seccion": "que_no_hacer",
+      "calificacion_verificada": true,
+      "verificacion": {
+        "estado": "verificado",
+        "razones": [],
+        "alertas": [
+          "fidelidad: Condición omitida: el texto generaliza la prohibición del ayuno a cualquier episodio de diarrea, omitiendo la condición 'sin deshidratación' especificada en la cita."
+        ]
+      },
+      "revisar_fidelidad": true
+    },
+    {
+      "texto": "No cambie la leche del niño por fórmulas especiales, como las que no tienen lactosa o las de soya.",
+      "fuente": "gpc-eda-2013",
+      "pagina": 133,
+      "cita_literal": "No se recomienda el uso de fórmulas lácteas especiales o terapéuticas (fórmulas sin lactosa, de soya o hidrolizadas) en los niños \nmenores 5 años con EDA.",
+      "calificacion_literal": "Recomendación: Fuerte en contra",
+      "requiere_decision_medica": false,
+      "id": "i13",
+      "seccion": "que_no_hacer",
+      "calificacion_verificada": true,
+      "verificacion": {
+        "estado": "verificado",
+        "razones": [],
+        "alertas": []
+      }
+    },
+    {
+      "texto": "Evite darle al niño dietas muy estrictas o limitadas solo a alimentos que estriñen.",
+      "fuente": "gpc-eda-2013",
+      "pagina": 136,
+      "cita_literal": "No se recomiendan las dietas altamente restrictivas o basadas en alimentos “astringentes” en los niños menores 5 años con EDA.",
+      "calificacion_literal": "Recomendación: Fuerte en contra",
+      "requiere_decision_medica": false,
+      "id": "i14",
+      "seccion": "que_no_hacer",
+      "calificacion_verificada": true,
+      "verificacion": {
+        "estado": "verificado",
+        "razones": [],
+        "alertas": []
+      }
+    },
+    {
+      "texto": "No acuda a curanderos ni sobanderos para tratar la diarrea del niño.",
+      "fuente": "gpc-eda-2013",
+      "pagina": 163,
+      "cita_literal": "No se recomienda el tratamiento por “curanderos”, “sobanderos” o “sobadores de descuaje” en niños menores de cinco años \ncon EDA para disminuir la duración de la enfermedad.",
+      "calificacion_literal": "Recomendación: Fuerte en contra",
+      "requiere_decision_medica": false,
+      "id": "i15",
+      "seccion": "que_no_hacer",
+      "calificacion_verificada": true,
+      "verificacion": {
+        "estado": "verificado",
+        "razones": [],
+        "alertas": []
+      }
+    }
+  ]
+}

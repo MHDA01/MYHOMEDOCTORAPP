@@ -1,0 +1,1177 @@
+{
+  "motivo": {
+    "id": "diarrea-primera-infancia",
+    "motivo": "Diarrea",
+    "curso_de_vida": "primera_infancia",
+    "edad": "menores de 5 años",
+    "fuentes": [
+      "gpc-eda-2013"
+    ],
+    "estado": "piloto"
+  },
+  "estado": "borrador",
+  "generado": "2026-09-13T16:14:58",
+  "uso_redactor": {
+    "promptTokenCount": 8453,
+    "candidatesTokenCount": 7682,
+    "totalTokenCount": 24920,
+    "promptTokensDetails": [
+      {
+        "modality": "TEXT",
+        "tokenCount": 8453
+      }
+    ],
+    "thoughtsTokenCount": 8785,
+    "serviceTier": "standard",
+    "segundos": 99.5,
+    "finishReason": "STOP",
+    "modelo": "gemini-pro-latest"
+  },
+  "uso_juez": {
+    "promptTokenCount": 2805,
+    "candidatesTokenCount": 978,
+    "totalTokenCount": 8682,
+    "promptTokensDetails": [
+      {
+        "modality": "TEXT",
+        "tokenCount": 2805
+      }
+    ],
+    "thoughtsTokenCount": 4899,
+    "serviceTier": "standard",
+    "segundos": 20.5,
+    "finishReason": "STOP",
+    "modelo": "gemini-3.5-flash"
+  },
+  "metricas": {
+    "recomendaciones_en_inventario": 69,
+    "con_decision": 69,
+    "sin_decision": 0,
+    "decisiones_invalidas": 0,
+    "recomendaciones_incluidas": 29,
+    "recomendaciones_excluidas": 40,
+    "exclusiones_por_razon": {
+      "definicion_o_contexto": 3,
+      "medicamento_o_dosis": 18,
+      "dirigida_a_personal_de_salud": 16,
+      "duplicada": 3
+    },
+    "items_propuestos": 30,
+    "rechazados_por_cita": 1,
+    "verificados": 29,
+    "con_adaptacion_declarada": 5,
+    "requieren_decision_medica": 12,
+    "marcados_por_fidelidad": 3,
+    "recomendaciones_incluidas_con_partes_sin_usar": 13
+  },
+  "vacios": [
+    "Faltan instrucciones claras sobre cómo el cuidador puede evaluar signos básicos de deshidratación en casa (por ejemplo, llanto sin lágrimas, boca seca, ojos hundidos) para el triage en teleorientación.",
+    "Faltan indicaciones específicas sobre cuándo consultar al médico de manera no urgente (por ejemplo, si la diarrea dura más de cierta cantidad de días sin signos de alarma o si hay fiebre leve)."
+  ],
+  "items": [
+    {
+      "seccion": "prevencion",
+      "texto": "Alimente a su bebé únicamente con leche materna durante los primeros 6 meses de vida para prevenir la diarrea.",
+      "cita_literal": "Se recomienda que los niños reciban leche materna de manera exclusiva durante los primeros 6 meses de vida",
+      "adaptacion": null,
+      "requiere_decision_medica": false,
+      "id": "i1",
+      "rec_id": "gpc-eda-2013#r3",
+      "fuente": "gpc-eda-2013",
+      "calificacion_literal": "Recomendación: Fuerte a favor",
+      "calificacion_verificada": true,
+      "citas_literales": [
+        "Se recomienda que los niños reciban leche materna de manera exclusiva durante los primeros 6 meses de vida"
+      ],
+      "pagina": 67,
+      "verificacion": {
+        "estado": "verificado",
+        "razones": [],
+        "alertas": [
+          "fidelidad: El texto añade el propósito 'para prevenir la diarrea' que no está respaldado por la cita."
+        ]
+      },
+      "revisar_fidelidad": true
+    },
+    {
+      "seccion": "prevencion",
+      "texto": "Continúe dando leche materna junto con otros alimentos adecuados para su edad, entre los 6 y los 24 meses.",
+      "cita_literal": "Se recomienda que los niños reciban leche materna con otros alimentos apropiados para la edad, entre los 6 y los 24 meses",
+      "adaptacion": null,
+      "requiere_decision_medica": false,
+      "id": "i2",
+      "rec_id": "gpc-eda-2013#r4",
+      "fuente": "gpc-eda-2013",
+      "calificacion_literal": "Recomendación: Fuerte a favor",
+      "calificacion_verificada": true,
+      "citas_literales": [
+        "Se recomienda que los niños reciban leche materna con otros alimentos apropiados para la edad, entre los 6 y los 24 meses"
+      ],
+      "pagina": 67,
+      "verificacion": {
+        "estado": "verificado",
+        "razones": [],
+        "alertas": []
+      }
+    },
+    {
+      "seccion": "que_no_hacer",
+      "texto": "No use bebidas o preparados con probióticos, prebióticos o leches fermentadas para intentar prevenir la diarrea.",
+      "cita_literal": "No se recomienda el uso preventivo de bebidas o preparados de probióticos, prebióticos, simbióticos, ni leches fermentadas",
+      "adaptacion": null,
+      "requiere_decision_medica": true,
+      "id": "i3",
+      "rec_id": "gpc-eda-2013#r7",
+      "fuente": "gpc-eda-2013",
+      "calificacion_literal": "Recomendación: Débil en contra",
+      "calificacion_verificada": true,
+      "citas_literales": [
+        "No se recomienda el uso preventivo de bebidas o preparados de probióticos, prebióticos, simbióticos, ni leches fermentadas"
+      ],
+      "pagina": 79,
+      "verificacion": {
+        "estado": "verificado",
+        "razones": [],
+        "alertas": [
+          "menciona medicamento, producto o dosis: probiótic"
+        ]
+      }
+    },
+    {
+      "seccion": "prevencion",
+      "texto": "Asegúrese de que su bebé reciba la vacuna contra el rotavirus antes de los 6 meses de edad.",
+      "cita_literal": "Se recomienda la vacunación contra rotavirus en niños menores de 6 meses para disminuir la incidencia de EDA",
+      "adaptacion": null,
+      "requiere_decision_medica": false,
+      "id": "i4",
+      "rec_id": "gpc-eda-2013#r8",
+      "fuente": "gpc-eda-2013",
+      "calificacion_literal": "Recomendación: Fuerte a favor",
+      "calificacion_verificada": true,
+      "citas_literales": [
+        "Se recomienda la vacunación contra rotavirus en niños menores de 6 meses para disminuir la incidencia de EDA"
+      ],
+      "pagina": 83,
+      "verificacion": {
+        "estado": "verificado",
+        "razones": [],
+        "alertas": []
+      }
+    },
+    {
+      "seccion": "prevencion",
+      "texto": "Lávese las manos y las de los niños menores de 5 años de forma rutinaria con agua y jabón.",
+      "cita_literal": "Se recomienda el lavado de manos rutinario con agua y jabón en niños menores de 5 años de edad y sus cuidadores",
+      "adaptacion": null,
+      "requiere_decision_medica": false,
+      "id": "i5",
+      "rec_id": "gpc-eda-2013#r9",
+      "fuente": "gpc-eda-2013",
+      "calificacion_literal": "Recomendación: Fuerte a favor",
+      "calificacion_verificada": true,
+      "citas_literales": [
+        "Se recomienda el lavado de manos rutinario con agua y jabón en niños menores de 5 años de edad y sus cuidadores"
+      ],
+      "pagina": 88,
+      "verificacion": {
+        "estado": "verificado",
+        "razones": [],
+        "alertas": []
+      }
+    },
+    {
+      "seccion": "preguntas_triage",
+      "texto": "¿El niño es menor de 3 meses o presenta hinchazón en las piernas?",
+      "cita_literal": "Factores que aumentan el riesgo de muerte por diarrea Edad menor de 3 meses Edemas en miembros inferiores",
+      "adaptacion": "Los factores de riesgo de muerte se adaptaron como preguntas de triage para identificar vulnerabilidad.",
+      "requiere_decision_medica": false,
+      "id": "i6",
+      "rec_id": "gpc-eda-2013#r13",
+      "fuente": "gpc-eda-2013",
+      "calificacion_literal": "Recomendación: Débil a favor",
+      "calificacion_verificada": true,
+      "citas_literales": [
+        "Factores que aumentan el riesgo de muerte por diarrea Edad menor de 3 meses Edemas en miembros inferiores"
+      ],
+      "pagina": 92,
+      "verificacion": {
+        "estado": "verificado",
+        "razones": [],
+        "alertas": [
+          "adaptación declarada: Los factores de riesgo de muerte se adaptaron como preguntas de triage para identificar vulnerabilidad."
+        ]
+      }
+    },
+    {
+      "seccion": "preguntas_triage",
+      "texto": "¿El niño ha tenido 10 o más deposiciones con diarrea en las últimas 24 horas, o 5 o más vómitos en las últimas 4 horas?",
+      "cita_literal": "Diez o más deposiciones diarreicas en las últimas 24 horas Cinco o más vómitos en las últimas 4 horas",
+      "adaptacion": "Los factores de riesgo de deshidratación se adaptaron como preguntas de triage.",
+      "requiere_decision_medica": false,
+      "id": "i7",
+      "rec_id": "gpc-eda-2013#r13",
+      "fuente": "gpc-eda-2013",
+      "calificacion_literal": "Recomendación: Débil a favor",
+      "calificacion_verificada": true,
+      "citas_literales": [
+        "Diez o más deposiciones diarreicas en las últimas 24 horas Cinco o más vómitos en las últimas 4 horas"
+      ],
+      "pagina": 92,
+      "verificacion": {
+        "estado": "verificado",
+        "razones": [],
+        "alertas": [
+          "adaptación declarada: Los factores de riesgo de deshidratación se adaptaron como preguntas de triage."
+        ]
+      }
+    },
+    {
+      "seccion": "signos_de_alarma",
+      "texto": "Acuda a urgencias si el niño presenta 10 o más deposiciones con diarrea en las últimas 24 horas o 5 o más vómitos en las últimas 4 horas.",
+      "cita_literal": "Cuando tengan factores de riesgo para muerte (diez o más deposiciones diarreicas en las últimas 24 horas y cinco o más vómitos en las últimas 4 horas) permanezcan en el servicio de salud",
+      "adaptacion": "La indicación de permanecer en el servicio de salud se adaptó como signo de alarma para acudir a urgencias.",
+      "requiere_decision_medica": false,
+      "id": "i8",
+      "rec_id": "gpc-eda-2013#r21",
+      "fuente": "gpc-eda-2013",
+      "calificacion_literal": "Recomendación: Fuerte a favor",
+      "calificacion_verificada": true,
+      "citas_literales": [
+        "Cuando tengan factores de riesgo para muerte (diez o más deposiciones diarreicas en las últimas 24 horas y cinco o más vómitos en las últimas 4 horas) permanezcan en el servicio de salud"
+      ],
+      "pagina": 112,
+      "verificacion": {
+        "estado": "verificado",
+        "razones": [],
+        "alertas": [
+          "adaptación declarada: La indicación de permanecer en el servicio de salud se adaptó como signo de alarma para acudir a urgencias.",
+          "fidelidad: Cambia la conjunción copulativa 'y' por la disyuntiva 'o' al unir los dos factores de riesgo."
+        ]
+      },
+      "revisar_fidelidad": true
+    },
+    {
+      "seccion": "signos_de_alarma",
+      "texto": "Acuda a urgencias de inmediato si el niño está somnoliento, aletargado, tiene convulsiones, piel pálida o manchada, o extremidades frías.",
+      "cita_literal": "Deshidratación grave o con signos choque (disminución del nivel de conciencia, piel pálida o moteada, extremidades frías, taquicardia, taquipnea, pulsos periféricos débiles... Alteraciones neurológicas (somnolencia, letargia o crisis convulsivas).",
+      "adaptacion": "Los criterios de hospitalización se adaptaron como signos de alarma para cuidadores, omitiendo términos clínicos complejos.",
+      "requiere_decision_medica": false,
+      "id": "i9",
+      "rec_id": "gpc-eda-2013#r22",
+      "fuente": "gpc-eda-2013",
+      "calificacion_literal": "Recomendación: Fuerte a favor",
+      "calificacion_verificada": true,
+      "citas_literales": [
+        "Deshidratación grave o con signos choque (disminución del nivel de conciencia, piel pálida o moteada, extremidades frías, taquicardia, taquipnea, pulsos periféricos débiles... Alteraciones neurológicas (somnolencia, letargia o crisis convulsivas)."
+      ],
+      "verificacion": {
+        "estado": "rechazado",
+        "razones": [
+          "el fragmento 1 no es literal de la recomendación que dice usar"
+        ],
+        "alertas": [
+          "adaptación declarada: Los criterios de hospitalización se adaptaron como signos de alarma para cuidadores, omitiendo términos clínicos complejos."
+        ]
+      }
+    },
+    {
+      "seccion": "medidas_en_casa",
+      "texto": "Después de cada deposición, ofrezca líquidos para prevenir la deshidratación: de 50 a 100 mililitros si es menor de dos años, y de 100 a 200 mililitros si tiene dos años o más. Puede usar sales de rehidratación oral o líquidos de cocción de cereales.",
+      "cita_literal": "En menores de dos años, 50 a 100 mL En niños de dos años o más, 100 a 200 mL Se considerarán líquidos adecuados para tal efecto: Sales de Rehidratación Oral Líquidos preparados mediante cocción de cereales en grano o molidos",
+      "adaptacion": null,
+      "requiere_decision_medica": true,
+      "id": "i10",
+      "rec_id": "gpc-eda-2013#r26",
+      "fuente": "gpc-eda-2013",
+      "calificacion_literal": "Recomendación: Fuerte a favor",
+      "calificacion_verificada": true,
+      "citas_literales": [
+        "En menores de dos años, 50 a 100 mL En niños de dos años o más, 100 a 200 mL Se considerarán líquidos adecuados para tal efecto: Sales de Rehidratación Oral Líquidos preparados mediante cocción de cereales en grano o molidos"
+      ],
+      "pagina": 116,
+      "verificacion": {
+        "estado": "verificado",
+        "razones": [],
+        "alertas": [
+          "menciona medicamento, producto o dosis: 100 mL, Sales de Rehidrataci, sales de rehidrataci"
+        ]
+      }
+    },
+    {
+      "seccion": "que_no_hacer",
+      "texto": "No le dé al niño gaseosas, refrescos, bebidas hidratantes para deportistas ni sueros caseros de agua, sal y azúcar.",
+      "cita_literal": "No se recomienda administrar los siguientes líquidos durante un episodio diarreico: Bebidas carbonatadas (como gaseosas o refrescos de soda) Bebidas rehidratantes para deportistas",
+      "adaptacion": null,
+      "requiere_decision_medica": true,
+      "id": "i11",
+      "rec_id": "gpc-eda-2013#r27",
+      "fuente": "gpc-eda-2013",
+      "calificacion_literal": "Recomendación: Fuerte en contra",
+      "calificacion_verificada": true,
+      "citas_literales": [
+        "No se recomienda administrar los siguientes líquidos durante un episodio diarreico: Bebidas carbonatadas (como gaseosas o refrescos de soda) Bebidas rehidratantes para deportistas"
+      ],
+      "pagina": 116,
+      "verificacion": {
+        "estado": "verificado",
+        "razones": [],
+        "alertas": [
+          "fidelidad: Añade la prohibición de 'sueros caseros de agua, sal y azúcar' que no figura en la cita."
+        ]
+      },
+      "revisar_fidelidad": true
+    },
+    {
+      "seccion": "signos_de_alarma",
+      "texto": "Acuda a urgencias si la cantidad de diarrea es tan alta que no logra mantener al niño hidratado a pesar de darle suero.",
+      "cita_literal": "En los niños menores 5 años con EDA y algún grado de deshidratación se recomienda deﬁ nir el fracaso de la hidratación oral cuando el niño: Tiene gasto fecal elevado que impide la Terapia de Rehidratación Oral",
+      "adaptacion": "El criterio clínico de fracaso de hidratación oral se adaptó como signo de alarma para acudir a urgencias.",
+      "requiere_decision_medica": true,
+      "id": "i12",
+      "rec_id": "gpc-eda-2013#r31",
+      "fuente": "gpc-eda-2013",
+      "calificacion_literal": "Recomendación: Fuerte a favor",
+      "calificacion_verificada": true,
+      "citas_literales": [
+        "En los niños menores 5 años con EDA y algún grado de deshidratación se recomienda deﬁ nir el fracaso de la hidratación oral cuando el niño: Tiene gasto fecal elevado que impide la Terapia de Rehidratación Oral"
+      ],
+      "pagina": 120,
+      "verificacion": {
+        "estado": "verificado",
+        "razones": [],
+        "alertas": [
+          "adaptación declarada: El criterio clínico de fracaso de hidratación oral se adaptó como signo de alarma para acudir a urgencias.",
+          "menciona medicamento, producto o dosis: suero"
+        ]
+      }
+    },
+    {
+      "seccion": "medidas_en_casa",
+      "texto": "Continúe dándole al niño su alimentación normal según su edad, incluyendo leche materna, fórmula de leche y alimentos sólidos, mientras tenga diarrea.",
+      "cita_literal": "Se recomienda continuar con la alimentación habitual y apropiada para la edad: lactancia materna, fórmula láctea y sólidos, según la edad del niño; durante el episodio de EDA.",
+      "adaptacion": null,
+      "requiere_decision_medica": false,
+      "id": "i13",
+      "rec_id": "gpc-eda-2013#r39",
+      "fuente": "gpc-eda-2013",
+      "calificacion_literal": "Recomendación: Fuerte a favor",
+      "calificacion_verificada": true,
+      "citas_literales": [
+        "Se recomienda continuar con la alimentación habitual y apropiada para la edad: lactancia materna, fórmula láctea y sólidos, según la edad del niño; durante el episodio de EDA."
+      ],
+      "pagina": 132,
+      "verificacion": {
+        "estado": "verificado",
+        "razones": [],
+        "alertas": []
+      }
+    },
+    {
+      "seccion": "que_no_hacer",
+      "texto": "Nunca deje al niño sin comer (en ayuno) si tiene diarrea y no está deshidratado.",
+      "cita_literal": "No se recomienda nunca el ayuno en los niños menores 5 años con EDA sin deshidratación.",
+      "adaptacion": null,
+      "requiere_decision_medica": false,
+      "id": "i14",
+      "rec_id": "gpc-eda-2013#r40",
+      "fuente": "gpc-eda-2013",
+      "calificacion_literal": "Recomendación: Fuerte en contra",
+      "calificacion_verificada": true,
+      "citas_literales": [
+        "No se recomienda nunca el ayuno en los niños menores 5 años con EDA sin deshidratación."
+      ],
+      "pagina": 132,
+      "verificacion": {
+        "estado": "verificado",
+        "razones": [],
+        "alertas": []
+      }
+    },
+    {
+      "seccion": "medidas_en_casa",
+      "texto": "Si el niño toma leche materna o fórmula de leche, sígala dando de manera normal, sin cambiar la cantidad de agua con la que prepara la fórmula.",
+      "cita_literal": "Se recomienda continuar la alimentación habitual en los niños menores 5 años con EDA que reciben leche materna. Así mismo, en aquellos que reciben una fórmula láctea apropiada para la edad, se recomienda continuarla a la dilución y frecuencia normal.",
+      "adaptacion": null,
+      "requiere_decision_medica": false,
+      "id": "i15",
+      "rec_id": "gpc-eda-2013#r41",
+      "fuente": "gpc-eda-2013",
+      "calificacion_literal": "Recomendación: Fuerte a favor",
+      "calificacion_verificada": true,
+      "citas_literales": [
+        "Se recomienda continuar la alimentación habitual en los niños menores 5 años con EDA que reciben leche materna. Así mismo, en aquellos que reciben una fórmula láctea apropiada para la edad, se recomienda continuarla a la dilución y frecuencia normal."
+      ],
+      "pagina": 133,
+      "verificacion": {
+        "estado": "verificado",
+        "razones": [],
+        "alertas": []
+      }
+    },
+    {
+      "seccion": "que_no_hacer",
+      "texto": "No cambie la leche del niño por fórmulas especiales, sin lactosa, de soya o hidrolizadas durante el episodio de diarrea.",
+      "cita_literal": "No se recomienda el uso de fórmulas lácteas especiales o terapéuticas (fórmulas sin lactosa, de soya o hidrolizadas) en los niños menores 5 años con EDA.",
+      "adaptacion": null,
+      "requiere_decision_medica": true,
+      "id": "i16",
+      "rec_id": "gpc-eda-2013#r42",
+      "fuente": "gpc-eda-2013",
+      "calificacion_literal": "Recomendación: Fuerte en contra",
+      "calificacion_verificada": true,
+      "citas_literales": [
+        "No se recomienda el uso de fórmulas lácteas especiales o terapéuticas (fórmulas sin lactosa, de soya o hidrolizadas) en los niños menores 5 años con EDA."
+      ],
+      "pagina": 133,
+      "verificacion": {
+        "estado": "verificado",
+        "razones": [],
+        "alertas": []
+      }
+    },
+    {
+      "seccion": "medidas_en_casa",
+      "texto": "Ofrézcale al niño alimentos como yuca, plátano, papa, ñame o maíz, además de carnes sin grasa, pescado y huevo, según lo que coma normalmente por su edad.",
+      "cita_literal": "Se recomienda el aporte de alimentos ricos en carbohidratos complejos (con adecuada cantidad de almidón: yuca, plátano, papa, ñame o maíz) y de carnes magras, pescado y huevo; según la edad, las preferencias y disponibilidad",
+      "adaptacion": null,
+      "requiere_decision_medica": false,
+      "id": "i17",
+      "rec_id": "gpc-eda-2013#r44",
+      "fuente": "gpc-eda-2013",
+      "calificacion_literal": "Recomendación: Fuerte a favor",
+      "calificacion_verificada": true,
+      "citas_literales": [
+        "Se recomienda el aporte de alimentos ricos en carbohidratos complejos (con adecuada cantidad de almidón: yuca, plátano, papa, ñame o maíz) y de carnes magras, pescado y huevo; según la edad, las preferencias y disponibilidad"
+      ],
+      "pagina": 136,
+      "verificacion": {
+        "estado": "verificado",
+        "razones": [],
+        "alertas": []
+      }
+    },
+    {
+      "seccion": "que_no_hacer",
+      "texto": "No le dé al niño dietas muy estrictas ni lo limite solo a alimentos que 'estriñen' o 'trancan' el estómago.",
+      "cita_literal": "No se recomiendan las dietas altamente restrictivas o basadas en alimentos “astringentes” en los niños menores 5 años con EDA.",
+      "adaptacion": null,
+      "requiere_decision_medica": false,
+      "id": "i18",
+      "rec_id": "gpc-eda-2013#r45",
+      "fuente": "gpc-eda-2013",
+      "calificacion_literal": "Recomendación: Fuerte en contra",
+      "calificacion_verificada": true,
+      "citas_literales": [
+        "No se recomiendan las dietas altamente restrictivas o basadas en alimentos “astringentes” en los niños menores 5 años con EDA."
+      ],
+      "pagina": 136,
+      "verificacion": {
+        "estado": "verificado",
+        "razones": [],
+        "alertas": []
+      }
+    },
+    {
+      "seccion": "que_no_hacer",
+      "texto": "No le dé al niño jugos de caja o botella, gaseosas ni bebidas hidratantes para deportistas.",
+      "cita_literal": "No se recomienda el aporte de jugos de frutas industrializados, bebidas carbonatadas o bebidas para deportistas, en los niños menores 5 años con EDA.",
+      "adaptacion": null,
+      "requiere_decision_medica": false,
+      "id": "i19",
+      "rec_id": "gpc-eda-2013#r46",
+      "fuente": "gpc-eda-2013",
+      "calificacion_literal": "Recomendación: Fuerte en contra",
+      "calificacion_verificada": true,
+      "citas_literales": [
+        "No se recomienda el aporte de jugos de frutas industrializados, bebidas carbonatadas o bebidas para deportistas, en los niños menores 5 años con EDA."
+      ],
+      "pagina": 136,
+      "verificacion": {
+        "estado": "verificado",
+        "razones": [],
+        "alertas": []
+      }
+    },
+    {
+      "seccion": "medidas_en_casa",
+      "texto": "Si el niño toma leche materna, siga dándole el pecho incluso mientras le está dando el suero de rehidratación oral.",
+      "cita_literal": "Se recomienda continuar con la lactancia materna en los niños menores 5 años con EDA durante la Terapia de Rehidratación Oral, si el lactante es alimentado con leche materna.",
+      "adaptacion": null,
+      "requiere_decision_medica": true,
+      "id": "i20",
+      "rec_id": "gpc-eda-2013#r47",
+      "fuente": "gpc-eda-2013",
+      "calificacion_literal": "Recomendación: Fuerte a favor",
+      "calificacion_verificada": true,
+      "citas_literales": [
+        "Se recomienda continuar con la lactancia materna en los niños menores 5 años con EDA durante la Terapia de Rehidratación Oral, si el lactante es alimentado con leche materna."
+      ],
+      "pagina": 138,
+      "verificacion": {
+        "estado": "verificado",
+        "razones": [],
+        "alertas": [
+          "menciona medicamento, producto o dosis: suero"
+        ]
+      }
+    },
+    {
+      "seccion": "que_no_hacer",
+      "texto": "No le dé antibióticos al niño para tratar la diarrea, a menos que un médico se lo indique específicamente.",
+      "cita_literal": "No se recomienda dar rutinariamente antimicrobianos a los niños con EDA menores de 5 años.",
+      "adaptacion": null,
+      "requiere_decision_medica": true,
+      "id": "i21",
+      "rec_id": "gpc-eda-2013#r49",
+      "fuente": "gpc-eda-2013",
+      "calificacion_literal": "Recomendación: Fuerte en contra",
+      "calificacion_verificada": true,
+      "citas_literales": [
+        "No se recomienda dar rutinariamente antimicrobianos a los niños con EDA menores de 5 años."
+      ],
+      "pagina": 141,
+      "verificacion": {
+        "estado": "verificado",
+        "razones": [],
+        "alertas": [
+          "menciona medicamento, producto o dosis: antibiótic"
+        ]
+      }
+    },
+    {
+      "seccion": "que_no_hacer",
+      "texto": "No le dé al niño sueros o soluciones comerciales que vengan mezclados con zinc.",
+      "cita_literal": "No se recomienda la administración de presentaciones que combinen Sales de Rehidratación Oral y ∫inc, o soluciones orales comerciales con electrolitos y ∫inc, en los niños menores 5 años con EDA.",
+      "adaptacion": null,
+      "requiere_decision_medica": true,
+      "id": "i22",
+      "rec_id": "gpc-eda-2013#r58",
+      "fuente": "gpc-eda-2013",
+      "calificacion_literal": "Recomendación: Fuerte en contra",
+      "calificacion_verificada": true,
+      "citas_literales": [
+        "No se recomienda la administración de presentaciones que combinen Sales de Rehidratación Oral y ∫inc, o soluciones orales comerciales con electrolitos y ∫inc, en los niños menores 5 años con EDA."
+      ],
+      "pagina": 148,
+      "verificacion": {
+        "estado": "verificado",
+        "razones": [],
+        "alertas": [
+          "menciona medicamento, producto o dosis: Sales de Rehidrataci, zinc, ∫inc"
+        ]
+      }
+    },
+    {
+      "seccion": "que_no_hacer",
+      "texto": "No use probióticos, prebióticos ni leches fermentadas para tratar la diarrea del niño.",
+      "cita_literal": "No se sugiere rutinariamente el uso de probióticos, prebióticos, simbióticos o leches fermentadas en los niños menores 5 años con EDA.",
+      "adaptacion": null,
+      "requiere_decision_medica": true,
+      "id": "i23",
+      "rec_id": "gpc-eda-2013#r59",
+      "fuente": "gpc-eda-2013",
+      "calificacion_literal": "Recomendación: Débil en contra",
+      "calificacion_verificada": true,
+      "citas_literales": [
+        "No se sugiere rutinariamente el uso de probióticos, prebióticos, simbióticos o leches fermentadas en los niños menores 5 años con EDA."
+      ],
+      "pagina": 151,
+      "verificacion": {
+        "estado": "verificado",
+        "razones": [],
+        "alertas": [
+          "menciona medicamento, producto o dosis: probiótic"
+        ]
+      }
+    },
+    {
+      "seccion": "que_no_hacer",
+      "texto": "No le dé al niño medicamentos para detener la diarrea, como bismuto, carbón activado, caolín u otros antidiarreicos.",
+      "cita_literal": "No se sugiere el uso de medicamentos antidiarreicos como el subsalicilato de bismuto, racecadotril, esméctita, carbón activado y caolín; en los niños menores 5 años con EDA.",
+      "adaptacion": null,
+      "requiere_decision_medica": true,
+      "id": "i24",
+      "rec_id": "gpc-eda-2013#r60",
+      "fuente": "gpc-eda-2013",
+      "calificacion_literal": "Recomendación: Débil en contra",
+      "calificacion_verificada": true,
+      "citas_literales": [
+        "No se sugiere el uso de medicamentos antidiarreicos como el subsalicilato de bismuto, racecadotril, esméctita, carbón activado y caolín; en los niños menores 5 años con EDA."
+      ],
+      "pagina": 154,
+      "verificacion": {
+        "estado": "verificado",
+        "razones": [],
+        "alertas": [
+          "menciona medicamento, producto o dosis: medicament, racecadotril"
+        ]
+      }
+    },
+    {
+      "seccion": "que_no_hacer",
+      "texto": "Nunca le dé loperamida al niño para tratar la diarrea.",
+      "cita_literal": "No se recomienda el uso de la loperamida en los niños menores 5 años con EDA.",
+      "adaptacion": null,
+      "requiere_decision_medica": true,
+      "id": "i25",
+      "rec_id": "gpc-eda-2013#r61",
+      "fuente": "gpc-eda-2013",
+      "calificacion_literal": "Recomendación: Fuerte en contra",
+      "calificacion_verificada": true,
+      "citas_literales": [
+        "No se recomienda el uso de la loperamida en los niños menores 5 años con EDA."
+      ],
+      "pagina": 154,
+      "verificacion": {
+        "estado": "verificado",
+        "razones": [],
+        "alertas": [
+          "menciona medicamento, producto o dosis: loperam"
+        ]
+      }
+    },
+    {
+      "seccion": "medidas_en_casa",
+      "texto": "Si el niño tiene vómito, dele el suero de rehidratación oral poco a poco, en pequeñas cantidades y usando una cuchara.",
+      "cita_literal": "Se recomienda administrar las Sales de Rehidratación Oral, fraccionada y pausadamente con cuchara para contrarrestar el vómito en niños menores de 5 años con EDA",
+      "adaptacion": null,
+      "requiere_decision_medica": true,
+      "id": "i26",
+      "rec_id": "gpc-eda-2013#r62",
+      "fuente": "gpc-eda-2013",
+      "calificacion_literal": "Recomendación: Fuerte a favor",
+      "calificacion_verificada": true,
+      "citas_literales": [
+        "Se recomienda administrar las Sales de Rehidratación Oral, fraccionada y pausadamente con cuchara para contrarrestar el vómito en niños menores de 5 años con EDA"
+      ],
+      "pagina": 157,
+      "verificacion": {
+        "estado": "verificado",
+        "razones": [],
+        "alertas": [
+          "menciona medicamento, producto o dosis: Sales de Rehidrataci, suero"
+        ]
+      }
+    },
+    {
+      "seccion": "preguntas_triage",
+      "texto": "¿El niño ha vomitado 3 o más veces en la última hora, o 5 o más veces en las últimas 4 horas?",
+      "cita_literal": "Se recomienda considerar como niños con alto riesgo de deshidratación a aquellos que tengan 3 o más vómitos en 1 hora, o 5 o más vómitos en 4 horas.",
+      "adaptacion": "La definición de alto riesgo de deshidratación se adaptó como pregunta de triage.",
+      "requiere_decision_medica": false,
+      "id": "i27",
+      "rec_id": "gpc-eda-2013#r64",
+      "fuente": "gpc-eda-2013",
+      "calificacion_literal": "Recomendación: Fuerte a favor",
+      "calificacion_verificada": true,
+      "citas_literales": [
+        "Se recomienda considerar como niños con alto riesgo de deshidratación a aquellos que tengan 3 o más vómitos en 1 hora, o 5 o más vómitos en 4 horas."
+      ],
+      "pagina": 157,
+      "verificacion": {
+        "estado": "verificado",
+        "razones": [],
+        "alertas": [
+          "adaptación declarada: La definición de alto riesgo de deshidratación se adaptó como pregunta de triage."
+        ]
+      }
+    },
+    {
+      "seccion": "que_no_hacer",
+      "texto": "No utilice tratamientos homeopáticos ni acupuntura para intentar curar la diarrea del niño.",
+      "cita_literal": "No se recomienda el empleo de tratamientos homeopáticos, ni de acupuntura en niños menores de cinco años con EDA para disminuir la duración de la enfermedad.",
+      "adaptacion": null,
+      "requiere_decision_medica": false,
+      "id": "i28",
+      "rec_id": "gpc-eda-2013#r67",
+      "fuente": "gpc-eda-2013",
+      "calificacion_literal": "Recomendación: Fuerte en contra",
+      "calificacion_verificada": true,
+      "citas_literales": [
+        "No se recomienda el empleo de tratamientos homeopáticos, ni de acupuntura en niños menores de cinco años con EDA para disminuir la duración de la enfermedad."
+      ],
+      "pagina": 163,
+      "verificacion": {
+        "estado": "verificado",
+        "razones": [],
+        "alertas": []
+      }
+    },
+    {
+      "seccion": "que_no_hacer",
+      "texto": "No lleve al niño a curanderos, sobanderos o 'sobadores de descuaje' para tratar la diarrea.",
+      "cita_literal": "No se recomienda el tratamiento por “curanderos”, “sobanderos” o “sobadores de descuaje” en niños menores de cinco años con EDA para disminuir la duración de la enfermedad.",
+      "adaptacion": null,
+      "requiere_decision_medica": false,
+      "id": "i29",
+      "rec_id": "gpc-eda-2013#r68",
+      "fuente": "gpc-eda-2013",
+      "calificacion_literal": "Recomendación: Fuerte en contra",
+      "calificacion_verificada": true,
+      "citas_literales": [
+        "No se recomienda el tratamiento por “curanderos”, “sobanderos” o “sobadores de descuaje” en niños menores de cinco años con EDA para disminuir la duración de la enfermedad."
+      ],
+      "pagina": 163,
+      "verificacion": {
+        "estado": "verificado",
+        "razones": [],
+        "alertas": []
+      }
+    },
+    {
+      "seccion": "que_no_hacer",
+      "texto": "No use terapias alternativas como aromaterapia, esencias florales o bioenergética para tratar la diarrea del niño.",
+      "cita_literal": "No se recomienda el uso de otras formas de terapia alternativa (terapias aromáticas, esencias ﬂ orales, bioenergética y demás terapias alternativas) en el manejo de niños menores de cinco años con EDA.",
+      "adaptacion": null,
+      "requiere_decision_medica": false,
+      "id": "i30",
+      "rec_id": "gpc-eda-2013#r69",
+      "fuente": "gpc-eda-2013",
+      "calificacion_literal": "Recomendación: Fuerte en contra",
+      "calificacion_verificada": true,
+      "citas_literales": [
+        "No se recomienda el uso de otras formas de terapia alternativa (terapias aromáticas, esencias ﬂ orales, bioenergética y demás terapias alternativas) en el manejo de niños menores de cinco años con EDA."
+      ],
+      "pagina": 163,
+      "verificacion": {
+        "estado": "verificado",
+        "razones": [],
+        "alertas": []
+      }
+    }
+  ],
+  "excluidas": [
+    {
+      "rec_id": "gpc-eda-2013#r1",
+      "pagina": 60,
+      "calificacion": "Recomendación: Fuerte a favor",
+      "texto": "Para esta guía se recomienda deﬁ nir Enfermedad Diarreica Aguda (EDA) como la presencia de heces líquidas o acuosas, asociada \na un aumento de la frecuencia (al menos 3 en 24 horas) que puede ir acompañada de vómito y/o ﬁ ebre. La duración del episodio \ndebe ser menor de 14 días.",
+      "razon": "definicion_o_contexto"
+    },
+    {
+      "rec_id": "gpc-eda-2013#r2",
+      "pagina": 62,
+      "calificacion": "Recomendación: Débil a favor",
+      "texto": "Se han descrito como factores de riesgo para que los niños menores de cinco años desarrollen EDA:\n\nAusencia de lactancia materna o suspensión precoz de ésta, en episodios de  diarrea previos\n\nEdad del niño entre 6 y 11 meses\n\nTabaquismo en el hogar\n\nUso de agua visiblemente contaminada para consumo y preparaciones de alimentos en el hogar\n\nAnemia o desnutrición en cualquier grado\n\nContacto cercano con un paciente con diarrea\n\nViajes a sitios con alta incidencia de diarrea\n\nAusencia de inodoros o inadecuada eliminación de excretas y basuras en el hogar\n\nMadre menor de 20 años de edad, o que desconoce los factores de riesgo, o que padece de depresión\n\nPresencia de moscas en el hogar del niño.\nSe recomienda tener en cuenta estos factores en el momento en que se necesite establecer medidas preventivas individuales o \ncomunitarias de prevención de la diarrea.",
+      "razon": "definicion_o_contexto"
+    },
+    {
+      "rec_id": "gpc-eda-2013#r5",
+      "pagina": 70,
+      "calificacion": "Recomendación: Débil en contra",
+      "texto": "No se recomienda el uso de vitamina A para prevenir la EDA en niños menores de 5 años.",
+      "razon": "medicamento_o_dosis"
+    },
+    {
+      "rec_id": "gpc-eda-2013#r6",
+      "pagina": 73,
+      "calificacion": "Recomendación: Fuerte a favor",
+      "texto": "Se recomienda la suplementación con ∫inc en los niños menores de 5 años para disminuir la incidencia de EDA en niños con bajo \npeso al nacer\nSe recomienda la suplementación con ∫inc en los niños menores de 5 años para disminuir la incidencia de EDA en niños con déﬁ cit \nnutricional y del crecimiento(que se encuentren por debajo de -1 DE en los índices Z-P/E, Z-T/E o Z-P/T)\nSe recomienda la suplementación con ∫inc en los niños menores de 5 años,  para disminuir la incidencia de EDA en niños menores \nde 6 meses que no reciben lactancia materna.\nLa dosis recomendada es 5 mg/día de ∫inc elemental en los menores de 6 meses, y 10 mg/día en mayores de 6 meses, durante \n4 meses. El ∫inc debe administrarse en presentación farmacéutica sin hierro ni otros micronutrientes. Se sugiere utilizar la \npresentación en forma de jarabe de sulfato o acetato.",
+      "razon": "medicamento_o_dosis"
+    },
+    {
+      "rec_id": "gpc-eda-2013#r10",
+      "pagina": 89,
+      "calificacion": "Recomendación: Fuerte a favor",
+      "texto": "Se recomienda la implementación de estrategias educativas en comunidades vulnerables para disminuir la incidencia de EDA, en \nniños menores de cinco años.",
+      "razon": "dirigida_a_personal_de_salud"
+    },
+    {
+      "rec_id": "gpc-eda-2013#r11",
+      "pagina": 89,
+      "calificacion": "Recomendación: Fuerte a favor",
+      "texto": "Se recomienda el uso de ayudas didácticas como cartillas, folletos o tarjetas informativas para facilitar la interpretación de los \nconceptos y la adquisición de competencias por parte de los padres y/o acompañantes.",
+      "razon": "dirigida_a_personal_de_salud"
+    },
+    {
+      "rec_id": "gpc-eda-2013#r12",
+      "pagina": 89,
+      "calificacion": "Recomendación: Débil a favor",
+      "texto": "Se sugiere utilizar, como recomienda la estrategia AIEPI, preguntas abiertas de veriﬁ cación a los padres o acompañantes al ﬁ nal \nde las explicaciones o capacitaciones para evaluar la interpretación  y apropiación del contenido.",
+      "razon": "dirigida_a_personal_de_salud"
+    },
+    {
+      "rec_id": "gpc-eda-2013#r14",
+      "pagina": 99,
+      "calificacion": "Recomendación: Fuerte a favor",
+      "texto": "Se recomienda conocer y tener en cuenta los microorganismos etiológicos que se describen a continuación, en los niños con \nEDA. \nEn Colombia el microorganismo identiﬁ cado más frecuentemente en niños menores de 5 años con EDA es el rotavirus. Las \nbacterias más frecuentemente implicadas son Escherichia coli (entero-patógena, y entero-toxigénica, principalmente) y Salmonella \n(alrededor del 10%); con menor frecuencia se aíslan Campylobacter y Shigella (menos de 6%) y no se identiﬁ ca microorganismo \npatógeno hasta en 45% de los niños en quienes se busca etiología de la EDA. En el mundo, el rotavirus es el microorganismo que \ncon mayor frecuencia se aísla en los casos de EDA. Campylobacter y Shigella son las bacterias más frecuentemente aisladas.",
+      "razon": "definicion_o_contexto"
+    },
+    {
+      "rec_id": "gpc-eda-2013#r15",
+      "pagina": 102,
+      "calificacion": "Recomendación: Fuerte en contra",
+      "texto": "No se recomienda el uso de las siguientes pruebas diagnósticas en materia fecal para el diagnóstico de infección bacteriana \ninvasora: azúcares reductores, pH, sangre oculta, conteo de leucocitos y lactoferrina.",
+      "razon": "dirigida_a_personal_de_salud"
+    },
+    {
+      "rec_id": "gpc-eda-2013#r16",
+      "pagina": 102,
+      "calificacion": "Recomendación: Fuerte en contra",
+      "texto": "No se recomienda el uso de manera aislada, de la presencia de sangre macroscópica en heces como predictor de infección \nbacteriana invasora.",
+      "razon": "dirigida_a_personal_de_salud"
+    },
+    {
+      "rec_id": "gpc-eda-2013#r17",
+      "pagina": 107,
+      "calificacion": "Recomendación: Fuerte en contra",
+      "texto": "No se recomienda la solicitud rutinaria de examen directo de materia fecal, coprológico, coproscópico o coprocultivo en los niños \ncon EDA.",
+      "razon": "dirigida_a_personal_de_salud"
+    },
+    {
+      "rec_id": "gpc-eda-2013#r18",
+      "pagina": 107,
+      "calificacion": "Recomendación: Débil a favor",
+      "texto": "Se sugiere considerar la solicitud de coprológico o coproscópico en los casos de EDA de más de 7 días de duración o en casos de \ndiarrea con sangre.",
+      "razon": "dirigida_a_personal_de_salud"
+    },
+    {
+      "rec_id": "gpc-eda-2013#r19",
+      "pagina": 107,
+      "calificacion": "Recomendación: Fuerte a favor",
+      "texto": "Se recomienda solicitar coprocultivo en casos de sospecha o presencia de bacteriemia o septicemia.",
+      "razon": "dirigida_a_personal_de_salud"
+    },
+    {
+      "rec_id": "gpc-eda-2013#r20",
+      "pagina": 110,
+      "calificacion": "Recomendación: Fuerte a favor",
+      "texto": "Se recomienda utilizar la escala de signos de deshidratación propuesta por la OMS para la estrategia AIEPI para Colombia, que \nclasiﬁ ca  los niños con EDA en una de tres posibilidades: Deshidratación grave, Algún grado de deshidratación o Sin deshidratación.",
+      "razon": "dirigida_a_personal_de_salud"
+    },
+    {
+      "rec_id": "gpc-eda-2013#r23",
+      "pagina": 113,
+      "calificacion": "Recomendación: Fuerte a favor",
+      "texto": "Se recomienda hospitalizar a los niños con:\nDeshidratación grave o con signos choque, tales como disminución del nivel de conciencia, piel pálida o moteada, extremidades frías, \ntaquicardia, taquipnea, pulsos periféricos débiles, tiempo de llenado capilar prolongado y/o hipotensión.\nAlteraciones neurológicas (somnolencia, letargia o crisis convulsivas). \nVomito persistente e incoercible que impide la Terapia de Rehidratación Oral (TRO)\nSíntomas que sugieran una enfermedad grave como un proceso abdominal quirúrgico.\nNiños que vuelven a consultar por deshidratación durante el mismo episodio diarreico (reingreso por deshidratación)\nNiños con sospecha de deshidratación hipernatrémica (presencia de movimientos de mandíbula, incremento en el tono muscular, \nhiperreﬂ exia, convulsiones, adormecimiento y coma)\nNiños con algunos factores de riesgo para muerte detallados anteriormente como edemas en miembros inferiores, la presencia de un \nproceso infeccioso mayor asociado (presencia de neumonía, sepsis o infecciones neurológicas)",
+      "razon": "duplicada"
+    },
+    {
+      "rec_id": "gpc-eda-2013#r24",
+      "pagina": 113,
+      "calificacion": "Recomendación: Fuerte a favor",
+      "texto": "Se recomienda remitir a un nivel de mayor complejidad (segundo o tercer nivel de atención en salud) a los niños con EDA que \nademás presenten:\nSospecha o conﬁ rmación de bacteriemia o sepsis.\nEnfermedad concomitante como neumonía, malaria, meningitis, síndrome convulsivo.\nNiño con gasto fecal elevado o diﬁ cultad para el mantenimiento de la hidratación, a  pesar de la rehidratación endovenosa \ncontinua.",
+      "razon": "dirigida_a_personal_de_salud"
+    },
+    {
+      "rec_id": "gpc-eda-2013#r25",
+      "pagina": 114,
+      "calificacion": "Recomendación: Fuerte a favor",
+      "texto": "Se recomienda considerar el alta a los niños que estuvieron en urgencias o en un servicio de hospitalización, únicamente cuando \nse cumplan todos los siguientes requisitos:\nEstén hidratados.\nTengan adecuada tolerancia a la alimentación.\nTengan un cuidador responsable que haya sido debidamente instruido en cuanto a signos de alarma y de nueva consulta, que es \ncapaz de continuar el manejo adecuado en casa y puede mantener la hidratación del niño.\nLas otras comorbilidades que indicaron la hospitalización estén controladas.",
+      "razon": "dirigida_a_personal_de_salud"
+    },
+    {
+      "rec_id": "gpc-eda-2013#r28",
+      "pagina": 118,
+      "calificacion": "Recomendación: Débil a favor",
+      "texto": "Se sugiere que la terapia de rehidratación oral, en los niños con EDA que necesitaron rehidratación con líquidos endovenosos, se \ninicie  temprana y gradualmente dos a tres horas después del paso de líquidos endovenosos. Si esta es tolerada, debe continuarse \nhasta completar la hidratación y suspender los líquidos endovenosos. \nSi la terapia de rehidratación oral no es tolerada, debe continuarse la rehidratación por vía endovenosa hasta completar la \nrehidratación y continuar con reposición de pérdidas concomitantes por vía endovenosa.",
+      "razon": "dirigida_a_personal_de_salud"
+    },
+    {
+      "rec_id": "gpc-eda-2013#r29",
+      "pagina": 120,
+      "calificacion": "Recomendación: Fuerte a favor",
+      "texto": "Se recomienda realizar la rehidratación por vía oral a los niños menores 5 años con EDA y algún grado de deshidratación con Sales de \nRehidratación Oral  de baja osmolaridad, con concentración de sodio entre 75 y 84 mmol/L y osmolaridad total entre 240 y 250 mOsm/",
+      "razon": "medicamento_o_dosis"
+    },
+    {
+      "rec_id": "gpc-eda-2013#r30",
+      "pagina": 120,
+      "calificacion": "Recomendación: Fuerte a favor",
+      "texto": "Se recomienda realizar la rehidratación por vía oral en los niños menores 5 años con EDA y algún grado de deshidratación con \nSales de Rehidratación Oral de baja osmolaridad, usando los siguientes volúmenes:\nOfrecer entre 50 y 100 ml/kg durante 2 a 4 horas.\nLas Sales de Rehidratación Oral deben ofrecerse frecuentemente, a libre demanda, en cantidades pequeñas y con cuchara.\nSe puede considerar el uso de la sonda nasogástrica si el niño no es capaz de beber o vomita de forma persistente, administrar el \nmismo volumen en 4 horas por esta vía.\nSe recomienda monitorizar la rehidratación oral de forma regular, cada hora.",
+      "razon": "medicamento_o_dosis"
+    },
+    {
+      "rec_id": "gpc-eda-2013#r32",
+      "pagina": 120,
+      "calificacion": "Recomendación: Fuerte a favor",
+      "texto": "En los niños menores 5 años con EDA y algún grado de deshidratación se recomienda no iniciar la terapia de rehidratación oral \nen caso de (contraindicaciones de la Terapia de Rehidratación Oral): \nDistensión abdominal  con íleo paralítico\nSospecha de cuadro agudo de abdomen quirúrgico\nAlteración del estado de conciencia o presencia de convulsiones",
+      "razon": "dirigida_a_personal_de_salud"
+    },
+    {
+      "rec_id": "gpc-eda-2013#r33",
+      "pagina": 120,
+      "calificacion": "Recomendación: Fuerte a favor",
+      "texto": "En los niños menores 5 años con EDA y algún grado de deshidratación se recomienda utilizar la rehidratación endovenosa \núnicamente cuando se detecta:\nDeshidratación grave\nFracaso en la Terapia de Rehidratación Oral\nAl menos una contraindicación de la Terapia de Rehidratación Oral o de la vía nasogástrica",
+      "razon": "dirigida_a_personal_de_salud"
+    },
+    {
+      "rec_id": "gpc-eda-2013#r34",
+      "pagina": 126,
+      "calificacion": "Recomendación: Fuerte a favor",
+      "texto": "Se recomienda utilizar lactato de Ringer o solución poli-electrolítica, en los niños menores 5 años con EDA y algún grado de \ndeshidratación, en los que se decidió la rehidratación endovenosa. En ausencia de estas soluciones, utilizar cloruro de sodio al \n0,9%, con el ﬁ n de corregir el déﬁ cit.",
+      "razon": "medicamento_o_dosis"
+    },
+    {
+      "rec_id": "gpc-eda-2013#r35",
+      "pagina": 126,
+      "calificacion": "Recomendación: Fuerte a favor",
+      "texto": "Se recomienda terminar la rehidratación vía oral con Sales de Rehidratación Oral, en los niños menores 5 años con EDA y algún \ngrado de deshidratación, en los que se decidió la rehidratación endovenosa, si se utiliza lactato de Ringer o solución de cloruro \nde sodio al 0,9%, cuando sea posible.",
+      "razon": "dirigida_a_personal_de_salud"
+    },
+    {
+      "rec_id": "gpc-eda-2013#r36",
+      "pagina": 126,
+      "calificacion": "Recomendación: Fuerte a favor",
+      "texto": "Se recomienda reponer 25 mL/Kg por cada hora, hasta alcanzar la hidratación en los niños menores 5 años con EDA y algún grado \nde deshidratación, en los que se decidió la rehidratación endovenosa. Lo que habitualmente se obtiene en dos a cuatro horas (50 \na 100 mL/Kg).  Los niños deben ser evaluados clínicamente cada hora hasta obtener la hidratación.",
+      "razon": "medicamento_o_dosis"
+    },
+    {
+      "rec_id": "gpc-eda-2013#r37",
+      "pagina": 129,
+      "calificacion": "Recomendación: Fuerte a favor",
+      "texto": "Se recomienda administrar líquidos intravenosos inmediatamente al niño menor de 5 años con EDA y deshidratación grave:\nAdministrar 100 ml/Kg. de la solución lactato de Ringer tienen la misma eﬁ cacia para corregir la deshidratación y/o evitar \ncomplicaciones como hiponatremia e hipokalemia que administrar solución salina al 0.9% o solución poli electrolítica, el volumen \ndebe ser repartido de la siguiente manera:\nLactantes menores de 12 meses: primero administrar 30 ml/kg en 30 minutos, luego administrar 70 ml/kg en 5  ½horas\nNiños de más de 12 meses: primero administrar 30 ml/kg en 30 minutos, luego administrar 70 ml/kg en 2  ½horas",
+      "razon": "medicamento_o_dosis"
+    },
+    {
+      "rec_id": "gpc-eda-2013#r38",
+      "pagina": 129,
+      "calificacion": "Recomendación: Fuerte a favor",
+      "texto": "Se recomienda administrar líquidos intravenosos inmediatamente al niño menor de 5 años con EDA y deshidratación grave:\nSi el paciente puede beber, ofrecer Sales de Rehidratación Oral por vía oral hasta que se instale la infusión. \nSi hay diﬁ cultades con el acceso venoso y el niño no puede beber, se recomienda insertar una sonda nasogástrica y pasar los \nlíquidos endovenosos por esta vía a la misma velocidad.\nRepetir otra carga de 30 ml/kg en 30 minutos si el pulso es débil.\nReevaluar al niño cada media hora. Si la hidratación no mejora, administrar la solución más rápido.\nDespués de seis horas en los lactantes, o tres horas en pacientes mayores, evaluar el estado del paciente. Luego elegir el plan de \ntratamiento apropiado (A, B o C) para continuar el tratamiento. \nNo se recomienda el uso de soluciones dextrosadas, ni de agua destilada con adición de electrolitos, para la corrección de la \ndeshidratación grave.",
+      "razon": "medicamento_o_dosis"
+    },
+    {
+      "rec_id": "gpc-eda-2013#r43",
+      "pagina": 136,
+      "calificacion": "Recomendación: Fuerte a favor",
+      "texto": "Se recomienda que los niños entre 6 meses y 5 años con EDA continúen con la alimentación habitual y apropiada para su edad.",
+      "razon": "duplicada"
+    },
+    {
+      "rec_id": "gpc-eda-2013#r48",
+      "pagina": 138,
+      "calificacion": "Recomendación: Fuerte a favor",
+      "texto": "Se recomienda estimular la ingesta de líquidos y continuar con la alimentación habitual y apropiada para la edad (lactancia \nmaterna, fórmula láctea y sólidos) después de la Terapia de Rehidratación Oral.",
+      "razon": "duplicada"
+    },
+    {
+      "rec_id": "gpc-eda-2013#r50",
+      "pagina": 141,
+      "calificacion": "Recomendación: Fuerte a favor",
+      "texto": "Se recomienda dar antimicrobianos a los niños menores 5 años con EDA que presenten las siguientes condiciones clínicas:\nSospecha o conﬁ rmación de bacteriemia o sepsis.\nSospecha de infección por Vibrio cholerae en el contexto de un brote detectado de cólera en la región.\nDiarrea con sangre, ﬁ ebre alta (mayor o igual a 39ºC) y regular estado general, o diarrea con sangre y no tengan opción de \nrevaluación clínica en 48 horas.",
+      "razon": "medicamento_o_dosis"
+    },
+    {
+      "rec_id": "gpc-eda-2013#r51",
+      "pagina": 141,
+      "calificacion": "Recomendación: Fuerte a favor",
+      "texto": "Se recomienda dar antimicrobianos a los niños menores de 5 años con EDA que presenten detección o aislamiento de:\nShigella spp, Giardia lamblia o intestinalis o E. histolytica (trofozoítos o complejo E. dispar/histolytica)\nSalmonella spp, sólo si son pacientes con riesgo de bacteriemia (menores de 6 meses, asplenia funcional o anatómica, infección \npor VIH/SIDA, enfermedad crónica del tracto gastrointestinal, hemoglobinopatía, en tratamiento inmunosupresor, desnutridos \nmoderados o graves o inmunocomprometidos)",
+      "razon": "medicamento_o_dosis"
+    },
+    {
+      "rec_id": "gpc-eda-2013#r52",
+      "pagina": 141,
+      "calificacion": "Recomendación: Fuerte a favor",
+      "texto": "Se recomienda para la elección del antimicrobiano, en los niños menores 5 años con EDA, tener siempre en cuenta la ﬂ ora \nbacteriana local o regional y sus patrones de susceptibilidad antimicrobiana, si se tiene acceso a un reporte conﬁ able de ellos.",
+      "razon": "dirigida_a_personal_de_salud"
+    },
+    {
+      "rec_id": "gpc-eda-2013#r53",
+      "pagina": 141,
+      "calificacion": "Recomendación: Fuerte a favor",
+      "texto": "Se recomienda utilizar ácido nalidíxico (opción terapéutica empírica de primera línea) en dosis de 50 a 60 mg/Kg por día por 7 días, \ncuando esté indicado dar antimicrobiano a los niños menores de 5 años con EDA.",
+      "razon": "medicamento_o_dosis"
+    },
+    {
+      "rec_id": "gpc-eda-2013#r54",
+      "pagina": 141,
+      "calificacion": "Recomendación: Fuerte a favor",
+      "texto": "Se recomiendan como alternativas de segunda línea cefotaxime, ceftriaxone o ciproﬂ oxacina cuando esté indicado dar \nantimicrobiano a los niños menores de 5 años con EDA. \nSe recomienda la administración intravenosa de estos antibióticos, cuyo uso debe restringirse al manejo intrahospitalario en los \ncasos de niños con sospecha de bacteriemia y/o sepsis, o en quienes no mejoren con el medicamento de primera elección.",
+      "razon": "medicamento_o_dosis"
+    },
+    {
+      "rec_id": "gpc-eda-2013#r55",
+      "pagina": 141,
+      "calificacion": "Recomendación: Fuerte a favor",
+      "texto": "Se recomienda como primera elección metronidazol y como alternativas tinidazol o secnidazol, en los niños menores 5 años \ncon EDA para los casos de Giardia y Entamoeba histolytica. Para los casos de sospecha o brote de cólera, se recomienda usar \ntrimetoprim/sulfametozazol.",
+      "razon": "medicamento_o_dosis"
+    },
+    {
+      "rec_id": "gpc-eda-2013#r56",
+      "pagina": 146,
+      "calificacion": "Recomendación: Débil en contra",
+      "texto": "No se sugiere ofrecer suplemento de vitamina A como tratamiento para disminuir la duración de la diarrea en los niños menores \nde 5 años con EDA.",
+      "razon": "medicamento_o_dosis"
+    },
+    {
+      "rec_id": "gpc-eda-2013#r57",
+      "pagina": 148,
+      "calificacion": "Recomendación: Fuerte a favor",
+      "texto": "Se recomienda la administración de ∫inc vía oral en los niños menores 5 años con EDA, así: 10 mg en niños menores de 6 meses \ny 20 mg en niños entre 6 meses a 5 años, por 10 a 14 días; con el ﬁ n de disminuir la duración de la enfermedad. Administrar \npresentación farmacológica de ∫inc en jarabe de sulfato o acetato, sin hierro y sin otros micronutrientes.",
+      "razon": "medicamento_o_dosis"
+    },
+    {
+      "rec_id": "gpc-eda-2013#r63",
+      "pagina": 157,
+      "calificacion": "Recomendación: Fuerte a favor",
+      "texto": "Se recomienda el uso de ondansetrón en una dosis única oral (2 mg en menores de 15 Kg, y 4 mg en aquellos entre 15 y 30 Kg de \npeso) o intravenosa (0,15 mg/Kg) en los niños con vómito asociado a la EDA, que no tienen deshidratación pero tienen alto riesgo \nde estarlo; y en aquellos niños con deshidratación que no han tolerado la terapia de rehidratación oral, con el ﬁ n de disminuir la \nnecesidad de uso de líquidos endovenosos y las probabilidades de hospitalización.",
+      "razon": "medicamento_o_dosis"
+    },
+    {
+      "rec_id": "gpc-eda-2013#r65",
+      "pagina": 158,
+      "calificacion": "Recomendación: Fuerte en contra",
+      "texto": "No se recomienda el uso de ondansetrón en niños menores de 5 años con vómito asociado a la EDA, que tengan, o en los que se sospeche, \nsepsis, obstrucción intestinal, abdomen agudo o convulsiones.",
+      "razon": "medicamento_o_dosis"
+    },
+    {
+      "rec_id": "gpc-eda-2013#r66",
+      "pagina": 158,
+      "calificacion": "Recomendación: Fuerte en contra",
+      "texto": "No se recomienda el uso de metoclopramida o alizaprida en niños con vómito asociado a la EDA, para disminuir la necesidad de \nuso de líquidos endovenosos y las probabilidades de hospitalización",
+      "razon": "medicamento_o_dosis"
+    }
+  ],
+  "sin_decision": [],
+  "partes_no_usadas": [
+    {
+      "rec_id": "gpc-eda-2013#r4",
+      "pagina": 67,
+      "calificacion": "Recomendación: Fuerte a favor",
+      "segmentos": [
+        "el ﬁ n de disminuir la duración de los episodios y la mortalidad por diarrea"
+      ]
+    },
+    {
+      "rec_id": "gpc-eda-2013#r3",
+      "pagina": 67,
+      "calificacion": "Recomendación: Fuerte a favor",
+      "segmentos": [
+        "disminuir la incidencia, la duración de los episodios y la hospitalización y la mortalidad por diarrea"
+      ]
+    },
+    {
+      "rec_id": "gpc-eda-2013#r7",
+      "pagina": 79,
+      "calificacion": "Recomendación: Débil en contra",
+      "segmentos": [
+        "disminuir la incidencia, el número de episodios o el número de días de los episodios diarreicos."
+      ]
+    },
+    {
+      "rec_id": "gpc-eda-2013#r8",
+      "pagina": 83,
+      "calificacion": "Recomendación: Fuerte a favor",
+      "segmentos": [
+        "en los casos graves, según las directrices del Plan Ampliado de Inmunizaciones del país."
+      ]
+    },
+    {
+      "rec_id": "gpc-eda-2013#r9",
+      "pagina": 88,
+      "calificacion": "Recomendación: Fuerte a favor",
+      "segmentos": [
+        "estrategia efectiva en la reducción de episodios de EDA."
+      ]
+    },
+    {
+      "rec_id": "gpc-eda-2013#r13",
+      "pagina": 92,
+      "calificacion": "Recomendación: Débil a favor",
+      "segmentos": [
+        "Se sugiere un seguimiento clínico estricto de los niños menores de cinco años con EDA que adicionalmente tengan alguna de las",
+        "características que se anotan,  con el ﬁ n de vigilar la aparición de cada una de las siguientes complicaciones:",
+        "Índices antropométricos Z-P/T, Z-T/E y Z-P/E por debajo de – 2 DE",
+        "Proceso infeccioso mayor asociado (neumonía, sepsis o infecciones neurológicas)",
+        "Antecedente de hospitalización previa por EDA",
+        "Deshidratación moderada a grave",
+        "Factores que aumentan el riesgo de deshidratación por diarrea",
+        "Suspender la lactancia materna durante la enfermedad",
+        "Lactancia materna exclusiva menor de 3 meses",
+        "Edad menor de 1 año, principalmente menor de 6 meses",
+        "Antecedente de bajo peso al nacer (peso menor de 2.500 gr)",
+        "Índices antropométricos Z-P/T, Z-T/E ó Z- P/E por debajo de –2 DE",
+        "Hacinamiento en el hogar del niño",
+        "Falta rutinaria de higiene de manos del niño y de sus cuidadores",
+        "Factores que aumentan el riesgo de desarrollar DP",
+        "Ausencia de lactancia materna exclusiva",
+        "Índices antropométricos Z-P/T, Z-T/E ó Z- P/E, por debajo de –3 DE (Desnutrición grave)",
+        "Uso de antibióticos durante el episodio de EDA",
+        "Presencia de cualquier tipo de inmunodeﬁ ciencia",
+        "Tener más de  10 deposiciones por día"
+      ]
+    },
+    {
+      "rec_id": "gpc-eda-2013#r21",
+      "pagina": 112,
+      "calificacion": "Recomendación: Fuerte a favor",
+      "segmentos": [
+        "Se recomienda tener en cuenta en el ámbito de manejo y vigilancia  del niño menor de cinco años con EDA:",
+        "Cuando no tengan deshidratación sean tratados en el hogar, previa instrucción y educación a los padres y cuidadores para que",
+        "reconozcan los signos de alarma para consultar nuevamente.",
+        "en las últimas 4 horas) permanezcan en el servicio de salud, en observación u hospitalización, hasta que se garantice que se pueda",
+        "mantener la hidratación por vía oral en el hogar.",
+        "Cuando tengan algún grado de deshidratación se atiendan en un servicio de urgencias u observación donde sea posible administrar",
+        "rehidratación oral o endovenosa."
+      ]
+    },
+    {
+      "rec_id": "gpc-eda-2013#r22",
+      "pagina": 113,
+      "calificacion": "Recomendación: Fuerte a favor",
+      "segmentos": [
+        "Se recomienda hospitalizar a los niños con:",
+        "Deshidratación grave o con signos choque (disminución del nivel de conciencia, piel pálida o moteada, extremidades frías,",
+        "taquicardia, taquipnea, pulsos periféricos débiles, tiempo de llenado capilar prolongado y/o hipotensión).",
+        "Alteraciones neurológicas (somnolencia, letargia o crisis convulsivas).",
+        "Vomito persistente e incoercible que impide la Terapia de Rehidratación Oral.",
+        "Síntomas que sugieran una enfermedad grave como un proceso abdominal quirúrgico.",
+        "Niños que vuelven a consultar por deshidratación durante el mismo episodio diarreico (reingreso por deshidratación)-",
+        "Niños con sospecha de deshidratación hipernatrémica (presencia de movimientos de mandíbula, incremento en el tono muscular,",
+        "hiperreﬂ exia, convulsiones, adormecimiento y coma)",
+        "Niños con factores de riesgo para muerte:",
+        "edemas en miembros inferiores, la presencia de un proceso infeccioso mayor asociado,",
+        "presencia de neumonía, sepsis o infecciones neurológicas.",
+        "Cuidadores que no pueden proveer un adecuado cuidado en casa."
+      ]
+    },
+    {
+      "rec_id": "gpc-eda-2013#r26",
+      "pagina": 116,
+      "calificacion": "Recomendación: Fuerte a favor",
+      "segmentos": [
+        "Se recomienda ofrecer un líquido adecuado para prevenir la deshidratación en niños con diarrea, después de cada deposición",
+        "Líquidos preparados mediante cocción de cereales en grano o molidos (arroz, maíz o cebada) y cocinados en agua, o aquellos que",
+        "se preparan con papa o plátano, o arroz*",
+        "Agua, siempre y cuando, se combine con la dieta habitual, que incluya alimentos con almidón (papa, yuca, ñame o maíz),",
+        "preparados de preferencia con sal."
+      ]
+    },
+    {
+      "rec_id": "gpc-eda-2013#r27",
+      "pagina": 116,
+      "calificacion": "Recomendación: Fuerte en contra",
+      "segmentos": [
+        "Soluciones orales de electrolitos con menos de 40 mmol/L de sodio en su composición",
+        "Solución de agua, sal y azúcar"
+      ]
+    },
+    {
+      "rec_id": "gpc-eda-2013#r31",
+      "pagina": 120,
+      "calificacion": "Recomendación: Fuerte a favor",
+      "segmentos": [
+        "Tiene gasto fecal elevado que impide la Terapia de Rehidratación Oral (el alto volumen y frecuencia de las deposiciones impide la",
+        "hidratación, a pesar de que se ha administrado adecuadamente las Sales de Rehidratación Oral)",
+        "Ingesta insuﬁ ciente de Sales de Rehidratación Oral por somnolencia"
+      ]
+    },
+    {
+      "rec_id": "gpc-eda-2013#r44",
+      "pagina": 136,
+      "calificacion": "Recomendación: Fuerte a favor",
+      "segmentos": [
+        "niños entre 6 meses y 5 años con EDA."
+      ]
+    },
+    {
+      "rec_id": "gpc-eda-2013#r62",
+      "pagina": 157,
+      "calificacion": "Recomendación: Fuerte a favor",
+      "segmentos": [
+        "en niños menores de 5 años con EDA, en quienes se intenta mantener la hidratación o tratar la deshidratación."
+      ]
+    }
+  ],
+  "decisiones_invalidas": []
+}
