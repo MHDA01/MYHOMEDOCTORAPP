@@ -33,13 +33,38 @@ export interface GeminiRequest {
    */
   thinkingBudget?: number;
   timeoutMs?: number;
+  /**
+   * Reintentos ante fallas pasajeras: saturación (429), errores 5xx del servicio o
+   * de red. No se reintenta un bloqueo, un 4xx de configuración ni un timeout (ya
+   * se esperó el límite completo). Por defecto 0.
+   */
+  reintentos?: number;
 }
 
 export type GeminiResult =
   | { ok: true; text: string }
   | { ok: false; kind: 'timeout' | 'http' | 'blocked' | 'empty'; status?: number; detail: string };
 
+const ESPERA_ENTRE_REINTENTOS_MS = 1500;
+
+function esFallaPasajera(resultado: GeminiResult): boolean {
+  if (resultado.ok || resultado.kind !== 'http') return false;
+  // Sin status es un error de red (fetch lanzó), salvo que falte la clave.
+  if (resultado.status === undefined) return !resultado.detail.includes('GEMINI_API_KEY');
+  return resultado.status === 429 || resultado.status >= 500;
+}
+
 export async function generateWithGemini(req: GeminiRequest): Promise<GeminiResult> {
+  const reintentos = Math.max(0, req.reintentos ?? 0);
+  let resultado = await intentarGemini(req);
+  for (let intento = 1; intento <= reintentos && esFallaPasajera(resultado); intento++) {
+    await new Promise((resolver) => setTimeout(resolver, ESPERA_ENTRE_REINTENTOS_MS * intento));
+    resultado = await intentarGemini(req);
+  }
+  return resultado;
+}
+
+async function intentarGemini(req: GeminiRequest): Promise<GeminiResult> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
     return { ok: false, kind: 'http', detail: 'GEMINI_API_KEY no configurada' };

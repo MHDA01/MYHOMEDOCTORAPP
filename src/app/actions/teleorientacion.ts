@@ -1,6 +1,6 @@
 // ============================================================
 // app/actions/teleorientacion.ts — Server Action: Dra. Hilda AI
-// Conexión directa a la API de Gemini sin rate-limiting ni pruning.
+// El servidor guarda los mensajes y arma el historial; el teléfono solo manda lo nuevo.
 // Migrado desde Abacus AI (routellm), que dejó de responder con HTTP 402.
 // ============================================================
 'use server';
@@ -8,12 +8,6 @@
 /* ------------------------------------------------------------------ */
 /*  Tipos                                                              */
 /* ------------------------------------------------------------------ */
-export interface TeleorientacionMessage {
-  role: 'user' | 'assistant' | 'system';
-  content: string;
-  imageUrls?: string[];
-}
-
 export interface TeleorientacionResponse {
   success: boolean;
   message: string;
@@ -223,9 +217,9 @@ orientarlo con pasos claros y un tono empático y tranquilizador — nunca alarm
   cambio de tema.`;
 
 /* ------------------------------------------------------------------ */
-/*  Función principal — Server Action                                  */
+/*  Servidor del chat                                                  */
 /* ------------------------------------------------------------------ */
-import { getAdminAuth, getAdminDb } from '@/lib/firebase-admin';
+import { getAdminAuth, getAdminDb, getAdminStorage } from '@/lib/firebase-admin';
 import { encryptField, decryptField } from '@/lib/crypto';
 import { COLECCION_TUTOR, SUBCOLECCION_CONVERSACIONES } from '@/lib/constants';
 import { Timestamp, FieldValue } from 'firebase-admin/firestore';
@@ -235,7 +229,15 @@ import {
   DEFAULT_GEMINI_MODEL,
   type GeminiContent,
   type GeminiPart,
+  type GeminiResult,
 } from '@/lib/gemini';
+import {
+  conAvisoDeUrgencias,
+  IMAGEN_NO_VALIDA,
+  MAX_CARACTERES_MENSAJE,
+  MAX_IMAGENES_POR_MENSAJE,
+  MENSAJE_MUY_LARGO,
+} from '@/lib/textos-chat';
 
 export interface PatientStructuredContext {
   firstName: string;
@@ -244,6 +246,20 @@ export interface PatientStructuredContext {
   sex?: string;
   allergies?: string[];
   medications?: string[];
+}
+
+/** Límites del historial que se manda a la IA en cada turno. */
+const MAX_MENSAJES_HISTORIAL = 40;
+/** Solo las fotos de los 2 mensajes más recientes con fotos viajan como imagen. */
+const MENSAJES_CON_FOTOS_EN_CONTEXTO = 2;
+/** Tope de bytes de imagen por pedido (el límite de Gemini para datos en línea es 20 MB). */
+const MAX_BYTES_IMAGENES_POR_PEDIDO = 15 * 1024 * 1024;
+const MAX_BYTES_IMAGEN = 10 * 1024 * 1024;
+
+type Resultado = { success: true; message: string } | { success: false; message: ''; error: string };
+
+function fallo(error: string): Resultado {
+  return { success: false, message: '', error };
 }
 
 /**
@@ -283,88 +299,71 @@ async function checkRateLimit(userId: string): Promise<{ allowed: boolean; remai
   });
 }
 
+function conversacionRef(userId: string, convId: string) {
+  return getAdminDb().collection(COLECCION_TUTOR).doc(userId).collection(SUBCOLECCION_CONVERSACIONES).doc(convId);
+}
+
 /**
- * Persiste un mensaje en Firestore de forma segura (cifrado).
+ * Persiste un mensaje cifrado. Si el cifrado falla NO se guarda: un dato de salud
+ * nunca debe quedar en texto plano. `sistema` marca los textos que genera la app
+ * (errores, cierres de consulta): se muestran en el chat pero no se mandan a la IA.
  */
 async function persistConversationMessage(
   userId: string,
   convId: string,
-  message: { role: string; content: string; imageUrls?: string[] }
+  message: { role: string; content: string; imageUrls?: string[]; sistema?: boolean }
 ): Promise<void> {
-  const messagesCol = getAdminDb()
-    .collection(COLECCION_TUTOR)
-    .doc(userId)
-    .collection(SUBCOLECCION_CONVERSACIONES)
-    .doc(convId)
-    .collection('mensajes');
+  const convRef = conversacionRef(userId, convId);
 
-  let contentToStore = message.content;
-  let isEncrypted = false;
-
-  try {
-    contentToStore = encryptField(message.content);
-    isEncrypted = true;
-  } catch (error) {
-    console.error('[Dra. Hilda] Error cifrando mensaje, se guarda en texto plano:', error);
-  }
-
-  const msgDoc = {
+  await convRef.collection('mensajes').add({
     role: message.role,
-    content: contentToStore,
+    content: encryptField(message.content),
     imageUrls: message.imageUrls || [],
     timestamp: Timestamp.now(),
-    isEncrypted,
-  };
+    isEncrypted: true,
+    ...(message.sistema ? { origen: 'sistema' } : {}),
+  });
 
-  await messagesCol.add(msgDoc);
+  // createdAt lo pone el cliente al crear la conversación; aquí no se toca.
+  await convRef.set({
+    updatedAt: FieldValue.serverTimestamp(),
+    messageCount: FieldValue.increment(1),
+  }, { merge: true });
+}
 
-  await getAdminDb()
-    .collection(COLECCION_TUTOR)
-    .doc(userId)
-    .collection(SUBCOLECCION_CONVERSACIONES)
-    .doc(convId)
-    .set({
-      updatedAt: FieldValue.serverTimestamp(),
-      messageCount: FieldValue.increment(1),
-      createdAt: FieldValue.serverTimestamp(),
-    }, { merge: true });
+/** uid de la sesión, solo si la conversación existe bajo esa cuenta. */
+async function sesionConConversacion(idToken: string, convId: string): Promise<{ uid: string } | { error: string }> {
+  if (!idToken || !convId || convId.includes('/')) {
+    return { error: 'Solicitud inválida.' };
+  }
+  let uid: string;
+  try {
+    uid = (await getAdminAuth().verifyIdToken(idToken)).uid;
+  } catch (authError) {
+    console.error('[Dra. Hilda] Error de verificación de token:', authError);
+    return { error: 'Sesión inválida o expirada. Por favor, inicia sesión de nuevo.' };
+  }
+  const conversacion = await conversacionRef(uid, convId).get();
+  if (!conversacion.exists) {
+    return { error: 'Conversación no encontrada.' };
+  }
+  return { uid };
 }
 
 /**
- * Server Action pública: el uid sale del token verificado, nunca del cliente, y
- * solo se escribe en una conversación que ya exista bajo esa cuenta.
+ * Server Action pública para los textos que genera la app (errores y cierres de
+ * consulta). El uid sale del token verificado, nunca del cliente.
  */
 export async function persistSecureMessage(
   idToken: string,
   convId: string,
-  message: { role: string; content: string; imageUrls?: string[] }
+  message: { role: string; content: string; imageUrls?: string[]; sistema?: boolean }
 ): Promise<{ success: boolean; error?: string }> {
-  if (!idToken || !convId || convId.includes('/')) {
-    return { success: false, error: 'Solicitud inválida.' };
-  }
-
-  let userId: string;
-  try {
-    const decodedToken = await getAdminAuth().verifyIdToken(idToken);
-    userId = decodedToken.uid;
-  } catch (authError) {
-    console.error('[Dra. Hilda] Error de verificación de token:', authError);
-    return { success: false, error: 'Sesión inválida o expirada. Por favor, inicia sesión de nuevo.' };
-  }
+  const sesion = await sesionConConversacion(idToken, convId);
+  if ('error' in sesion) return { success: false, error: sesion.error };
 
   try {
-    const convSnap = await getAdminDb()
-      .collection(COLECCION_TUTOR)
-      .doc(userId)
-      .collection(SUBCOLECCION_CONVERSACIONES)
-      .doc(convId)
-      .get();
-
-    if (!convSnap.exists) {
-      return { success: false, error: 'Conversación no encontrada.' };
-    }
-
-    await persistConversationMessage(userId, convId, message);
+    await persistConversationMessage(sesion.uid, convId, message);
     return { success: true };
   } catch (error) {
     console.error('[Dra. Hilda] Error persistiendo mensaje seguro:', error);
@@ -384,11 +383,7 @@ export async function getSecureMessages(idToken: string, convId: string) {
     const decodedToken = await getAdminAuth().verifyIdToken(idToken);
     const userId = decodedToken.uid;
 
-    const snap = await getAdminDb()
-      .collection(COLECCION_TUTOR)
-      .doc(userId)
-      .collection(SUBCOLECCION_CONVERSACIONES)
-      .doc(convId)
+    const snap = await conversacionRef(userId, convId)
       .collection('mensajes')
       .orderBy('timestamp', 'asc')
       .get();
@@ -410,215 +405,287 @@ export async function getSecureMessages(idToken: string, convId: string) {
 }
 
 /**
- * Envía el historial de conversación a Gemini...
+ * Traduce la URL de descarga de una foto del chat a su ruta en Storage, solo si
+ * es del bucket de la app y de la carpeta de esta conversación. Así el servidor
+ * nunca descarga direcciones arbitrarias que mande el teléfono.
  */
-export async function sendTeleorientacionMessage(
-  conversationHistory: TeleorientacionMessage[],
-  patientContext: PatientStructuredContext,
-  idToken: string
-): Promise<TeleorientacionResponse> {
+function rutaDeFotoDeLaConsulta(url: string, uid: string, convId: string): string | null {
+  let direccion: URL;
   try {
-    /* ---- Validación de Autenticación ---- */
-    if (!idToken) {
-      return {
-        success: false,
-        message: '',
-        error: 'No autenticado. Por favor, inicia sesión de nuevo.',
-      };
-    }
+    direccion = new URL(url);
+  } catch {
+    return null;
+  }
+  const hostsPermitidos = ['firebasestorage.googleapis.com'];
+  if (process.env.FIREBASE_STORAGE_EMULATOR_HOST) hostsPermitidos.push(process.env.FIREBASE_STORAGE_EMULATOR_HOST);
+  if (!hostsPermitidos.includes(direccion.host)) return null;
 
-    let decodedToken;
-    try {
-      decodedToken = await getAdminAuth().verifyIdToken(idToken);
-    } catch (authError) {
-      console.error('[Dra. Hilda] Error de verificación de token:', authError);
-      return {
-        success: false,
-        message: '',
-        error: 'Sesión inválida o expirada. Por favor, inicia sesión de nuevo.',
-      };
-    }
+  const partes = direccion.pathname.match(/^\/v0\/b\/([^/]+)\/o\/(.+)$/);
+  if (!partes || partes[1] !== process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET) return null;
 
-    const userId = decodedToken.uid;
+  let ruta: string;
+  try {
+    ruta = decodeURIComponent(partes[2]);
+  } catch {
+    return null;
+  }
+  const carpeta = `medical-images/${uid}/${convId}/`;
+  if (!ruta.startsWith(carpeta) || ruta.includes('..')) return null;
+  return ruta;
+}
 
-    const tokenState = await getUserTokenState(userId);
-    if (!tokenState.available) {
-      return {
-        success: false,
-        message: '',
-        error: 'No tienes tokens disponibles para iniciar una nueva consulta.',
-      };
-    }
+function archivoDeFoto(ruta: string) {
+  return getAdminStorage().bucket(process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET).file(ruta);
+}
 
-    /* ---- Rate Limiting (V#8) ---- */
-    const rateLimit = await checkRateLimit(userId);
-    if (!rateLimit.allowed) {
-      return {
-        success: false,
-        message: '',
-        error: `Has superado el límite de 20 mensajes por hora. Por favor, espera ${rateLimit.remainingWait} minutos.`,
-      };
-    }
-
-    /* ---- Validación básica ---- */
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) {
-      console.error('[Dra. Hilda] GEMINI_API_KEY no configurada');
-      return {
-        success: false,
-        message: '',
-        error: 'Error de configuración del servidor. Contacta al administrador.',
-      };
-    }
-
-    if (!conversationHistory.length) {
-      return {
-        success: false,
-        message: '',
-        error: 'No se recibió ningún mensaje.',
-      };
-    }
-
-    /* ---- Construir el contenido para la API ---- */
-    // Gemini no acepta URLs remotas en las imágenes: hay que descargar cada una
-    // del Storage y enviarla como inlineData en base64.
-    async function toInlinePart(url: string): Promise<GeminiPart | null> {
-      try {
-        const res = await fetch(url);
-        if (!res.ok) return null;
-        const mimeType = res.headers.get('content-type') || 'image/jpeg';
-        const buf = Buffer.from(await res.arrayBuffer());
-        return { inlineData: { mimeType, data: buf.toString('base64') } };
-      } catch (err) {
-        console.error('[Dra. Hilda] Error descargando imagen para la IA:', err);
-        return null;
-      }
-    }
-
-    // Contexto del paciente estructurado (sanitizado).
-    // Nota: El contexto llega ya descifrado (si venía de Firestore) o se maneja en memoria
-    const sanitizedPatientInfo = [
-      `Nombre: ${patientContext.firstName} ${patientContext.lastName}`,
-      patientContext.age !== undefined ? `Edad: ${patientContext.age} años` : null,
-      patientContext.sex ? `Sexo: ${patientContext.sex}` : null,
-      patientContext.allergies?.length ? `Alergias: ${patientContext.allergies.join(', ')}` : null,
-      patientContext.medications?.length ? `Medicamentos: ${patientContext.medications.join(', ')}` : null,
-    ].filter(Boolean).join('\n');
-
-    // El prompt de sistema y el contexto del paciente van juntos en systemInstruction,
-    // que es donde Gemini espera lo que no es un turno de diálogo.
-    const systemInstruction = `${SYSTEM_PROMPT}
-
-Contexto del paciente actual:
-${sanitizedPatientInfo}`;
-
-    // Historial de conversación. Los mensajes con imágenes se envían como partes
-    // multimodales (texto + inlineData) para que el modelo con visión las vea de
-    // verdad, en vez de recibir solo la URL como texto plano.
-    const contents: GeminiContent[] = [];
-
-    for (const msg of conversationHistory) {
-      // El historial que recibe esta función ya debe estar descifrado si venía de DB
-      const parts: GeminiPart[] = [];
-      const text = msg.content?.trim() ?? '';
-
-      if (msg.imageUrls?.length) {
-        parts.push({ text: text || 'Adjunto imágenes para orientación clínica.' });
-        const inlineParts = await Promise.all(msg.imageUrls.map(toInlinePart));
-        for (const part of inlineParts) {
-          if (part) parts.push(part);
-        }
-      } else if (text) {
-        parts.push({ text });
-      }
-
-      if (!parts.length) continue;
-
-      contents.push({
-        role: msg.role === 'assistant' ? 'model' : 'user',
-        parts,
-      });
-    }
-
-    if (!contents.length) {
-      return {
-        success: false,
-        message: '',
-        error: 'No se recibió ningún mensaje.',
-      };
-    }
-
-    /* ---- Llamada a la API de Gemini ---- */
-    const result = await generateWithGemini({
-      system: systemInstruction,
-      contents,
-      model: MODEL_ID,
-      maxTokens: MAX_TOKENS,
-      temperature: TEMPERATURE,
-      thinkingBudget: THINKING_BUDGET,
-      timeoutMs: 60_000,
-    });
-
-    if (!result.ok) {
-      if (result.kind === 'timeout') {
-        return {
-          success: false,
-          message: '',
-          error: 'La solicitud tardó demasiado. Verifica tu conexión e intenta de nuevo.',
-        };
-      }
-
-      const statusLabel = result.status ? ` ${result.status}` : '';
-      console.error(`[Dra. Hilda] Error de Gemini (${result.kind}${statusLabel}): ${result.detail}`);
-
-      if (result.kind === 'blocked') {
-        return {
-          success: false,
-          message: '',
-          error: 'No puedo responder a ese contenido. Reformula tu consulta, por favor.',
-        };
-      }
-
-      return {
-        success: false,
-        message: '',
-        error: `Error del servicio de IA${statusLabel}. Intenta de nuevo en unos segundos.`,
-      };
-    }
-
-    const assistantMessage = result.text;
-
-
-    if (!assistantMessage) {
-      return {
-        success: false,
-        message: '',
-        error: 'No se recibió respuesta del asistente. Intenta de nuevo.',
-      };
-    }
-
-    // El token de la consulta se descuenta una sola vez, cuando la conversación
-    // completa se cierra (ver consumeTokenOnConsultationEnd) — no en cada mensaje.
-    // La disponibilidad ya se verificó arriba con getUserTokenState.
-    return {
-      success: true,
-      message: assistantMessage,
-    };
-  } catch (error: any) {
-    if (error.name === 'AbortError') {
-      return {
-        success: false,
-        message: '',
-        error: 'La solicitud tardó demasiado. Verifica tu conexión e intenta de nuevo.',
-      };
-    }
-
-    console.error('[Dra. Hilda] Error inesperado:', error);
-    return {
-      success: false,
-      message: '',
-      error: 'Ocurrió un error inesperado. Intenta de nuevo.',
-    };
+/** Tipo de imagen si el archivo existe, es imagen y pesa como máximo 10 MB. */
+async function fotoValida(ruta: string): Promise<string | null> {
+  try {
+    const [metadatos] = await archivoDeFoto(ruta).getMetadata();
+    const tamano = Number(metadatos.size ?? 0);
+    const tipo = String(metadatos.contentType ?? '');
+    return tipo.startsWith('image/') && tamano > 0 && tamano <= MAX_BYTES_IMAGEN ? tipo : null;
+  } catch (error) {
+    console.error('[Dra. Hilda] Error leyendo foto del chat:', error);
+    return null;
   }
 }
 
+async function leerFoto(ruta: string): Promise<{ mimeType: string; data: Buffer } | null> {
+  const tipo = await fotoValida(ruta);
+  if (!tipo) return null;
+  try {
+    const [data] = await archivoDeFoto(ruta).download();
+    return { mimeType: tipo, data };
+  } catch (error) {
+    console.error('[Dra. Hilda] Error descargando foto del chat:', error);
+    return null;
+  }
+}
+
+/**
+ * Arma el historial para la IA desde Firestore (no desde el teléfono): los últimos
+ * mensajes, sin los textos de sistema, con las fotos de los mensajes recientes.
+ */
+async function historialParaLaIA(uid: string, convId: string): Promise<GeminiContent[]> {
+  const snap = await conversacionRef(uid, convId)
+    .collection('mensajes')
+    .orderBy('timestamp', 'desc')
+    .limit(MAX_MENSAJES_HISTORIAL)
+    .get();
+
+  const contenidos: GeminiContent[] = [];
+  let mensajesConFotos = 0;
+  let bytesDeFotos = 0;
+
+  // Del más nuevo al más viejo, para que las fotos recientes tengan prioridad.
+  for (const doc of snap.docs) {
+    const datos = doc.data();
+    if (datos.origen === 'sistema') continue;
+
+    let texto: string;
+    try {
+      texto = (datos.isEncrypted ? decryptField(datos.content) : datos.content)?.trim() ?? '';
+    } catch {
+      continue;
+    }
+
+    const partes: GeminiPart[] = [];
+    const urls: string[] = Array.isArray(datos.imageUrls) ? datos.imageUrls : [];
+
+    if (urls.length) {
+      partes.push({ text: texto || 'Adjunto imágenes para orientación clínica.' });
+      let incluidas = 0;
+      if (mensajesConFotos < MENSAJES_CON_FOTOS_EN_CONTEXTO) {
+        mensajesConFotos++;
+        for (const url of urls.slice(0, MAX_IMAGENES_POR_MENSAJE)) {
+          const ruta = rutaDeFotoDeLaConsulta(url, uid, convId);
+          const foto = ruta ? await leerFoto(ruta) : null;
+          if (!foto || bytesDeFotos + foto.data.length > MAX_BYTES_IMAGENES_POR_PEDIDO) continue;
+          bytesDeFotos += foto.data.length;
+          partes.push({ inlineData: { mimeType: foto.mimeType, data: foto.data.toString('base64') } });
+          incluidas++;
+        }
+      }
+      if (incluidas < urls.length) {
+        partes.push({ text: `(En este mensaje el paciente adjuntó ${urls.length} imagen(es); no se reenvían en este turno.)` });
+      }
+    } else if (texto) {
+      partes.push({ text: texto });
+    }
+
+    if (partes.length) {
+      contenidos.push({ role: datos.role === 'assistant' ? 'model' : 'user', parts: partes });
+    }
+  }
+
+  return contenidos.reverse();
+}
+
+function instruccionDeSistema(paciente: PatientStructuredContext): string {
+  const limpiar = (valor: unknown, maximo: number) => String(valor ?? '').replace(/\s+/g, ' ').trim().slice(0, maximo);
+  const lista = (valores?: string[]) =>
+    (Array.isArray(valores) ? valores : []).map((v) => limpiar(v, 100)).filter(Boolean).slice(0, 30).join(', ');
+
+  const datos = [
+    `Nombre: ${limpiar(paciente?.firstName, 80)} ${limpiar(paciente?.lastName, 80)}`.trim(),
+    typeof paciente?.age === 'number' ? `Edad: ${paciente.age} años` : null,
+    paciente?.sex ? `Sexo: ${limpiar(paciente.sex, 30)}` : null,
+    lista(paciente?.allergies) ? `Alergias: ${lista(paciente?.allergies)}` : null,
+    lista(paciente?.medications) ? `Medicamentos: ${lista(paciente?.medications)}` : null,
+  ].filter(Boolean).join('\n');
+
+  // El prompt de sistema y el contexto del paciente van juntos en systemInstruction,
+  // que es donde Gemini espera lo que no es un turno de diálogo.
+  return `${SYSTEM_PROMPT}
+
+Contexto del paciente actual:
+${datos}`;
+}
+
+async function preguntarALaIA(sistema: string, contenidos: GeminiContent[]): Promise<GeminiResult> {
+  if (!process.env.GEMINI_API_KEY) {
+    console.error('[Dra. Hilda] GEMINI_API_KEY no configurada');
+  }
+  return generateWithGemini({
+    system: sistema,
+    contents: contenidos,
+    model: MODEL_ID,
+    maxTokens: MAX_TOKENS,
+    temperature: TEMPERATURE,
+    thinkingBudget: THINKING_BUDGET,
+    timeoutMs: 60_000,
+    reintentos: 1,
+  });
+}
+
+/** Mensaje para el paciente cuando la IA no respondió. */
+function errorDeLaIA(resultado: Exclude<GeminiResult, { ok: true }>): string {
+  if (resultado.kind === 'timeout') {
+    return conAvisoDeUrgencias('La solicitud tardó demasiado. Verifica tu conexión e intenta de nuevo.');
+  }
+  const statusLabel = resultado.status ? ` ${resultado.status}` : '';
+  console.error(`[Dra. Hilda] Error de Gemini (${resultado.kind}${statusLabel}): ${resultado.detail}`);
+  if (resultado.kind === 'blocked') {
+    return conAvisoDeUrgencias('No puedo responder a ese contenido. Reformula tu consulta, por favor.');
+  }
+  return conAvisoDeUrgencias(`Error del servicio de IA${statusLabel}. Intenta de nuevo en unos segundos.`);
+}
+
+/** Tokens y límite de 20 mensajes por hora; null si puede seguir. */
+async function puedeConsultar(uid: string): Promise<string | null> {
+  const tokenState = await getUserTokenState(uid);
+  if (!tokenState.available) {
+    return 'No tienes tokens disponibles para iniciar una nueva consulta.';
+  }
+  const rateLimit = await checkRateLimit(uid);
+  if (!rateLimit.allowed) {
+    return conAvisoDeUrgencias(
+      `Has superado el límite de 20 mensajes por hora. Por favor, espera ${rateLimit.remainingWait} minutos.`
+    );
+  }
+  return null;
+}
+
+/**
+ * Envía un mensaje del paciente a la Dra. Hilda.
+ *
+ * El servidor guarda la pregunta, arma el historial desde Firestore, llama a la IA
+ * y guarda la respuesta. El teléfono solo manda el texto nuevo y las fotos que ya
+ * subió a la carpeta de esta conversación.
+ */
+export async function enviarMensajeConsulta(
+  idToken: string,
+  convId: string,
+  entrada: { texto: string; imageUrls?: string[] },
+  paciente: PatientStructuredContext
+): Promise<Resultado> {
+  try {
+    const sesion = await sesionConConversacion(idToken, convId);
+    if ('error' in sesion) return fallo(sesion.error);
+    const { uid } = sesion;
+
+    const texto = typeof entrada?.texto === 'string' ? entrada.texto : '';
+    const imageUrls = Array.isArray(entrada?.imageUrls) ? entrada.imageUrls.filter((u) => typeof u === 'string') : [];
+
+    if (!texto.trim() && !imageUrls.length) return fallo('No se recibió ningún mensaje.');
+    if (texto.length > MAX_CARACTERES_MENSAJE) return fallo(MENSAJE_MUY_LARGO);
+    if (imageUrls.length > MAX_IMAGENES_POR_MENSAJE) return fallo(IMAGEN_NO_VALIDA);
+    for (const url of imageUrls) {
+      const ruta = rutaDeFotoDeLaConsulta(url, uid, convId);
+      if (!ruta || !(await fotoValida(ruta))) return fallo(IMAGEN_NO_VALIDA);
+    }
+
+    // Como antes, la pregunta queda guardada aunque luego la frene el límite por hora.
+    try {
+      await persistConversationMessage(uid, convId, { role: 'user', content: texto, imageUrls });
+    } catch (error) {
+      console.error('[Dra. Hilda] Error guardando el mensaje del paciente:', error);
+      return fallo(conAvisoDeUrgencias('Ocurrió un error inesperado. Intenta de nuevo.'));
+    }
+
+    const bloqueo = await puedeConsultar(uid);
+    if (bloqueo) return fallo(bloqueo);
+
+    const contenidos = await historialParaLaIA(uid, convId);
+    const resultado = await preguntarALaIA(instruccionDeSistema(paciente), contenidos);
+    if (!resultado.ok) return fallo(errorDeLaIA(resultado));
+
+    try {
+      await persistConversationMessage(uid, convId, { role: 'assistant', content: resultado.text });
+    } catch (error) {
+      // El paciente igual recibe la respuesta; queda registro para revisar.
+      console.error('[Dra. Hilda] Error guardando la respuesta de la IA:', error);
+    }
+
+    return { success: true, message: resultado.text };
+  } catch (error: any) {
+    console.error('[Dra. Hilda] Error inesperado:', error);
+    return fallo(conAvisoDeUrgencias('Ocurrió un error inesperado. Intenta de nuevo.'));
+  }
+}
+
+/**
+ * Saludo inicial de la Dra. Hilda en una conversación vacía. La instrucción se
+ * arma en el servidor; el teléfono solo dice si es la primera vez y la franja del día.
+ */
+export async function saludarEnConsulta(
+  idToken: string,
+  convId: string,
+  datos: { nombre?: string; primeraVez: boolean; periodo: string },
+  paciente: PatientStructuredContext
+): Promise<Resultado> {
+  try {
+    const sesion = await sesionConConversacion(idToken, convId);
+    if ('error' in sesion) return fallo(sesion.error);
+    const { uid } = sesion;
+
+    const yaTieneMensajes = await conversacionRef(uid, convId).collection('mensajes').limit(1).get();
+    if (!yaTieneMensajes.empty) return fallo('La conversación ya tiene mensajes.');
+
+    const bloqueo = await puedeConsultar(uid);
+    if (bloqueo) return fallo(bloqueo);
+
+    const nombre = String(datos?.nombre ?? '').replace(/\s+/g, ' ').trim().slice(0, 60);
+    const periodo = ['Buenos días', 'Buenas tardes', 'Buenas noches'].includes(datos?.periodo) ? datos.periodo : 'Hola';
+
+    const instruccion = datos?.primeraVez
+      ? nombre
+        ? `Saluda al usuario llamado ${nombre} por primera vez. Preséntate y explícale qué es la teleorientación.`
+        : 'Saluda al usuario por primera vez. Preséntate y explícale qué es la teleorientación.'
+      : nombre
+        ? `¡${periodo}, ${nombre}! Saluda brevemente y pregúntale en qué puedes orientarle hoy.`
+        : `¡${periodo}! Saluda brevemente y pregúntale en qué puedes orientarle hoy.`;
+
+    const resultado = await preguntarALaIA(instruccionDeSistema(paciente), [
+      { role: 'user', parts: [{ text: instruccion }] },
+    ]);
+    if (!resultado.ok) return fallo(errorDeLaIA(resultado));
+
+    await persistConversationMessage(uid, convId, { role: 'assistant', content: resultado.text });
+    return { success: true, message: resultado.text };
+  } catch (error: any) {
+    console.error('[Dra. Hilda] Error en el saludo:', error);
+    return fallo(conAvisoDeUrgencias('Ocurrió un error inesperado. Intenta de nuevo.'));
+  }
+}

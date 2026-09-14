@@ -262,6 +262,10 @@ function todayDocId() {
     const dd = String(bogota.getDate()).padStart(2, "0");
     return `${yyyy}-${mm}-${dd}`;
 }
+/** Consejos que se generan a la vez en la tarea de la mañana. */
+const CONSEJOS_EN_PARALELO = 10;
+/** Pasado este tiempo no se empiezan consejos nuevos (la tarea tiene 540 s). */
+const TIEMPO_LIMITE_CONSEJOS_MS = 480000;
 exports.sendDailyHealthTips = functions
     .region("us-central1")
     .runWith({ timeoutSeconds: 540, memory: "512MB" })
@@ -286,17 +290,30 @@ exports.sendDailyHealthTips = functions
         return typeof t === "string" && t.length > 0;
     });
     console.log(`[DailyTips] ${conToken.length} con token de notificación; el resto se genera bajo demanda.`);
-    for (const userDoc of conToken) {
-        const uid = userDoc.id;
-        try {
-            const existing = await userDoc.ref.collection("dailyTips").doc(dateId).get();
-            if (existing.exists)
-                continue; // ya generado hoy (re-ejecución segura)
-            await createAndStoreTip(userDoc.ref, uid, dateId, userDoc.data().notificationToken);
+    // De a uno, cada consejo tarda varios segundos y la tarea se cortaba a los 9
+    // minutos con unos cientos de cuentas. Ahora trabajan varios a la vez y se deja
+    // de empezar consejos nuevos antes del límite, para no cortar uno a medias.
+    const inicio = Date.now();
+    let siguiente = 0;
+    const trabajador = async () => {
+        while (siguiente < conToken.length && Date.now() - inicio < TIEMPO_LIMITE_CONSEJOS_MS) {
+            const userDoc = conToken[siguiente++];
+            const uid = userDoc.id;
+            try {
+                const existing = await userDoc.ref.collection("dailyTips").doc(dateId).get();
+                if (existing.exists)
+                    continue; // ya generado hoy (re-ejecución segura)
+                await createAndStoreTip(userDoc.ref, uid, dateId, userDoc.data().notificationToken);
+            }
+            catch (error) {
+                console.error(`[DailyTips] Error procesando usuario ${uid}:`, error);
+            }
         }
-        catch (error) {
-            console.error(`[DailyTips] Error procesando usuario ${uid}:`, error);
-        }
+    };
+    await Promise.all(Array.from({ length: Math.min(CONSEJOS_EN_PARALELO, conToken.length) }, () => trabajador()));
+    const pendientes = conToken.length - siguiente;
+    if (pendientes > 0) {
+        console.warn(`[DailyTips] Tiempo agotado: ${pendientes} cuentas quedan para la generación bajo demanda.`);
     }
     console.log("[DailyTips] Generación de consejos diarios completada.");
     return null;

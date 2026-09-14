@@ -1,12 +1,16 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { getAdminDb } from '@/lib/firebase-admin';
+import { getAdminDb, getAdminStorage } from '@/lib/firebase-admin';
 import {
+  enviarMensajeConsulta,
   getSecureMessages,
   persistSecureMessage,
-  sendTeleorientacionMessage,
+  saludarEnConsulta,
   type PatientStructuredContext,
 } from '@/app/actions/teleorientacion';
+import { AVISO_URGENCIAS, IMAGEN_NO_VALIDA, MENSAJE_MUY_LARGO } from '@/lib/textos-chat';
 import { crearUsuario, fetchFalso, respuestaGemini, vaciarFirestore, type UsuarioDePrueba } from '../ayudas';
+
+const BUCKET = 'demo-mhda.appspot.com';
 
 const paciente: PatientStructuredContext = {
   firstName: 'Ana',
@@ -18,8 +22,23 @@ const paciente: PatientStructuredContext = {
 };
 
 async function crearConversacion(uid: string, id = 'c1') {
-  await getAdminDb().doc(`Cuentas_Tutor/${uid}/conversaciones/${id}`).set({ status: 'active' });
+  await getAdminDb().doc(`Cuentas_Tutor/${uid}/conversaciones/${id}`).set({ status: 'active', createdAt: new Date('2026-09-01T10:00:00Z') });
   return id;
+}
+
+async function mensajesGuardados(uid: string, convId: string) {
+  const snap = await getAdminDb().collection(`Cuentas_Tutor/${uid}/conversaciones/${convId}/mensajes`).orderBy('timestamp').get();
+  return snap.docs.map((d) => d.data());
+}
+
+/** Sube una foto al emulador de Storage y devuelve su URL de descarga con el formato real. */
+async function subirFoto(ruta: string, bytes = Buffer.from([0xff, 0xd8, 0xff, 0xe0]), contentType = 'image/jpeg') {
+  await getAdminStorage().bucket(BUCKET).file(ruta).save(bytes, { contentType });
+  return `http://${process.env.FIREBASE_STORAGE_EMULATOR_HOST}/v0/b/${BUCKET}/o/${encodeURIComponent(ruta)}?alt=media`;
+}
+
+function silenciarErrores() {
+  vi.spyOn(console, 'error').mockImplementation(() => undefined);
 }
 
 let ana: UsuarioDePrueba;
@@ -36,148 +55,208 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe('Guardar mensajes (persistSecureMessage)', () => {
-  it('guarda el mensaje cifrado en la conversación de quien tiene la sesión', async () => {
+describe('Textos de sistema y lectura (persistSecureMessage / getSecureMessages)', () => {
+  it('guarda el texto cifrado y lo marca como de sistema si se pide', async () => {
     const convId = await crearConversacion(ana.uid);
-    const resultado = await persistSecureMessage(ana.idToken, convId, { role: 'user', content: 'Me duele la cabeza' });
-    expect(resultado).toEqual({ success: true });
+    expect(await persistSecureMessage(ana.idToken, convId, { role: 'assistant', content: 'Consulta cerrada', sistema: true })).toEqual({ success: true });
 
-    const mensajes = await getAdminDb().collection(`Cuentas_Tutor/${ana.uid}/conversaciones/${convId}/mensajes`).get();
-    expect(mensajes.size).toBe(1);
-    const guardado = mensajes.docs[0].data();
+    const [guardado] = await mensajesGuardados(ana.uid, convId);
     expect(guardado.isEncrypted).toBe(true);
-    expect(guardado.content).not.toContain('cabeza');
-  });
-
-  it('rechaza una sesión falsa', async () => {
-    vi.spyOn(console, 'error').mockImplementation(() => undefined);
-    const convId = await crearConversacion(ana.uid);
-    const resultado = await persistSecureMessage('token-inventado', convId, { role: 'user', content: 'hola' });
-    expect(resultado.success).toBe(false);
+    expect(guardado.content).not.toContain('cerrada');
+    expect(guardado.origen).toBe('sistema');
   });
 
   it('no permite escribir en la conversación de otra cuenta aunque se conozca su id', async () => {
+    silenciarErrores();
     const convId = await crearConversacion(ana.uid, 'conversacion-de-ana');
-    const resultado = await persistSecureMessage(beto.idToken, convId, { role: 'user', content: 'mensaje falso' });
-    expect(resultado).toEqual({ success: false, error: 'Conversación no encontrada.' });
-
-    const mensajesDeAna = await getAdminDb().collection(`Cuentas_Tutor/${ana.uid}/conversaciones/${convId}/mensajes`).get();
-    expect(mensajesDeAna.size).toBe(0);
+    expect(await persistSecureMessage(beto.idToken, convId, { role: 'user', content: 'falso' })).toEqual({ success: false, error: 'Conversación no encontrada.' });
+    expect(await persistSecureMessage('token-inventado', convId, { role: 'user', content: 'falso' })).toMatchObject({ success: false });
+    expect(await persistSecureMessage(ana.idToken, 'c1/mensajes/x', { role: 'user', content: 'falso' })).toMatchObject({ success: false });
+    expect(await mensajesGuardados(ana.uid, convId)).toHaveLength(0);
   });
 
-  it('rechaza ids de conversación con barras (rutas inyectadas)', async () => {
-    const resultado = await persistSecureMessage(ana.idToken, `c1/mensajes/x`, { role: 'user', content: 'hola' });
-    expect(resultado.success).toBe(false);
-  });
-});
-
-describe('Leer mensajes (getSecureMessages)', () => {
-  it('devuelve los mensajes descifrados y en orden a su dueña', async () => {
+  it('devuelve los mensajes descifrados solo a su dueña', async () => {
     const convId = await crearConversacion(ana.uid);
     await persistSecureMessage(ana.idToken, convId, { role: 'user', content: 'Primero' });
     await persistSecureMessage(ana.idToken, convId, { role: 'assistant', content: 'Segundo' });
 
-    const mensajes = await getSecureMessages(ana.idToken, convId);
-    expect(mensajes.map((m) => [m.role, m.content])).toEqual([
+    expect((await getSecureMessages(ana.idToken, convId)).map((m) => [m.role, m.content])).toEqual([
       ['user', 'Primero'],
       ['assistant', 'Segundo'],
     ]);
-  });
-
-  it('otra cuenta no obtiene los mensajes aunque conozca el id', async () => {
-    const convId = await crearConversacion(ana.uid);
-    await persistSecureMessage(ana.idToken, convId, { role: 'user', content: 'Privado' });
     expect(await getSecureMessages(beto.idToken, convId)).toEqual([]);
   });
 });
 
-describe('Consulta con la Dra. Hilda (sendTeleorientacionMessage)', () => {
-  it('sin sesión no llama a la IA', async () => {
+describe('Enviar un mensaje a la Dra. Hilda (enviarMensajeConsulta)', () => {
+  it('sin sesión o en una conversación ajena no llama a la IA ni guarda nada', async () => {
+    silenciarErrores();
     const { falso, llamadasGemini } = fetchFalso(() => respuestaGemini('no debería llegar'));
     vi.stubGlobal('fetch', falso);
+    const convId = await crearConversacion(ana.uid);
 
-    const resultado = await sendTeleorientacionMessage([{ role: 'user', content: 'hola' }], paciente, '');
-    expect(resultado.success).toBe(false);
+    expect((await enviarMensajeConsulta('', convId, { texto: 'hola' }, paciente)).success).toBe(false);
+    expect((await enviarMensajeConsulta(beto.idToken, convId, { texto: 'hola' }, paciente)).success).toBe(false);
     expect(llamadasGemini).toHaveLength(0);
+    expect(await mensajesGuardados(ana.uid, convId)).toHaveLength(0);
   });
 
-  it('envía el historial y el contexto del paciente, y devuelve la respuesta', async () => {
-    const { falso, llamadasGemini } = fetchFalso(() => respuestaGemini('Te recomiendo hidratarte.'));
+  it('el servidor guarda la pregunta y la respuesta, cifradas, y no reescribe la fecha de creación', async () => {
+    const { falso } = fetchFalso(() => respuestaGemini('Te recomiendo hidratarte.'));
     vi.stubGlobal('fetch', falso);
+    const convId = await crearConversacion(ana.uid);
 
-    const resultado = await sendTeleorientacionMessage(
-      [
-        { role: 'user', content: 'Tengo fiebre' },
-        { role: 'assistant', content: '¿Desde cuándo?' },
-        { role: 'user', content: 'Desde ayer' },
-      ],
-      paciente,
-      ana.idToken
-    );
-
+    const resultado = await enviarMensajeConsulta(ana.idToken, convId, { texto: 'Tengo fiebre' }, paciente);
     expect(resultado).toEqual({ success: true, message: 'Te recomiendo hidratarte.' });
-    expect(llamadasGemini).toHaveLength(1);
+
+    const guardados = await mensajesGuardados(ana.uid, convId);
+    expect(guardados.map((m) => m.role)).toEqual(['user', 'assistant']);
+    expect(guardados.every((m) => m.isEncrypted && !String(m.content).includes('fiebre'))).toBe(true);
+
+    const conversacion = (await getAdminDb().doc(`Cuentas_Tutor/${ana.uid}/conversaciones/${convId}`).get()).data()!;
+    expect(conversacion.createdAt.toDate().toISOString()).toBe('2026-09-01T10:00:00.000Z');
+    expect(conversacion.messageCount).toBe(2);
+  });
+
+  it('arma el historial desde la base de datos, sin los textos de sistema, con el contexto del paciente', async () => {
+    const { falso, llamadasGemini } = fetchFalso(() => respuestaGemini('Desde ayer entonces.'));
+    vi.stubGlobal('fetch', falso);
+    const convId = await crearConversacion(ana.uid);
+    await persistSecureMessage(ana.idToken, convId, { role: 'assistant', content: 'Hola, soy la Dra. Hilda' });
+    await persistSecureMessage(ana.idToken, convId, { role: 'user', content: 'Tengo fiebre' });
+    await persistSecureMessage(ana.idToken, convId, { role: 'assistant', content: 'Error del servicio de IA 503', sistema: true });
+
+    await enviarMensajeConsulta(ana.idToken, convId, { texto: 'Desde ayer' }, paciente);
+
     const { cuerpo } = llamadasGemini[0];
-    expect(cuerpo.contents.map((c: any) => c.role)).toEqual(['user', 'model', 'user']);
+    const textos = cuerpo.contents.map((c: any) => [c.role, c.parts[0].text]);
+    expect(textos).toEqual([
+      ['model', 'Hola, soy la Dra. Hilda'],
+      ['user', 'Tengo fiebre'],
+      ['user', 'Desde ayer'],
+    ]);
     const sistema = cuerpo.systemInstruction.parts[0].text as string;
     expect(sistema).toContain('Dra. Hilda');
     expect(sistema).toContain('Nombre: Ana Pérez');
     expect(sistema).toContain('Alergias: penicilina');
   });
 
-  it('manda las fotos a la IA como imagen, no como texto', async () => {
-    const { falso, llamadasGemini } = fetchFalso((url) =>
-      url.includes('fotos.ejemplo.test')
-        ? new Response(new Uint8Array([0xff, 0xd8, 0xff]), { headers: { 'content-type': 'image/jpeg' } })
-        : respuestaGemini('Veo la lesión.')
-    );
+  it('manda a la IA las fotos de la carpeta de la conversación como imagen', async () => {
+    const { falso, llamadasGemini } = fetchFalso(() => respuestaGemini('Veo la lesión.'));
     vi.stubGlobal('fetch', falso);
+    const convId = await crearConversacion(ana.uid);
+    const url = await subirFoto(`medical-images/${ana.uid}/${convId}/lunar.jpg`);
 
-    const resultado = await sendTeleorientacionMessage(
-      [{ role: 'user', content: '', imageUrls: ['https://fotos.ejemplo.test/lunar.jpg'] }],
-      paciente,
-      ana.idToken
-    );
-
+    const resultado = await enviarMensajeConsulta(ana.idToken, convId, { texto: '', imageUrls: [url] }, paciente);
     expect(resultado.success).toBe(true);
-    const partes = llamadasGemini[0].cuerpo.contents[0].parts;
-    expect(partes[1].inlineData.mimeType).toBe('image/jpeg');
-    expect(partes[1].inlineData.data).toBe(Buffer.from([0xff, 0xd8, 0xff]).toString('base64'));
+
+    const partes = llamadasGemini[0].cuerpo.contents.at(-1).parts;
+    expect(partes[1].inlineData).toEqual({ mimeType: 'image/jpeg', data: Buffer.from([0xff, 0xd8, 0xff, 0xe0]).toString('base64') });
   });
 
-  it('corta en 20 mensajes por hora por cuenta', async () => {
+  it('rechaza fotos de otra dirección, de otra cuenta o de otra conversación, sin descargarlas', async () => {
+    silenciarErrores();
+    const { falso, llamadasGemini } = fetchFalso(() => respuestaGemini('no debería llegar'));
+    const espia = vi.fn(falso);
+    vi.stubGlobal('fetch', espia);
+    const convId = await crearConversacion(ana.uid);
+
+    const urlsProhibidas = [
+      'https://sitio-ajeno.ejemplo/foto.jpg',
+      'http://169.254.169.254/computeMetadata/v1/',
+      await subirFoto(`medical-images/${beto.uid}/${convId}/de-beto.jpg`),
+      await subirFoto(`medical-images/${ana.uid}/otra-conversacion/foto.jpg`),
+      await subirFoto(`medical-images/${ana.uid}/${convId}/no-es-imagen.html`, Buffer.from('<html>'), 'text/html'),
+    ];
+    for (const url of urlsProhibidas) {
+      expect(await enviarMensajeConsulta(ana.idToken, convId, { texto: 'mira', imageUrls: [url] }, paciente)).toEqual({
+        success: false,
+        message: '',
+        error: IMAGEN_NO_VALIDA,
+      });
+    }
+    expect(espia.mock.calls.some(([u]) => String(u).includes('sitio-ajeno') || String(u).includes('169.254'))).toBe(false);
+    expect(llamadasGemini).toHaveLength(0);
+    expect(await mensajesGuardados(ana.uid, convId)).toHaveLength(0);
+  });
+
+  it('rechaza más de 4 fotos y mensajes de más de 10.000 caracteres', async () => {
+    const convId = await crearConversacion(ana.uid);
+    const url = await subirFoto(`medical-images/${ana.uid}/${convId}/a.jpg`);
+
+    expect(await enviarMensajeConsulta(ana.idToken, convId, { texto: 'x', imageUrls: [url, url, url, url, url] }, paciente)).toMatchObject({ error: IMAGEN_NO_VALIDA });
+    expect(await enviarMensajeConsulta(ana.idToken, convId, { texto: 'a'.repeat(10_001) }, paciente)).toMatchObject({ error: MENSAJE_MUY_LARGO });
+    expect(await mensajesGuardados(ana.uid, convId)).toHaveLength(0);
+  });
+
+  it('corta en 20 mensajes por hora, con el aviso de urgencias', async () => {
     await getAdminDb().doc(`rate_limits/${ana.uid}`).set({ count: 20, windowStart: Date.now(), lastRequest: Date.now() });
     const { falso, llamadasGemini } = fetchFalso(() => respuestaGemini('no debería llegar'));
     vi.stubGlobal('fetch', falso);
+    const convId = await crearConversacion(ana.uid);
 
-    const resultado = await sendTeleorientacionMessage([{ role: 'user', content: 'hola' }], paciente, ana.idToken);
+    const resultado = await enviarMensajeConsulta(ana.idToken, convId, { texto: 'hola' }, paciente);
     expect(resultado.success).toBe(false);
-    expect(resultado.error).toContain('20 mensajes por hora');
+    expect((resultado as { error: string }).error).toContain('20 mensajes por hora');
+    expect((resultado as { error: string }).error).toContain(AVISO_URGENCIAS);
     expect(llamadasGemini).toHaveLength(0);
   });
 
-  it('si Gemini bloquea el contenido, lo dice sin mostrar detalles técnicos', async () => {
-    vi.spyOn(console, 'error').mockImplementation(() => undefined);
-    const { falso } = fetchFalso(
-      () => new Response(JSON.stringify({ promptFeedback: { blockReason: 'SAFETY' } }), { status: 200 })
-    );
+  it('si Gemini falla una vez por saturación, reintenta solo y responde', async () => {
+    silenciarErrores();
+    let intento = 0;
+    const { falso, llamadasGemini } = fetchFalso(() => (++intento === 1 ? new Response('overloaded', { status: 503 }) : respuestaGemini('Ya estoy aquí.')));
     vi.stubGlobal('fetch', falso);
+    const convId = await crearConversacion(ana.uid);
 
-    const resultado = await sendTeleorientacionMessage([{ role: 'user', content: 'hola' }], paciente, ana.idToken);
-    expect(resultado).toEqual({
-      success: false,
-      message: '',
-      error: 'No puedo responder a ese contenido. Reformula tu consulta, por favor.',
-    });
+    expect(await enviarMensajeConsulta(ana.idToken, convId, { texto: 'hola' }, paciente)).toEqual({ success: true, message: 'Ya estoy aquí.' });
+    expect(llamadasGemini).toHaveLength(2);
   });
 
-  it('si Gemini falla, devuelve un error y no revienta', async () => {
-    vi.spyOn(console, 'error').mockImplementation(() => undefined);
-    const { falso } = fetchFalso(() => new Response('Service Unavailable', { status: 503 }));
+  it('si Gemini sigue fallando, devuelve el error con el aviso de urgencias y conserva la pregunta', async () => {
+    silenciarErrores();
+    const { falso, llamadasGemini } = fetchFalso(() => new Response('Service Unavailable', { status: 503 }));
     vi.stubGlobal('fetch', falso);
+    const convId = await crearConversacion(ana.uid);
 
-    const resultado = await sendTeleorientacionMessage([{ role: 'user', content: 'hola' }], paciente, ana.idToken);
+    const resultado = await enviarMensajeConsulta(ana.idToken, convId, { texto: 'me duele el pecho' }, paciente);
     expect(resultado.success).toBe(false);
-    expect(resultado.error).toContain('503');
+    expect((resultado as { error: string }).error).toContain(AVISO_URGENCIAS);
+    expect(llamadasGemini).toHaveLength(2);
+    expect((await mensajesGuardados(ana.uid, convId)).map((m) => m.role)).toEqual(['user']);
+  });
+
+  it('si Gemini bloquea el contenido no reintenta', async () => {
+    silenciarErrores();
+    const { falso, llamadasGemini } = fetchFalso(() => new Response(JSON.stringify({ promptFeedback: { blockReason: 'SAFETY' } })));
+    vi.stubGlobal('fetch', falso);
+    const convId = await crearConversacion(ana.uid);
+
+    const resultado = await enviarMensajeConsulta(ana.idToken, convId, { texto: 'hola' }, paciente);
+    expect((resultado as { error: string }).error).toContain('Reformula tu consulta');
+    expect(llamadasGemini).toHaveLength(1);
+  });
+});
+
+describe('Saludo inicial (saludarEnConsulta)', () => {
+  it('saluda en una conversación vacía y guarda el saludo', async () => {
+    const { falso, llamadasGemini } = fetchFalso(() => respuestaGemini('¡Hola, Ana! Soy la Dra. Hilda.'));
+    vi.stubGlobal('fetch', falso);
+    const convId = await crearConversacion(ana.uid);
+
+    const resultado = await saludarEnConsulta(ana.idToken, convId, { nombre: 'Ana', primeraVez: true, periodo: 'Buenos días' }, paciente);
+    expect(resultado).toEqual({ success: true, message: '¡Hola, Ana! Soy la Dra. Hilda.' });
+    expect(llamadasGemini[0].cuerpo.contents[0].parts[0].text).toContain('Saluda al usuario llamado Ana por primera vez');
+    expect((await mensajesGuardados(ana.uid, convId)).map((m) => m.role)).toEqual(['assistant']);
+  });
+
+  it('no vuelve a saludar si la conversación ya tiene mensajes', async () => {
+    const { falso, llamadasGemini } = fetchFalso(() => respuestaGemini('no debería llegar'));
+    vi.stubGlobal('fetch', falso);
+    const convId = await crearConversacion(ana.uid);
+    await persistSecureMessage(ana.idToken, convId, { role: 'assistant', content: 'Hola' });
+
+    expect((await saludarEnConsulta(ana.idToken, convId, { primeraVez: false, periodo: 'Buenas tardes' }, paciente)).success).toBe(false);
+    expect(llamadasGemini).toHaveLength(0);
   });
 });

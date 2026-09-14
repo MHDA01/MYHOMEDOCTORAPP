@@ -27,3 +27,4 @@ process.env.GOOGLE_CLOUD_PROJECT = 'demo-mhda';
 // Clave de cifrado solo para pruebas (32 bytes en base64). No es la de producción.
 process.env.MHDA_ENCRYPTION_KEY = Buffer.alloc(32, 7).toString('base64');
 process.env.GEMINI_API_KEY = 'clave-de-prueba';
+process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET = 'demo-mhda.appspot.com';

@@ -23,3 +23,7 @@ export function getAdminAuth(): admin.auth.Auth {
 export function getAdminDb(): FirebaseFirestore.Firestore {
   return getApp().firestore();
 }
+
+export function getAdminStorage(): admin.storage.Storage {
+  return getApp().storage();
+}

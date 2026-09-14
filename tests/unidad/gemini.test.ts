@@ -48,6 +48,26 @@ describe('Cliente de Gemini (generateWithGemini)', () => {
     expect(await generateWithGemini({ ...pedido, timeoutMs: 50 })).toMatchObject({ ok: false, kind: 'timeout' });
   });
 
+  it('con reintentos, repite ante saturación (429) o error del servicio (5xx)', async () => {
+    let intento = 0;
+    const { falso, llamadasGemini } = fetchFalso(() => (++intento === 1 ? new Response('quota', { status: 429 }) : respuestaGemini('ok')));
+    vi.stubGlobal('fetch', falso);
+    expect(await generateWithGemini({ ...pedido, reintentos: 1 })).toEqual({ ok: true, text: 'ok' });
+    expect(llamadasGemini).toHaveLength(2);
+  });
+
+  it('sin reintentos, o ante errores que no son pasajeros, no repite', async () => {
+    const saturado = fetchFalso(() => new Response('quota', { status: 429 }));
+    vi.stubGlobal('fetch', saturado.falso);
+    expect(await generateWithGemini(pedido)).toMatchObject({ ok: false, status: 429 });
+    expect(saturado.llamadasGemini).toHaveLength(1);
+
+    const prohibido = fetchFalso(() => new Response('forbidden', { status: 403 }));
+    vi.stubGlobal('fetch', prohibido.falso);
+    expect(await generateWithGemini({ ...pedido, reintentos: 2 })).toMatchObject({ ok: false, status: 403 });
+    expect(prohibido.llamadasGemini).toHaveLength(1);
+  });
+
   it('sin clave configurada no intenta llamar', async () => {
     const clave = process.env.GEMINI_API_KEY;
     delete process.env.GEMINI_API_KEY;

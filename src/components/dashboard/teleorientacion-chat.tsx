@@ -21,12 +21,13 @@ import {
   Timestamp 
 } from 'firebase/firestore';
 import {
-  sendTeleorientacionMessage,
+  enviarMensajeConsulta,
+  saludarEnConsulta,
   persistSecureMessage,
   getSecureMessages,
-  type TeleorientacionMessage,
   type PatientStructuredContext,
 } from '@/app/actions/teleorientacion';
+import { conAvisoDeUrgencias } from '@/lib/textos-chat';
 import {
   saveFamilyMember,
   getSecureFamilyMembers 
@@ -835,25 +836,15 @@ export function TeleorientacionChatPage() {
         const userName = selectedMember.firstName?.trim();
         const isFirstEver = conversations.length <= 1 && messages.length === 0;
 
-        let greetingInstruction: string;
-        if (isFirstEver) {
-          greetingInstruction = userName
-            ? `Saluda al usuario llamado ${userName} por primera vez. Preséntate y explícale qué es la teleorientación.`
-            : 'Saluda al usuario por primera vez. Preséntate y explícale qué es la teleorientación.';
-        } else {
-          const dayPeriod = getDayPeriodGreeting();
-          greetingInstruction = userName
-            ? `¡${dayPeriod}, ${userName}! Saluda brevemente y pregúntale en qué puedes orientarle hoy.`
-            : `¡${dayPeriod}! Saluda brevemente y pregúntale en qué puedes orientarle hoy.`;
-        }
-
         const patientCtx = buildPatientContext(selectedMember, healthInfo?.allergies);
         const idToken = (await auth.currentUser?.getIdToken()) || '';
 
-        const result = await sendTeleorientacionMessage(
-          [{ role: 'user', content: greetingInstruction }],
-          patientCtx,
-          idToken
+        // La instrucción del saludo se arma en el servidor, que además lo guarda.
+        const result = await saludarEnConsulta(
+          idToken,
+          selectedConv.id,
+          { nombre: userName, primeraVez: isFirstEver, periodo: getDayPeriodGreeting() },
+          patientCtx
         );
 
         if (!result.success) {
@@ -872,7 +863,6 @@ export function TeleorientacionChatPage() {
           if (prev.length > 0) return prev;
           return [assistantMsg];
         });
-        await persistSecureMessage(idToken, selectedConv.id, assistantMsg);
       } catch (err) {
         console.error('[Teleorientación] Error enviando saludo:', err);
         initialGreetingTriggeredRef.current[convKey] = false;
@@ -920,12 +910,12 @@ export function TeleorientacionChatPage() {
           const uploadErrorMsg: ChatMessage = {
             id: uid(),
             role: 'assistant',
-            content: 'No pude subir la imagen. Verifica tu conexión e intenta de nuevo.',
+            content: conAvisoDeUrgencias('No pude subir la imagen. Verifica tu conexión e intenta de nuevo.'),
             timestamp: new Date(),
           };
           setMessages((prev) => [...prev, uploadErrorMsg]);
           auth.currentUser?.getIdToken()
-            .then((idToken) => persistSecureMessage(idToken, selectedConv.id, uploadErrorMsg))
+            .then((idToken) => persistSecureMessage(idToken, selectedConv.id, { ...uploadErrorMsg, sistema: true }))
             .catch(() => undefined);
           return;
         }
@@ -939,19 +929,17 @@ export function TeleorientacionChatPage() {
         imageUrls: imageUrls.length > 0 ? imageUrls : undefined,
       };
 
-      const nextMessages = [...messages, userMsg];
-      setMessages(nextMessages);
+      setMessages((prev) => [...prev, userMsg]);
       setIsLoading(true);
 
       try {
-        await persistSecureMessage((await auth.currentUser?.getIdToken()) || '', selectedConv.id, userMsg);
-
         // Cierre por cambio de tema: SOLO cuando el paciente lo dice explícitamente con sus
         // propias palabras (ej. "otra consulta", "cambio de tema"). Ya no se infiere el cambio
         // de tema por solapamiento de palabras contra el primer mensaje — ese heurístico
         // generaba falsos positivos con preguntas de continuidad normales (ej. adjuntar una
         // imagen sin texto, o preguntar algo relacionado con vocabulario distinto al mensaje 1).
         if (!images?.length && isExplicitTopicChange(trimmedText)) {
+          await persistSecureMessage((await auth.currentUser?.getIdToken()) || '', selectedConv.id, userMsg);
           const consumed = await consumeToken(selectedConv.id);
 
           const assistantMsg: ChatMessage = {
@@ -962,7 +950,7 @@ export function TeleorientacionChatPage() {
           };
 
           setMessages((prev) => [...prev, assistantMsg]);
-          await persistSecureMessage((await auth.currentUser?.getIdToken()) || '', selectedConv.id, assistantMsg);
+          await persistSecureMessage((await auth.currentUser?.getIdToken()) || '', selectedConv.id, { ...assistantMsg, sistema: true });
 
           if (consumed) {
             setConversationCompleted(true);
@@ -978,19 +966,19 @@ export function TeleorientacionChatPage() {
           return;
         }
 
-        const history: TeleorientacionMessage[] = nextMessages.map((m) => ({
-          role: m.role as 'user' | 'assistant',
-          content: m.content,
-          imageUrls: m.imageUrls,
-        }));
-
         const patientCtx = selectedMember
           ? buildPatientContext(selectedMember, healthInfo?.allergies)
           : { firstName: 'Paciente', lastName: '' };
 
         const idToken = (await auth.currentUser?.getIdToken()) || '';
 
-        const result = await sendTeleorientacionMessage(history, patientCtx, idToken);
+        // El servidor guarda la pregunta y la respuesta, y arma el historial desde Firestore.
+        const result = await enviarMensajeConsulta(
+          idToken,
+          selectedConv.id,
+          { texto: text, imageUrls },
+          patientCtx
+        );
 
         if (result.success) {
           const assistantMsg: ChatMessage = {
@@ -1000,7 +988,6 @@ export function TeleorientacionChatPage() {
             timestamp: new Date(),
           };
           setMessages((prev) => [...prev, assistantMsg]);
-          await persistSecureMessage((await auth.currentUser?.getIdToken()) || '', selectedConv.id, assistantMsg);
 
           if (isClosingMessage(text)) {
             const consumed = await consumeToken(selectedConv.id);
@@ -1013,7 +1000,7 @@ export function TeleorientacionChatPage() {
             };
 
             setMessages((prev) => [...prev, closingAssistantMsg]);
-            await persistSecureMessage((await auth.currentUser?.getIdToken()) || '', selectedConv.id, closingAssistantMsg);
+            await persistSecureMessage((await auth.currentUser?.getIdToken()) || '', selectedConv.id, { ...closingAssistantMsg, sistema: true });
 
             if (consumed) {
               setConversationCompleted(true);
@@ -1027,27 +1014,28 @@ export function TeleorientacionChatPage() {
           const errorMsg: ChatMessage = {
             id: uid(),
             role: 'assistant',
-            content: result.error ?? 'Lo siento, no pude procesar tu consulta. Intenta de nuevo.',
+            content: result.error || conAvisoDeUrgencias('Lo siento, no pude procesar tu consulta. Intenta de nuevo.'),
             timestamp: new Date(),
           };
           setMessages((prev) => [...prev, errorMsg]);
-          await persistSecureMessage((await auth.currentUser?.getIdToken()) || '', selectedConv.id, errorMsg);
+          await persistSecureMessage((await auth.currentUser?.getIdToken()) || '', selectedConv.id, { ...errorMsg, sistema: true });
         }
       } catch (err) {
         console.error('[Teleorientación] Error enviando mensaje:', err);
         const errorMsg: ChatMessage = {
           id: uid(),
           role: 'assistant',
-          content: 'Ocurrió un error de conexión. Verifica tu internet e intenta de nuevo.',
+          content: conAvisoDeUrgencias('Ocurrió un error de conexión. Verifica tu internet e intenta de nuevo.'),
           timestamp: new Date(),
         };
         setMessages((prev) => [...prev, errorMsg]);
-        await persistSecureMessage((await auth.currentUser?.getIdToken()) || '', selectedConv.id, errorMsg);
+        await persistSecureMessage((await auth.currentUser?.getIdToken()) || '', selectedConv.id, { ...errorMsg, sistema: true })
+          .catch(() => undefined);
       } finally {
         setIsLoading(false);
       }
     },
-    [messages, selectedConv, selectedMember, healthInfo, user, conversationCompleted, hasTokens, isExplicitTopicChange, isClosingMessage, consumeToken, checkTokens]
+    [selectedConv, selectedMember, healthInfo, user, conversationCompleted, hasTokens, isExplicitTopicChange, isClosingMessage, consumeToken, checkTokens]
   );
 
   /* ---- Nueva sesion ---- */
