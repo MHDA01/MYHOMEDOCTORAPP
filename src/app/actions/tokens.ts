@@ -1,6 +1,6 @@
 "use server";
 
-import { getAdminDb } from "@/lib/firebase-admin";
+import { getAdminAuth, getAdminDb } from "@/lib/firebase-admin";
 import { getUserTokenState } from "@/lib/token-system";
 import { TokenSystem } from "@/lib/types";
 
@@ -17,16 +17,27 @@ function toDate(value: any): Date {
 }
 
 /**
+ * Las Server Actions son endpoints públicos: el uid se obtiene del token
+ * verificado, nunca de un parámetro que mande el cliente.
+ */
+async function uidFromIdToken(idToken: string): Promise<string> {
+  if (!idToken) throw new Error("No autenticado.");
+  const decodedToken = await getAdminAuth().verifyIdToken(idToken);
+  return decodedToken.uid;
+}
+
+/**
  * Verificar si el usuario tiene tokens disponibles para una consulta.
  * Delega en getUserTokenState (src/lib/token-system.ts), que es la única
  * fuente de verdad para el estado de tokens — evita que esta lógica se
  * duplique y se desincronice entre archivos.
  *
- * @param uid - ID del usuario (tutor)
+ * @param idToken - Firebase ID token del usuario (tutor)
  * @returns { available: boolean, tokens: { free, paid }, needsPayment: boolean }
  */
-export async function checkTokenAvailability(uid: string) {
+export async function checkTokenAvailability(idToken: string) {
   try {
+    const uid = await uidFromIdToken(idToken);
     const state = await getUserTokenState(uid);
     return {
       available: state.available,
@@ -43,8 +54,9 @@ export async function checkTokenAvailability(uid: string) {
 /**
  * Obtener información completa de tokens del usuario.
  */
-export async function getTokenInfo(uid: string): Promise<TokenSystem> {
+export async function getTokenInfo(idToken: string): Promise<TokenSystem> {
   try {
+    const uid = await uidFromIdToken(idToken);
     const state = await getUserTokenState(uid);
     return {
       free: state.tokens.free,
@@ -66,8 +78,9 @@ export async function getTokenInfo(uid: string): Promise<TokenSystem> {
 /**
  * Obtener historial de transacciones de pago.
  */
-export async function getTransactionHistory(uid: string) {
+export async function getTransactionHistory(idToken: string) {
   try {
+    const uid = await uidFromIdToken(idToken);
     const transactionsRef = db
       .collection("Cuentas_Tutor")
       .doc(uid)

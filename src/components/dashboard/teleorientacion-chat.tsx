@@ -718,7 +718,9 @@ export function TeleorientacionChatPage() {
     setTokenLoading(true);
 
     try {
-      const result = await checkTokenAvailability(user.uid);
+      const idToken = await auth.currentUser?.getIdToken();
+      if (!idToken) return null;
+      const result = await checkTokenAvailability(idToken);
       const tokenState = {
         free: result.tokens.free,
         paid: result.tokens.paid,
@@ -870,7 +872,7 @@ export function TeleorientacionChatPage() {
           if (prev.length > 0) return prev;
           return [assistantMsg];
         });
-        await persistSecureMessage(user.uid, selectedConv.id, assistantMsg);
+        await persistSecureMessage(idToken, selectedConv.id, assistantMsg);
       } catch (err) {
         console.error('[Teleorientación] Error enviando saludo:', err);
         initialGreetingTriggeredRef.current[convKey] = false;
@@ -922,7 +924,9 @@ export function TeleorientacionChatPage() {
             timestamp: new Date(),
           };
           setMessages((prev) => [...prev, uploadErrorMsg]);
-          persistSecureMessage(user.uid, selectedConv.id, uploadErrorMsg).catch(() => undefined);
+          auth.currentUser?.getIdToken()
+            .then((idToken) => persistSecureMessage(idToken, selectedConv.id, uploadErrorMsg))
+            .catch(() => undefined);
           return;
         }
       }
@@ -940,7 +944,7 @@ export function TeleorientacionChatPage() {
       setIsLoading(true);
 
       try {
-        await persistSecureMessage(user.uid, selectedConv.id, userMsg);
+        await persistSecureMessage((await auth.currentUser?.getIdToken()) || '', selectedConv.id, userMsg);
 
         // Cierre por cambio de tema: SOLO cuando el paciente lo dice explícitamente con sus
         // propias palabras (ej. "otra consulta", "cambio de tema"). Ya no se infiere el cambio
@@ -958,7 +962,7 @@ export function TeleorientacionChatPage() {
           };
 
           setMessages((prev) => [...prev, assistantMsg]);
-          await persistSecureMessage(user.uid, selectedConv.id, assistantMsg);
+          await persistSecureMessage((await auth.currentUser?.getIdToken()) || '', selectedConv.id, assistantMsg);
 
           if (consumed) {
             setConversationCompleted(true);
@@ -996,7 +1000,7 @@ export function TeleorientacionChatPage() {
             timestamp: new Date(),
           };
           setMessages((prev) => [...prev, assistantMsg]);
-          await persistSecureMessage(user.uid, selectedConv.id, assistantMsg);
+          await persistSecureMessage((await auth.currentUser?.getIdToken()) || '', selectedConv.id, assistantMsg);
 
           if (isClosingMessage(text)) {
             const consumed = await consumeToken(selectedConv.id);
@@ -1009,7 +1013,7 @@ export function TeleorientacionChatPage() {
             };
 
             setMessages((prev) => [...prev, closingAssistantMsg]);
-            await persistSecureMessage(user.uid, selectedConv.id, closingAssistantMsg);
+            await persistSecureMessage((await auth.currentUser?.getIdToken()) || '', selectedConv.id, closingAssistantMsg);
 
             if (consumed) {
               setConversationCompleted(true);
@@ -1027,7 +1031,7 @@ export function TeleorientacionChatPage() {
             timestamp: new Date(),
           };
           setMessages((prev) => [...prev, errorMsg]);
-          await persistSecureMessage(user.uid, selectedConv.id, errorMsg);
+          await persistSecureMessage((await auth.currentUser?.getIdToken()) || '', selectedConv.id, errorMsg);
         }
       } catch (err) {
         console.error('[Teleorientación] Error enviando mensaje:', err);
@@ -1038,7 +1042,7 @@ export function TeleorientacionChatPage() {
           timestamp: new Date(),
         };
         setMessages((prev) => [...prev, errorMsg]);
-        await persistSecureMessage(user.uid, selectedConv.id, errorMsg);
+        await persistSecureMessage((await auth.currentUser?.getIdToken()) || '', selectedConv.id, errorMsg);
       } finally {
         setIsLoading(false);
       }

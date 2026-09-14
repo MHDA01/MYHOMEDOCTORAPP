@@ -1,12 +1,45 @@
+import { createHash } from 'crypto';
 import { NextResponse } from 'next/server';
 import { getAdminDb } from '@/lib/firebase-admin';
 import { Timestamp } from 'firebase-admin/firestore';
 
 export const dynamic = 'force-dynamic';
 
+/**
+ * Verifica el checksum que Wompi firma en cada evento, con WOMPY_EVENTS_SECRET
+ * (misma verificación que wompyWebhook en functions/src/wompy.ts). Sin esto
+ * cualquiera podría mandar un uid en `reference` y acreditarse tokens pagados.
+ * Sin el secreto configurado, rechaza todo.
+ */
+function verifyWompiSignature(event: any): boolean {
+  const secret = process.env.WOMPY_EVENTS_SECRET;
+  if (!secret) return false;
+
+  const properties: string[] = event?.signature?.properties;
+  const checksum: string = event?.signature?.checksum;
+  const timestamp = event?.timestamp;
+
+  if (!Array.isArray(properties) || !properties.length || !checksum || !timestamp) {
+    return false;
+  }
+
+  const values = properties.map((path) =>
+    path.split('.').reduce((obj: any, key: string) => obj?.[key], event.data)
+  );
+
+  const computed = createHash('sha256').update(values.join('') + timestamp + secret).digest('hex');
+  return computed.toLowerCase() === String(checksum).toLowerCase();
+}
+
 export async function POST(request: Request) {
   try {
     const body = await request.json().catch(() => ({}));
+
+    if (!verifyWompiSignature(body)) {
+      console.error('[WOMPY WEBHOOK] Firma inválida, evento rechazado');
+      return NextResponse.json({ error: 'Firma inválida' }, { status: 401 });
+    }
+
     const event = body?.event || body;
 
     const wompyId = event?.data?.id || event?.id;
