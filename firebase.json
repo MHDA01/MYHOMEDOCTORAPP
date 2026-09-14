@@ -13,7 +13,7 @@
     ],
     "redirects": [
       { "source": "/", "destination": "https://myhomedoctorapp.com/", "type": 301 },
-      { "source": "/:ruta*", "destination": "https://myhomedoctorapp.com/:ruta", "type": 301 }
+      { "regex": "^/(?P<ruta>(?:[^_]|_[^_]).*)$", "destination": "https://myhomedoctorapp.com/:ruta", "type": 301 }
     ]
   },
   "firestore": {
