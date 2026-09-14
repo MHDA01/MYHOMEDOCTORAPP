@@ -1,13 +1,13 @@
 "use strict";
 /**
- * @fileoverview LÃ³gica para los recordatorios de citas y medicamentos.
+ * @fileoverview Lógica para los recordatorios de citas y medicamentos.
  * Contiene las Cloud Functions programadas que se encargan de enviar
  * notificaciones push a los usuarios.
  *
- * Estructura Firestore canÃ³nica:
- *   Cuentas_Tutor/{uid}/appointments/{id}   â† citas del Titular
- *   Cuentas_Tutor/{uid}/medications/{id}    â† medicamentos del Titular
- *   Cuentas_Tutor/{uid}.notificationToken   â† FCM token del dispositivo
+ * Estructura Firestore canónica:
+ *   Cuentas_Tutor/{uid}/appointments/{id}   ← citas del Titular
+ *   Cuentas_Tutor/{uid}/medications/{id}    ← medicamentos del Titular
+ *   Cuentas_Tutor/{uid}.notificationToken   ← FCM token del dispositivo
  */
 var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
@@ -50,12 +50,33 @@ try {
     admin.initializeApp();
 }
 catch (e) {
-    // Ya inicializado en otro mÃ³dulo
+    // Ya inicializado en otro módulo
 }
 const db = admin.firestore();
 const messaging = admin.messaging();
 /**
- * FunciÃ³n programada para verificar y enviar recordatorios de citas.
+ * Las funciones corren en UTC, pero la fecha de la cita y las horas de los
+ * medicamentos las escribe el usuario en hora de Colombia.
+ */
+const ZONA_HORARIA = "America/Bogota";
+function horaEnBogota(fecha) {
+    const partes = new Intl.DateTimeFormat("en-US", {
+        timeZone: ZONA_HORARIA,
+        hour: "numeric",
+        minute: "numeric",
+        hourCycle: "h23",
+    }).formatToParts(fecha);
+    const valor = (tipo) => { var _a; return Number((_a = partes.find((p) => p.type === tipo)) === null || _a === void 0 ? void 0 : _a.value); };
+    return { hora: valor("hour"), minuto: valor("minute") };
+}
+/** "el lunes, 15 de septiembre a las 3:00 p. m." (con "a la" para la 1). */
+function cuandoEsLaCita(fecha) {
+    const dia = fecha.toLocaleDateString("es-CO", { timeZone: ZONA_HORARIA, weekday: "long", day: "numeric", month: "long" });
+    const hora = fecha.toLocaleTimeString("es-CO", { timeZone: ZONA_HORARIA, hour: "numeric", minute: "2-digit" });
+    return `el ${dia} ${hora.startsWith("1:") ? "a la" : "a las"} ${hora}`;
+}
+/**
+ * Función programada para verificar y enviar recordatorios de citas.
  * Se ejecuta cada 5 minutos.
  *
  * Lee appointments de todas las cuentas usando collectionGroup para
@@ -65,8 +86,8 @@ exports.checkAppointmentReminders = functions
     .region("us-central1")
     .pubsub.schedule("every 5 minutes")
     .onRun(async (_context) => {
-    var _a, _b, _c;
-    console.log("Iniciando verificaciÃ³n de recordatorios de citas.");
+    var _a, _b;
+    console.log("Iniciando verificación de recordatorios de citas.");
     const now = new Date();
     const oneHourFromNow = new Date(now.getTime() + 60 * 60 * 1000);
     try {
@@ -83,24 +104,27 @@ exports.checkAppointmentReminders = functions
             if (!cita.date || !cita.reminder)
                 continue;
             const fechaCita = cita.date.toDate();
-            // Mapear clave de reminder a horas (ej: '1h' â†’ 1, '2d' â†’ 48)
+            // Mapear clave de reminder a horas (ej: '1h' → 1, '2d' → 48)
             const reminderMap = { '1h': 1, '2h': 2, '24h': 24, '2d': 48 };
-            const reminderHours = (_a = reminderMap[cita.reminder]) !== null && _a !== void 0 ? _a : 24;
+            const reminderHours = reminderMap[cita.reminder];
+            // "none" es "Sin recordatorio" en el formulario; antes caía en 24 h y avisaba igual.
+            if (!reminderHours)
+                continue;
             const reminderTime = new Date(fechaCita.getTime() - reminderHours * 60 * 60 * 1000);
             if (reminderTime < now || reminderTime >= oneHourFromNow)
                 continue;
             // El uid es el ancestro en el path: Cuentas_Tutor/{uid}/appointments/{id}
-            const uid = (_b = docSnap.ref.parent.parent) === null || _b === void 0 ? void 0 : _b.id;
+            const uid = (_a = docSnap.ref.parent.parent) === null || _a === void 0 ? void 0 : _a.id;
             if (!uid)
                 continue;
             const userSnap = await db.collection("Cuentas_Tutor").doc(uid).get();
-            const token = (_c = userSnap.data()) === null || _c === void 0 ? void 0 : _c.notificationToken;
+            const token = (_b = userSnap.data()) === null || _b === void 0 ? void 0 : _b.notificationToken;
             if (!token)
                 continue;
             const promise = messaging.send({
                 notification: {
-                    title: "Recordatorio de Cita MÃ©dica",
-                    body: `No olvides tu cita con ${cita.doctor || 'el mÃ©dico'} (${cita.specialty || ''}) a las ${fechaCita.toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" })}.`,
+                    title: "Recordatorio de Cita Médica",
+                    body: `No olvides tu cita con ${cita.doctor || 'el médico'} (${cita.specialty || ''}) ${cuandoEsLaCita(fechaCita)}.`,
                 },
                 token,
             })
@@ -109,7 +133,7 @@ exports.checkAppointmentReminders = functions
             notificationPromises.push(promise);
         }
         await Promise.all(notificationPromises);
-        console.log("VerificaciÃ³n de recordatorios de citas completada.");
+        console.log("Verificación de recordatorios de citas completada.");
     }
     catch (error) {
         console.error("Error general en checkAppointmentReminders:", error);
@@ -117,15 +141,15 @@ exports.checkAppointmentReminders = functions
     return null;
 });
 /**
- * FunciÃ³n programada para verificar y enviar recordatorios de medicamentos.
+ * Función programada para verificar y enviar recordatorios de medicamentos.
  * Se ejecuta cada 5 minutos.
  */
 exports.checkMedicationReminders = functions
     .region("us-central1")
     .pubsub.schedule("every 5 minutes")
     .onRun(async (_context) => {
-    console.log("Iniciando verificaciÃ³n de recordatorios de medicamentos.");
-    const nowTime = new Date();
+    console.log("Iniciando verificación de recordatorios de medicamentos.");
+    const ahora = horaEnBogota(new Date());
     try {
         const usersSnapshot = await db.collection("Cuentas_Tutor").get();
         const notificationPromises = [];
@@ -145,10 +169,10 @@ exports.checkMedicationReminders = functions
                     continue;
                 for (const timeStr of med.time) {
                     const [hour, minute] = timeStr.split(":").map(Number);
-                    // Enviar si los HH:mm del momento actual coinciden con el slot (ventana de 5 min)
-                    if (nowTime.getHours() === hour &&
-                        nowTime.getMinutes() >= minute &&
-                        nowTime.getMinutes() < minute + 5) {
+                    // Enviar si la hora actual de Colombia coincide con el slot (ventana de 5 min)
+                    if (ahora.hora === hour &&
+                        ahora.minuto >= minute &&
+                        ahora.minuto < minute + 5) {
                         const promise = messaging.send({
                             notification: {
                                 title: "Recordatorio de Medicamento",
@@ -159,13 +183,13 @@ exports.checkMedicationReminders = functions
                             .then(() => console.log(`Recordatorio de ${med.name} enviado a ${userDoc.id}`))
                             .catch(err => console.error(`Error al enviar recordatorio de medicamento ${medDoc.id}:`, err));
                         notificationPromises.push(promise);
-                        break; // una notificaciÃ³n por medicamento por ejecuciÃ³n
+                        break; // una notificación por medicamento por ejecución
                     }
                 }
             }
         }
         await Promise.all(notificationPromises);
-        console.log("VerificaciÃ³n de recordatorios de medicamentos completada.");
+        console.log("Verificación de recordatorios de medicamentos completada.");
     }
     catch (error) {
         console.error("Error general en checkMedicationReminders:", error);
