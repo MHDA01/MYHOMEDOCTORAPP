@@ -32,7 +32,7 @@ const db = admin.firestore();
 
 const WOMPY_PRIVATE_KEY = process.env.WOMPY_PRIVATE_KEY || process.env.WOMPY_API_KEY;
 const WOMPY_EVENTS_SECRET = process.env.WOMPY_EVENTS_SECRET;
-const WOMPY_REDIRECT_URL = process.env.WOMPY_REDIRECT_URL || process.env.WOMPY_SUCCESS_URL || 'https://myhomedoctorapp.web.app/dashboard/teleorientacion';
+const WOMPY_REDIRECT_URL = process.env.WOMPY_REDIRECT_URL || process.env.WOMPY_SUCCESS_URL || 'https://myhomedoctorapp.com/dashboard/teleorientacion';
 export const CONSULTATION_COST_COP = parseInt(process.env.CONSULTATION_COST_COP || "24500");
 export const PAID_TOKENS_PER_MONTH = parseInt(process.env.PAID_TOKENS_PER_MONTH || "210");
 

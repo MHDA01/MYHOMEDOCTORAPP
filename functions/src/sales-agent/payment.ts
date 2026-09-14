@@ -15,7 +15,7 @@ import { Channel } from "./types";
 import { FOUNDER_PRICE_COP } from "./prompt";
 
 const REDIRECT_URL =
-  process.env.SALES_AGENT_REDIRECT_URL || "https://myhomedoctorapp.web.app/dashboard/teleorientacion";
+  process.env.SALES_AGENT_REDIRECT_URL || "https://myhomedoctorapp.com/dashboard/teleorientacion";
 
 export async function createLeadPaymentLink(
   channel: Channel,

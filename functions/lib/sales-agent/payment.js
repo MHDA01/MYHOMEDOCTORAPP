@@ -47,7 +47,7 @@ const admin = __importStar(require("firebase-admin"));
 const wompi_client_1 = require("../wompi-client");
 const store_1 = require("./store");
 const prompt_1 = require("./prompt");
-const REDIRECT_URL = process.env.SALES_AGENT_REDIRECT_URL || "https://myhomedoctorapp.web.app/dashboard/teleorientacion";
+const REDIRECT_URL = process.env.SALES_AGENT_REDIRECT_URL || "https://myhomedoctorapp.com/dashboard/teleorientacion";
 async function createLeadPaymentLink(channel, externalId, email, nombre) {
     var _a;
     const reference = `lead_${channel}_${externalId}_${Date.now()}`;

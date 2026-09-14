@@ -24,7 +24,7 @@ export async function POST(request: Request) {
 
     const wompyBaseUrl = process.env.WOMPY_BASE_URL || 'https://api.wompy.com';
     const wompyPrivateKey = process.env.WOMPY_PRIVATE_KEY || process.env.WOMPY_API_KEY;
-    const wompyRedirectUrl = process.env.WOMPY_REDIRECT_URL || process.env.WOMPY_SUCCESS_URL || 'https://myhomedoctorapp.web.app/dashboard/teleorientacion';
+    const wompyRedirectUrl = process.env.WOMPY_REDIRECT_URL || process.env.WOMPY_SUCCESS_URL || 'https://myhomedoctorapp.com/dashboard/teleorientacion';
     const amount = Number(process.env.CONSULTATION_COST_COP || 24500);
     const paidTokens = Number(process.env.PAID_TOKENS_PER_MONTH || 210);
 
