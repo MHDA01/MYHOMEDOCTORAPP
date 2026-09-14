@@ -99,13 +99,6 @@
         { "fieldPath": "autoRenew", "order": "ASCENDING" },
         { "fieldPath": "nextBillingDate", "order": "ASCENDING" }
       ]
-    },
-    {
-      "collectionGroup": "dailyTips",
-      "queryScope": "COLLECTION_GROUP",
-      "fields": [
-        { "fieldPath": "date", "order": "ASCENDING" }
-      ]
     }
   ],
   "fieldOverrides": [
@@ -123,6 +116,16 @@
       "fieldPath": "tags",
       "indexes": [
         { "arrayConfig": "CONTAINS", "queryScope": "COLLECTION" }
+      ]
+    },
+    {
+      "collectionGroup": "dailyTips",
+      "fieldPath": "date",
+      "indexes": [
+        { "order": "ASCENDING", "queryScope": "COLLECTION" },
+        { "order": "DESCENDING", "queryScope": "COLLECTION" },
+        { "arrayConfig": "CONTAINS", "queryScope": "COLLECTION" },
+        { "order": "ASCENDING", "queryScope": "COLLECTION_GROUP" }
       ]
     }
   ]
