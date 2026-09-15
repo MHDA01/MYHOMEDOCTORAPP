@@ -1,6 +1,5 @@
 import { getAdminDb } from '@/lib/firebase-admin';
-import { COLECCION_TUTOR, DOC_TOKENS, SUBCOLECCION_TRANSACTIONS } from '@/lib/constants';
-import { Timestamp } from 'firebase-admin/firestore';
+import { COLECCION_TUTOR, DOC_TOKENS } from '@/lib/constants';
 import { ACCESO_LIBRE } from '@/config/acceso';
 
 const db = getAdminDb();
@@ -20,10 +19,6 @@ function toDate(value: any): Date {
 
 function getTokensRef(uid: string) {
   return db.collection(COLECCION_TUTOR).doc(uid).collection(DOC_TOKENS).doc('config');
-}
-
-function getTransactionsRef(uid: string) {
-  return db.collection(COLECCION_TUTOR).doc(uid).collection(SUBCOLECCION_TRANSACTIONS);
 }
 
 async function ensureTokenDocument(uid: string) {
@@ -82,14 +77,4 @@ export async function getUserTokenState(uid: string) {
     trialExpired,
     accesoLibre: false,
   };
-}
-
-export async function logPaymentTransaction(uid: string, payload: Record<string, any>) {
-  const ref = getTransactionsRef(uid).doc();
-  await ref.set({
-    userId: uid,
-    type: 'payment',
-    createdAt: Timestamp.now(),
-    ...payload,
-  });
 }

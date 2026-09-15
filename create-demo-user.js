@@ -18,7 +18,11 @@ const auth = admin.auth();
 const db = admin.firestore();
 
 const email = 'demo@myhomedoctorapp.local';
-const password = 'Demo1234!';
+const password = process.env.DEMO_USER_PASSWORD;
+if (!password) {
+  console.error('Define DEMO_USER_PASSWORD en el entorno; la contraseña no va en el repositorio (es público).');
+  process.exit(1);
+}
 const displayName = 'Demo Usuario';
 
 (async () => {
@@ -94,7 +98,6 @@ const displayName = 'Demo Usuario';
 
     console.log('Firestore inicializado para el usuario de prueba.');
     console.log('Email: demo@myhomedoctorapp.local');
-    console.log('Password: Demo1234!');
     process.exit(0);
   } catch (error) {
     console.error('Error creando la cuenta de prueba:', error);

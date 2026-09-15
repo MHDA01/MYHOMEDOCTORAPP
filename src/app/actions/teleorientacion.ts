@@ -561,11 +561,12 @@ async function preguntarALaIA(sistema: string, contenidos: GeminiContent[]): Pro
 
 /** Mensaje para el paciente cuando la IA no respondió. */
 function errorDeLaIA(resultado: Exclude<GeminiResult, { ok: true }>): string {
+  const statusLabel = resultado.status ? ` ${resultado.status}` : '';
+  // También los timeouts: sin este registro la alerta del chat no los veía.
+  console.error(`[Dra. Hilda] Error de Gemini (${resultado.kind}${statusLabel}): ${resultado.detail}`);
   if (resultado.kind === 'timeout') {
     return conAvisoDeUrgencias('La solicitud tardó demasiado. Verifica tu conexión e intenta de nuevo.');
   }
-  const statusLabel = resultado.status ? ` ${resultado.status}` : '';
-  console.error(`[Dra. Hilda] Error de Gemini (${resultado.kind}${statusLabel}): ${resultado.detail}`);
   if (resultado.kind === 'blocked') {
     return conAvisoDeUrgencias('No puedo responder a ese contenido. Reformula tu consulta, por favor.');
   }
