@@ -136,15 +136,15 @@ export function WompyPaymentModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="w-full max-w-md rounded-lg bg-white shadow-xl max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-brand-950/50 p-4 backdrop-blur-sm">
+      <div className="w-full max-w-md max-h-[90vh] overflow-y-auto rounded-3xl bg-white shadow-card">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4">
-          <h2 className="text-xl font-bold text-gray-900">Plan Teleorientación</h2>
+        <div className="flex items-center justify-between border-b border-border/70 px-6 py-4">
+          <h2 className="text-xl font-extrabold text-brand-900">Plan Teleorientación</h2>
           <button
             onClick={onClose}
             disabled={loading}
-            className="text-gray-500 hover:text-gray-700 disabled:opacity-50"
+            className="rounded-full p-1 text-muted-foreground transition-colors hover:bg-sky-50 hover:text-brand-900 disabled:opacity-50"
           >
             <X size={24} />
           </button>
@@ -156,17 +156,17 @@ export function WompyPaymentModal({
             // Success State
             <div className="space-y-4 text-center">
               <div className="flex justify-center">
-                <CheckCircle2 size={48} className="text-green-500" />
+                <CheckCircle2 size={48} className="text-primary" />
               </div>
-              <p className="text-sm text-gray-600">{successMessage}</p>
+              <p className="text-sm text-muted-foreground">{successMessage}</p>
             </div>
           ) : (
             // Form State
             <div className="space-y-6">
               {/* Plan Info */}
-              <div className="rounded-lg bg-gradient-to-r from-blue-50 to-indigo-50 p-4">
-                <h3 className="font-semibold text-gray-900">Plan Mensual</h3>
-                <div className="mt-3 space-y-2 text-sm text-gray-700">
+              <div className="rounded-2xl bg-sky-50 p-4">
+                <h3 className="font-bold text-brand-900">Plan Mensual</h3>
+                <div className="mt-3 space-y-2 text-sm text-foreground/80">
                   <div className="flex justify-between">
                     <span>Consultas por día:</span>
                     <span className="font-semibold">Hasta 7</span>
@@ -183,41 +183,41 @@ export function WompyPaymentModal({
               </div>
 
               {/* Price */}
-              <div className="rounded-lg border-2 border-indigo-200 bg-indigo-50 p-4">
-                <p className="text-center text-sm text-gray-600">Valor total</p>
-                <p className="text-center text-3xl font-bold text-indigo-600">
+              <div className="rounded-2xl border-2 border-primary/30 bg-primary/5 p-4">
+                <p className="text-center text-sm text-muted-foreground">Valor total</p>
+                <p className="text-center text-3xl font-extrabold text-brand-900">
                   $19.900<span className="text-lg"> COP</span>
                 </p>
-                <p className="mt-2 text-center text-xs text-gray-500">
+                <p className="mt-2 text-center text-xs text-muted-foreground">
                   Hasta 7 consultas por día · 210 tokens/mes
                 </p>
               </div>
 
               {/* Benefits */}
               <div className="space-y-2 text-sm">
-                <p className="font-semibold text-gray-900">Incluye:</p>
-                <ul className="space-y-1 text-gray-700">
+                <p className="font-bold text-brand-900">Incluye:</p>
+                <ul className="space-y-1 text-foreground/80">
                   <li className="flex items-center gap-2">
-                    <span className="text-indigo-600">✓</span>
+                    <span className="font-bold text-primary">✓</span>
                     Acceso a especialistas médicos
                   </li>
                   <li className="flex items-center gap-2">
-                    <span className="text-indigo-600">✓</span>
+                    <span className="font-bold text-primary">✓</span>
                     Respuestas en tiempo real
                   </li>
                   <li className="flex items-center gap-2">
-                    <span className="text-indigo-600">✓</span>
+                    <span className="font-bold text-primary">✓</span>
                     Historial de consultas guardado
                   </li>
                   <li className="flex items-center gap-2">
-                    <span className="text-indigo-600">✓</span>
+                    <span className="font-bold text-primary">✓</span>
                     Acceso a documentos médicos
                   </li>
                 </ul>
               </div>
 
               {/* Renovación automática (opcional) */}
-              <div className="rounded-lg border border-gray-200 p-4">
+              <div className="rounded-2xl border border-border/70 p-4">
                 <label className="flex items-start gap-3 cursor-pointer">
                   <input
                     type="checkbox"
@@ -226,8 +226,8 @@ export function WompyPaymentModal({
                     disabled={loading}
                     className="mt-1"
                   />
-                  <span className="text-sm text-gray-700">
-                    <span className="font-semibold text-gray-900">Activar renovación automática mensual</span>
+                  <span className="text-sm text-foreground/80">
+                    <span className="font-semibold text-brand-900">Activar renovación automática mensual</span>
                     <br />
                     Se te cobrará <strong>$19.900 COP cada 30 días</strong> de forma automática hasta que canceles.
                     Puedes cancelar en cualquier momento desde &quot;Mi cuenta&quot;, sin ningún costo.
@@ -235,14 +235,14 @@ export function WompyPaymentModal({
                 </label>
 
                 {autoRenew && consent && (
-                  <div className="mt-4 space-y-3 border-t border-gray-100 pt-4">
+                  <div className="mt-4 space-y-3 border-t border-border/70 pt-4">
                     <div className="grid grid-cols-2 gap-3">
                       <input
                         type="text"
                         placeholder="Número de tarjeta"
                         value={cardNumber}
                         onChange={(e) => setCardNumber(e.target.value)}
-                        className="col-span-2 rounded-md border border-gray-300 px-3 py-2 text-sm"
+                        className="col-span-2 rounded-xl border border-input px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                         maxLength={19}
                       />
                       <input
@@ -250,7 +250,7 @@ export function WompyPaymentModal({
                         placeholder="MM"
                         value={cardExpMonth}
                         onChange={(e) => setCardExpMonth(e.target.value)}
-                        className="rounded-md border border-gray-300 px-3 py-2 text-sm"
+                        className="rounded-xl border border-input px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                         maxLength={2}
                       />
                       <input
@@ -258,7 +258,7 @@ export function WompyPaymentModal({
                         placeholder="AA"
                         value={cardExpYear}
                         onChange={(e) => setCardExpYear(e.target.value)}
-                        className="rounded-md border border-gray-300 px-3 py-2 text-sm"
+                        className="rounded-xl border border-input px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                         maxLength={2}
                       />
                       <input
@@ -266,7 +266,7 @@ export function WompyPaymentModal({
                         placeholder="CVC"
                         value={cardCvc}
                         onChange={(e) => setCardCvc(e.target.value)}
-                        className="rounded-md border border-gray-300 px-3 py-2 text-sm"
+                        className="rounded-xl border border-input px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                         maxLength={4}
                       />
                       <input
@@ -274,11 +274,11 @@ export function WompyPaymentModal({
                         placeholder="Nombre del titular"
                         value={cardHolder}
                         onChange={(e) => setCardHolder(e.target.value)}
-                        className="rounded-md border border-gray-300 px-3 py-2 text-sm"
+                        className="rounded-xl border border-input px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                       />
                     </div>
 
-                    <label className="flex items-start gap-2 text-xs text-gray-600">
+                    <label className="flex items-start gap-2 text-xs text-muted-foreground">
                       <input
                         type="checkbox"
                         checked={acceptedTerms}
@@ -287,13 +287,13 @@ export function WompyPaymentModal({
                       />
                       <span>
                         Acepto los{" "}
-                        <a href={consent.acceptancePermalink} target="_blank" rel="noopener noreferrer" className="text-indigo-600 underline">
+                        <a href={consent.acceptancePermalink} target="_blank" rel="noopener noreferrer" className="font-semibold text-primary underline">
                           términos y condiciones de Wompi
                         </a>
                       </span>
                     </label>
 
-                    <label className="flex items-start gap-2 text-xs text-gray-600">
+                    <label className="flex items-start gap-2 text-xs text-muted-foreground">
                       <input
                         type="checkbox"
                         checked={acceptedDataAuth}
@@ -302,7 +302,7 @@ export function WompyPaymentModal({
                       />
                       <span>
                         Autorizo el{" "}
-                        <a href={consent.personalAuthPermalink} target="_blank" rel="noopener noreferrer" className="text-indigo-600 underline">
+                        <a href={consent.personalAuthPermalink} target="_blank" rel="noopener noreferrer" className="font-semibold text-primary underline">
                           tratamiento de mis datos personales
                         </a>{" "}
                         conforme a la Ley 1581 de 2012
@@ -314,15 +314,15 @@ export function WompyPaymentModal({
 
               {/* Error */}
               {error && (
-                <div className="flex items-gap-3 rounded-lg bg-red-50 p-3">
+                <div className="flex items-start gap-3 rounded-2xl bg-red-50 p-3">
                   <AlertCircle size={20} className="flex-shrink-0 text-red-600" />
                   <p className="text-sm text-red-700">{error}</p>
                 </div>
               )}
 
               {/* Info */}
-              <div className="rounded-lg bg-blue-50 p-3">
-                <p className="text-xs text-blue-700">
+              <div className="rounded-2xl bg-sky-50 p-3">
+                <p className="text-xs text-brand-800">
                   💳 Pago seguro a través de Wompi. Tu número de tarjeta nunca pasa por nuestros servidores.
                 </p>
               </div>
@@ -332,18 +332,18 @@ export function WompyPaymentModal({
 
         {/* Footer */}
         {!success && (
-          <div className="flex gap-3 border-t border-gray-200 px-6 py-4">
+          <div className="flex gap-3 border-t border-border/70 px-6 py-4">
             <button
               onClick={onClose}
               disabled={loading}
-              className="flex-1 rounded-lg border border-gray-300 bg-white py-2.5 font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="h-12 flex-1 rounded-full border border-border bg-white font-semibold text-brand-900 transition-colors hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-50"
             >
               Cancelar
             </button>
             <button
               onClick={handlePayment}
               disabled={loading}
-              className="flex-1 flex items-center justify-center gap-2 rounded-lg bg-indigo-600 py-2.5 font-medium text-white hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex h-12 flex-1 items-center justify-center gap-2 rounded-full bg-primary font-bold text-primary-foreground transition-colors hover:bg-teal-600 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {loading ? (
                 <>

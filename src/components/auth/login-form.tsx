@@ -55,28 +55,28 @@ export function LoginForm() {
 
 
   return (
-    <Card className="w-full">
+    <Card className="w-full rounded-3xl border-border/70 bg-white shadow-card">
       <CardHeader className="text-center">
-        <CardTitle className="text-2xl font-headline">Bienvenido</CardTitle>
+        <CardTitle className="text-2xl font-extrabold text-brand-900">Bienvenido</CardTitle>
         <CardDescription>Ingresa tus credenciales para acceder a tu cuenta.</CardDescription>
       </CardHeader>
       <CardContent>
         <form className="space-y-4" onSubmit={handleLogin}>
           <div className="space-y-2">
             <Label htmlFor="email">Correo Electrónico</Label>
-            <Input id="email" name="email" type="email" placeholder="nombre@ejemplo.com" required value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" />
+            <Input id="email" name="email" type="email" placeholder="nombre@ejemplo.com" required value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" className="h-12 rounded-xl" />
           </div>
           <div className="space-y-2">
             <Label htmlFor="password">Contraseña</Label>
-            <Input id="password" name="password" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" />
+            <Input id="password" name="password" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" className="h-12 rounded-xl" />
           </div>
-          <Button type="submit" className="w-full" disabled={isLoading}>
+          <Button type="submit" className="h-12 w-full rounded-full text-[15px] font-bold" disabled={isLoading}>
             {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Iniciar Sesión
           </Button>
         </form>
       </CardContent>
-      <CardFooter className="justify-center text-sm">
+      <CardFooter className="justify-center text-sm text-muted-foreground">
         <p>
           ¿No tienes una cuenta?{' '}
           <Link href="/register" className="font-semibold text-primary underline-offset-4 hover:underline">

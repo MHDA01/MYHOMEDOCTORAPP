@@ -145,36 +145,36 @@ export function RegisterForm() {
 
   return (
     <>
-      <Card>
+      <Card className="w-full rounded-3xl border-border/70 bg-white shadow-card">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl font-headline">Crear una Cuenta</CardTitle>
+          <CardTitle className="text-2xl font-extrabold text-brand-900">Crear una Cuenta</CardTitle>
           <CardDescription>Completa los siguientes datos para comenzar.</CardDescription>
         </CardHeader>
         <CardContent>
           <form className="space-y-4" onSubmit={handleFormSubmit}>
             <div className="space-y-2">
               <Label htmlFor="name">Nombre Completo</Label>
-              <Input id="name" name="name" type="text" placeholder="John Doe" required value={name} onChange={e => setName(e.target.value)} autoComplete="name" />
+              <Input id="name" name="name" type="text" placeholder="Nombre y apellido" required value={name} onChange={e => setName(e.target.value)} autoComplete="name" className="h-12 rounded-xl" />
             </div>
             <div className="space-y-2">
               <Label htmlFor="register-email">Correo Electrónico</Label>
-              <Input id="register-email" name="email" type="email" placeholder="nombre@ejemplo.com" required value={email} onChange={e => setEmail(e.target.value)} autoComplete="email" />
+              <Input id="register-email" name="email" type="email" placeholder="nombre@ejemplo.com" required value={email} onChange={e => setEmail(e.target.value)} autoComplete="email" className="h-12 rounded-xl" />
             </div>
             <div className="space-y-2">
               <Label htmlFor="register-password">Contraseña</Label>
-              <Input id="register-password" name="password" type="password" required value={password} onChange={e => setPassword(e.target.value)} autoComplete="new-password" />
+              <Input id="register-password" name="password" type="password" required value={password} onChange={e => setPassword(e.target.value)} autoComplete="new-password" className="h-12 rounded-xl" />
             </div>
             <div className="space-y-2">
               <Label htmlFor="confirm-password">Confirmar Contraseña</Label>
-              <Input id="confirm-password" name="confirm-password" type="password" required value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} autoComplete="new-password" />
+              <Input id="confirm-password" name="confirm-password" type="password" required value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} autoComplete="new-password" className="h-12 rounded-xl" />
             </div>
-            <Button type="submit" className="w-full" disabled={isLoading}>
+            <Button type="submit" className="h-12 w-full rounded-full text-[15px] font-bold" disabled={isLoading}>
               {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Registrarse
             </Button>
           </form>
         </CardContent>
-        <CardFooter className="justify-center text-sm">
+        <CardFooter className="justify-center text-sm text-muted-foreground">
           <p>
             ¿Ya tienes una cuenta?{' '}
             <Link href="/login" className="font-semibold text-primary underline-offset-4 hover:underline">

@@ -30,7 +30,7 @@ type QuickAccess = { href: string; title: string; description: string; icon: Luc
 
 const QUICK_ACCESS: QuickAccess[] = [
   { href: '/dashboard/teleorientacion', title: 'Orientación médica', description: 'Con la Dra. Hilda', icon: MessageCircleHeart },
-  { href: '/dashboard/reportes', title: 'Mis informes', description: 'PDF de tus consultas', icon: FileText },
+  { href: '/dashboard/reportes', title: 'Mis informes', description: 'Resumen de salud en PDF', icon: FileText },
   { href: '/dashboard/cuenta', title: 'Mi cuenta', description: ACCESO_LIBRE ? 'Acceso gratuito' : 'Tu plan y consultas', icon: UserRound },
 ];
 

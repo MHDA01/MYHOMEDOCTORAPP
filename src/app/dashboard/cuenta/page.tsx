@@ -5,9 +5,7 @@ import { doc, onSnapshot, Timestamp } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { db, functions } from '@/lib/firebase';
 import { UserContext } from '@/context/user-context';
-import { DashboardHeader } from '@/components/dashboard/header';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { EncabezadoPantalla } from '@/components/dashboard/encabezado-pantalla';
 import { AlertCircle, CheckCircle2, Gift, Loader2, ShieldCheck } from 'lucide-react';
 import { ACCESO_LIBRE } from '@/config/acceso';
 
@@ -81,112 +79,112 @@ export default function CuentaPage() {
   const isActive = tokenInfo?.autoRenew && tokenInfo?.subscriptionStatus === 'active';
 
   return (
-    <div className="flex h-full flex-col">
-      <DashboardHeader />
-      <main className="flex-1 p-4 md:p-6 lg:p-8">
-        <div className="mx-auto flex w-full max-w-3xl flex-col gap-4">
-      {ACCESO_LIBRE && (
-        <Card>
-          <CardContent className="flex items-start gap-4 p-5 sm:p-6">
-            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
-              <Gift className="h-6 w-6" />
-            </span>
-            <div>
-              <p className="text-lg font-bold text-brand-900">Tu cuenta es gratuita</p>
-              <p className="mt-1 text-[15px] leading-relaxed text-muted-foreground">
-                Durante el lanzamiento de MyHomeDoctorApp puedes usar la orientación con la Dra. Hilda sin
-                ningún costo y sin registrar una tarjeta. Si algún día esto cambia, te avisaremos con anticipación.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-      {/* En la etapa gratuita la tarjeta de renovación solo aparece si alguien quedó con una
-          suscripción antigua, para que siempre pueda cancelarla. */}
-      {(!ACCESO_LIBRE || tokenInfo?.paymentSourceId) && (
-      <Card>
-        <CardHeader>
-          <CardTitle>Renovación automática mensual</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {loading ? (
-            <div className="flex items-center gap-2 text-sm text-slate-500">
-              <Loader2 className="h-4 w-4 animate-spin" /> Cargando...
-            </div>
-          ) : cancelledJustNow ? (
-            <div className="flex items-start gap-3 rounded-lg bg-emerald-50 p-4 text-sm text-emerald-800">
-              <CheckCircle2 className="h-5 w-5 flex-shrink-0" />
-              <p>
-                Tu renovación automática fue cancelada. Seguirás teniendo acceso hasta el final del
-                período ya pagado, sin ningún cobro adicional.
-              </p>
-            </div>
-          ) : !tokenInfo?.paymentSourceId ? (
-            <p className="text-sm text-slate-600">
-              No tienes una renovación automática configurada. Puedes activarla desde el plan de
-              Teleorientación cuando lo necesites.
-            </p>
-          ) : (
-            <>
-              <div className="flex items-center justify-between rounded-lg border border-slate-200 p-4">
-                <div>
-                  <p className="text-sm text-slate-500">Estado</p>
-                  <p className="text-lg font-semibold text-slate-900">
-                    {STATUS_LABELS[tokenInfo?.subscriptionStatus || 'none']}
-                  </p>
-                </div>
-                {isActive && nextBillingDate && (
-                  <div className="text-right">
-                    <p className="text-sm text-slate-500">Próximo cobro</p>
-                    <p className="text-sm font-medium text-slate-900">
-                      {nextBillingDate.toLocaleDateString('es-CO', {
-                        day: 'numeric',
-                        month: 'long',
-                        year: 'numeric',
-                      })}
-                    </p>
-                  </div>
-                )}
-              </div>
+    <div className="mx-auto w-full max-w-3xl px-4 pb-8 md:px-8 md:pt-8">
+      <EncabezadoPantalla titulo="Mi cuenta" descripcion={ACCESO_LIBRE ? 'Tu acceso a MyHomeDoctorApp.' : 'Tu plan y la renovación automática.'} />
 
-              <div className="flex items-start gap-2 text-xs text-slate-500">
-                <ShieldCheck className="h-4 w-4 flex-shrink-0" />
-                <p>
-                  Solo guardamos una referencia segura de tu tarjeta entregada por Wompi; nunca
-                  almacenamos el número completo en nuestros servidores.
+      <div className="mt-5 flex flex-col gap-4 md:mt-7">
+        {ACCESO_LIBRE && (
+          <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-brand-900 to-brand-800 p-5 text-white shadow-card sm:p-6">
+            <span aria-hidden className="pointer-events-none absolute -right-12 -top-12 h-44 w-44 rounded-full bg-white/5" />
+            <span aria-hidden className="pointer-events-none absolute -bottom-16 right-10 h-40 w-40 rounded-full bg-primary/10" />
+            <div className="relative flex items-start gap-4">
+              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white/10 text-white">
+                <Gift className="h-6 w-6" />
+              </span>
+              <div>
+                <p className="text-lg font-bold leading-snug sm:text-xl">Tu cuenta es gratuita</p>
+                <p className="mt-1 text-sm leading-relaxed text-white/80 sm:text-[15px]">
+                  Durante el lanzamiento de MyHomeDoctorApp puedes usar la orientación con la Dra. Hilda sin
+                  ningún costo y sin registrar una tarjeta. Si algún día esto cambia, te avisaremos con anticipación.
                 </p>
               </div>
+            </div>
+          </section>
+        )}
 
-              {error && (
-                <div className="flex items-start gap-2 rounded-lg bg-red-50 p-3 text-sm text-red-700">
-                  <AlertCircle className="h-4 w-4 flex-shrink-0" />
-                  <p>{error}</p>
+        {/* En la etapa gratuita la tarjeta de renovación solo aparece si alguien quedó con una
+            suscripción antigua, para que siempre pueda cancelarla. */}
+        {(!ACCESO_LIBRE || tokenInfo?.paymentSourceId) && (
+          <section className="rounded-3xl border border-border/70 bg-white p-5 shadow-soft sm:p-6">
+            <h2 className="text-lg font-bold text-brand-900">Renovación automática mensual</h2>
+            <div className="mt-4 space-y-4">
+              {loading ? (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" /> Cargando...
                 </div>
-              )}
+              ) : cancelledJustNow ? (
+                <div className="flex items-start gap-3 rounded-2xl bg-emerald-50 p-4 text-sm text-emerald-800">
+                  <CheckCircle2 className="h-5 w-5 flex-shrink-0" />
+                  <p>
+                    Tu renovación automática fue cancelada. Seguirás teniendo acceso hasta el final del
+                    período ya pagado, sin ningún cobro adicional.
+                  </p>
+                </div>
+              ) : !tokenInfo?.paymentSourceId ? (
+                <p className="text-[15px] text-muted-foreground">
+                  No tienes una renovación automática configurada. Puedes activarla desde el plan de
+                  Teleorientación cuando lo necesites.
+                </p>
+              ) : (
+                <>
+                  <div className="flex items-center justify-between gap-4 rounded-2xl bg-sky-50 p-4">
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Estado</p>
+                      <p className="mt-0.5 text-lg font-bold text-brand-900">
+                        {STATUS_LABELS[tokenInfo?.subscriptionStatus || 'none']}
+                      </p>
+                    </div>
+                    {isActive && nextBillingDate && (
+                      <div className="text-right">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Próximo cobro</p>
+                        <p className="mt-0.5 text-sm font-semibold text-brand-900">
+                          {nextBillingDate.toLocaleDateString('es-CO', {
+                            day: 'numeric',
+                            month: 'long',
+                            year: 'numeric',
+                          })}
+                        </p>
+                      </div>
+                    )}
+                  </div>
 
-              {isActive && (
-                <Button
-                  variant="outline"
-                  onClick={handleCancel}
-                  disabled={cancelling}
-                  className="w-full"
-                >
-                  {cancelling ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Cancelando...
-                    </>
-                  ) : (
-                    'Cancelar renovación automática'
+                  <div className="flex items-start gap-2 text-xs text-muted-foreground">
+                    <ShieldCheck className="h-4 w-4 flex-shrink-0 text-primary" />
+                    <p>
+                      Solo guardamos una referencia segura de tu tarjeta entregada por Wompi; nunca
+                      almacenamos el número completo en nuestros servidores.
+                    </p>
+                  </div>
+
+                  {error && (
+                    <div className="flex items-start gap-2 rounded-2xl bg-red-50 p-3 text-sm text-red-700">
+                      <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                      <p>{error}</p>
+                    </div>
                   )}
-                </Button>
+
+                  {isActive && (
+                    <button
+                      type="button"
+                      onClick={handleCancel}
+                      disabled={cancelling}
+                      className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-full border border-border bg-white px-6 text-[15px] font-semibold text-brand-900 transition-colors hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {cancelling ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" /> Cancelando...
+                        </>
+                      ) : (
+                        'Cancelar renovación automática'
+                      )}
+                    </button>
+                  )}
+                </>
               )}
-            </>
-          )}
-        </CardContent>
-      </Card>
-      )}
-        </div>
-      </main>
+            </div>
+          </section>
+        )}
+      </div>
     </div>
   );
 }
