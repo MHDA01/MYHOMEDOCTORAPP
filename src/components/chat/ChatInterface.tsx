@@ -15,7 +15,7 @@ import type { ChatMessage as ChatMessageType } from '@/types/chat';
 
 interface ChatInterfaceProps {
   messages: ChatMessageType[];
-  onSendMessage: (message: string, images?: File[]) => void;
+  onSendMessage: (message: string, images?: File[]) => void | Promise<boolean | void>;
   isLoading?: boolean;
   memberName?: string;
   memberAge?: number;

@@ -24,6 +24,7 @@ import {
   enviarMensajeConsulta,
   saludarEnConsulta,
   persistSecureMessage,
+  registrarFalloDeFoto,
   getSecureMessages,
   type PatientStructuredContext,
 } from '@/app/actions/teleorientacion';
@@ -877,10 +878,11 @@ export function TeleorientacionChatPage() {
   /* ---- Enviar mensaje ---- */
   const handleSendMessage = useCallback(
     async (text: string, images?: File[]) => {
-      if (!user || !selectedConv || !selectedMember) return;
-      if (conversationCompleted || hasTokens === false) return;
+      // false = el mensaje no salió; el cuadro de texto devuelve el borrador.
+      if (!user || !selectedConv || !selectedMember) return false;
+      if (conversationCompleted || hasTokens === false) return false;
       const trimmedText = text.trim();
-      if (!trimmedText && (!images || images.length === 0)) return;
+      if (!trimmedText && (!images || images.length === 0)) return false;
 
       let imageUrls: string[] = [];
       if (images?.length) {
@@ -906,6 +908,17 @@ export function TeleorientacionChatPage() {
           );
         } catch (err) {
           console.error('[Teleorientación] Error subiendo imagen:', err);
+          // El fallo ocurre en el teléfono: se deja constancia en el servidor
+          // (solo el código de error, tipo y peso de la foto, sin datos clínicos).
+          const detalle = {
+            codigo: (err as { code?: string })?.code ?? String(err),
+            tipo: images.map((file) => file.type).join(','),
+            bytes: images.reduce((total, file) => total + file.size, 0),
+            navegador: navigator.userAgent,
+          };
+          auth.currentUser?.getIdToken()
+            .then((idToken) => registrarFalloDeFoto(idToken, detalle))
+            .catch(() => undefined);
           setIsLoading(false);
           const uploadErrorMsg: ChatMessage = {
             id: uid(),
@@ -917,7 +930,7 @@ export function TeleorientacionChatPage() {
           auth.currentUser?.getIdToken()
             .then((idToken) => persistSecureMessage(idToken, selectedConv.id, { ...uploadErrorMsg, sistema: true }))
             .catch(() => undefined);
-          return;
+          return false;
         }
       }
 

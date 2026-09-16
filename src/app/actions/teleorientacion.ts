@@ -351,6 +351,28 @@ async function sesionConConversacion(idToken: string, convId: string): Promise<{
 }
 
 /**
+ * Deja constancia en los registros del servidor de una foto del chat que no se
+ * pudo subir. La subida ocurre en el teléfono y, sin esto, el fallo no deja
+ * rastro. Solo datos técnicos: código de error, tipo, peso y navegador.
+ */
+export async function registrarFalloDeFoto(
+  idToken: string,
+  detalle: { codigo: string; tipo: string; bytes: number; navegador: string }
+): Promise<void> {
+  try {
+    await getAdminAuth().verifyIdToken(idToken);
+  } catch {
+    return;
+  }
+  console.error('[Dra. Hilda] Error subiendo foto desde el teléfono:', JSON.stringify({
+    codigo: String(detalle?.codigo ?? '').slice(0, 120),
+    tipo: String(detalle?.tipo ?? '').slice(0, 80),
+    bytes: Number(detalle?.bytes) || 0,
+    navegador: String(detalle?.navegador ?? '').slice(0, 250),
+  }));
+}
+
+/**
  * Server Action pública para los textos que genera la app (errores y cierres de
  * consulta). El uid sale del token verificado, nunca del cliente.
  */

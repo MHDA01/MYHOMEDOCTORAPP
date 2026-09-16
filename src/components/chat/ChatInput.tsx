@@ -12,12 +12,14 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { IMAGEN_NO_VALIDA, MAX_IMAGENES_POR_MENSAJE } from '@/lib/textos-chat';
 
 const MAX_IMAGE_SIZE_MB = 10;
 const MAX_IMAGE_SIZE_BYTES = MAX_IMAGE_SIZE_MB * 1024 * 1024;
 
 interface ChatInputProps {
-  onSend: (message: string, images?: File[]) => void;
+  /** Devuelve false cuando el mensaje no salió, para devolver el borrador. */
+  onSend: (message: string, images?: File[]) => void | Promise<boolean | void>;
   disabled?: boolean;
   placeholder?: string;
   memberName?: string;
@@ -115,7 +117,14 @@ export default function ChatInput({
     if ((!trimmed && selectedImages.length === 0) || disabled) return;
 
     if (isListening) stopListening();
-    onSend(trimmed || 'Adjunto imágenes para orientación clínica.', selectedImages);
+    const imagenesEnviadas = selectedImages;
+    void Promise.resolve(onSend(trimmed || 'Adjunto imágenes para orientación clínica.', imagenesEnviadas)).then((enviado) => {
+      // Si no salió (p. ej. no se pudo subir la foto), se devuelve lo escrito y
+      // las fotos para no obligar al paciente a describir todo de nuevo.
+      if (enviado !== false) return;
+      setText((actual) => actual || trimmed);
+      setSelectedImages((actuales) => (actuales.length ? actuales : imagenesEnviadas));
+    });
     setText('');
     setSelectedImages([]);
     resetTranscript();
@@ -145,15 +154,36 @@ export default function ChatInput({
     galleryInputRef.current?.click();
   };
 
-  const handleImageSelection = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const picked = Array.from(e.target.files ?? []);
-    e.target.value = '';
-    if (!picked.length) return;
+  const handleImageSelection = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const input = e.target;
+    const picked = Array.from(input.files ?? []);
+    if (!picked.length) {
+      input.value = '';
+      return;
+    }
 
     const validType = picked.filter((file) => /image\/(jpeg|jpg|png)/i.test(file.type));
     const validSize = validType.filter((file) => file.size <= MAX_IMAGE_SIZE_BYTES);
 
-    if (validSize.length < picked.length) {
+    // Copia en memoria ANTES de limpiar el input. En iPhone (Safari) la foto
+    // elegida puede quedar ilegible al limpiar el input (WebKitBlobResource
+    // error 1); la subida falla como error de red y el SDK la reintentaba en
+    // silencio. Con la copia, la foto que se ve lista es la que se sube.
+    const copias = await Promise.all(
+      validSize.map(async (file) => {
+        try {
+          return new File([await file.arrayBuffer()], file.name, { type: file.type, lastModified: file.lastModified });
+        } catch {
+          return null;
+        }
+      })
+    );
+    input.value = '';
+    const legibles = copias.filter((file): file is File => file !== null);
+
+    if (legibles.length < validSize.length) {
+      setImageError(IMAGEN_NO_VALIDA);
+    } else if (validSize.length < picked.length) {
       setImageError(
         validType.length < picked.length
           ? 'Solo se permiten imágenes JPG o PNG.'
@@ -163,8 +193,8 @@ export default function ChatInput({
       setImageError(null);
     }
 
-    if (!validSize.length) return;
-    setSelectedImages((prev) => [...prev, ...validSize].slice(0, 4));
+    if (!legibles.length) return;
+    setSelectedImages((prev) => [...prev, ...legibles].slice(0, MAX_IMAGENES_POR_MENSAJE));
   };
 
   const removeSelectedImage = (index: number) => {

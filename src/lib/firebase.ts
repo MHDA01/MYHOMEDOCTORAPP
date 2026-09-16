@@ -39,5 +39,9 @@ const db = (() => {
 })();
 const functions = getFunctions(app, "us-central1");
 const storage = getStorage(app);
+// Por defecto el SDK reintenta una subida fallida hasta 10 minutos sin avisar:
+// el paciente veía el chat "pensando" y nada salía. Con 2 minutos el error llega
+// al chat ("No pude subir la imagen...") y el borrador vuelve al cuadro de texto.
+storage.maxUploadRetryTime = 2 * 60 * 1000;
 
 export { app, auth, db, functions, storage };
