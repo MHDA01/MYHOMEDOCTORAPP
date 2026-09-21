@@ -49,6 +49,8 @@ export interface MotivoAdmin {
   creado_en: string | null;
   borrador: ResumenBorrador | null;
   publicado: { version: number; en: string | null } | null;
+  /** La Dra. Hilda usa la versión publicada (el médico la activó). */
+  en_hilda: boolean;
 }
 
 /** Convierte Timestamps de Firestore en texto ISO para poder enviarlos al navegador. */
@@ -104,10 +106,12 @@ export async function listarProtocolosAdmin(
 
   try {
     const db = getAdminDb();
-    const [fuentes, motivosSnap] = await Promise.all([
+    const [fuentes, motivosSnap, publicadosSnap] = await Promise.all([
       fuentesDeLaBiblioteca(),
       db.collection(COLECCION_PROTOCOLOS_MOTIVOS).get(),
+      db.collection(COLECCION_PROTOCOLOS_PUBLICADOS).select('en_uso_por_hilda').get(),
     ]);
+    const enHilda = new Set(publicadosSnap.docs.filter((d) => d.get('en_uso_por_hilda') === true).map((d) => d.id));
     const idsBorrador = motivosSnap.docs.map((d) => d.get('borrador_actual')).filter((id): id is string => !!id);
     const borradores = idsBorrador.length
       ? await db.getAll(...idsBorrador.map((id) => db.collection(COLECCION_PROTOCOLOS_BORRADORES).doc(id)), {
@@ -145,6 +149,7 @@ export async function listarProtocolosAdmin(
         creado_en: iso(d.get('creado_en')),
         borrador,
         publicado: publicado ? { version: publicado.version, en: iso(publicado.en) } : null,
+        en_hilda: enHilda.has(d.id),
       };
     });
     motivos.sort((a, b) => (b.creado_en ?? '').localeCompare(a.creado_en ?? ''));
@@ -366,8 +371,9 @@ export async function publicarProtocoloAdmin(idToken: string, borradorId: string
         borrador_id: borradorId,
         publicado_por: acceso.email,
         publicado_en: FieldValue.serverTimestamp(),
-        // La Dra. Hilda todavía no lee protocolos: activarlo es un paso aparte.
-        en_uso_por_hilda: false,
+        // Activar en la Dra. Hilda es un paso aparte (activarEnHildaAdmin). Una versión
+        // nueva conserva la decisión que el médico tomó con la anterior.
+        en_uso_por_hilda: anterior.exists ? anterior.get('en_uso_por_hilda') === true : false,
         items: aprobados.map((i) => {
           const r = revision[i.id];
           return {
@@ -398,5 +404,30 @@ export async function publicarProtocoloAdmin(idToken: string, borradorId: string
     if (/^(El borrador|El motivo|Faltan|No hay)/.test(mensaje)) return { success: false, error: mensaje };
     console.error('[Protocolos] Error publicando:', error);
     return { success: false, error: 'No se pudo publicar el protocolo.' };
+  }
+}
+
+/**
+ * Activa o retira un protocolo publicado de la Dra. Hilda. Activar es la decisión
+ * del médico de que las frases aprobadas guíen las consultas de ese motivo.
+ */
+export async function activarEnHildaAdmin(idToken: string, motivoId: string, activo: boolean): Promise<Resultado<null>> {
+  const acceso = await verifyAdminAccess(idToken);
+  if (!acceso.ok) return { success: false, error: acceso.error };
+  if (!motivoId || motivoId.includes('/')) return { success: false, error: 'Motivo no válido.' };
+
+  try {
+    const ref = getAdminDb().collection(COLECCION_PROTOCOLOS_PUBLICADOS).doc(motivoId);
+    const snap = await ref.get();
+    if (!snap.exists) return { success: false, error: 'Ese motivo no tiene una versión publicada.' };
+    await ref.update({
+      en_uso_por_hilda: !!activo,
+      [activo ? 'activado_por' : 'retirado_por']: acceso.email,
+      [activo ? 'activado_en' : 'retirado_en']: FieldValue.serverTimestamp(),
+    });
+    return { success: true, data: null };
+  } catch (error) {
+    console.error('[Protocolos] Error activando en Hilda:', error);
+    return { success: false, error: 'No se pudo cambiar el estado del protocolo.' };
   }
 }

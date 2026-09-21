@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { AlertTriangle, BookOpen, ExternalLink, FilePlus2, Loader2, Plus, ShieldCheck, Sparkles } from 'lucide-react';
 import { auth } from '@/lib/firebase';
 import {
+  activarEnHildaAdmin,
   crearMotivoAdmin,
   generarBorradorAdmin,
   listarProtocolosAdmin,
@@ -38,6 +39,7 @@ export const accionesProtocolos = {
   listar: async () => listarProtocolosAdmin(await token()),
   crear: async (entrada: Parameters<typeof crearMotivoAdmin>[1]) => crearMotivoAdmin(await token(), entrada),
   generar: async (motivoId: string) => generarBorradorAdmin(await token(), motivoId),
+  activarEnHilda: async (motivoId: string, activo: boolean) => activarEnHildaAdmin(await token(), motivoId, activo),
 };
 
 function detenido(m: MotivoAdmin): boolean {
@@ -73,6 +75,7 @@ export function ProtocolosAdminPanel({ acciones = accionesProtocolos }: { accion
   const [creando, setCreando] = useState(false);
   const [generando, setGenerando] = useState<string | null>(null);
   const [confirmar, setConfirmar] = useState<MotivoAdmin | null>(null);
+  const [cambiandoHilda, setCambiandoHilda] = useState<string | null>(null);
   const temporizador = useRef<number | null>(null);
 
   const cargar = useCallback(async () => {
@@ -116,6 +119,25 @@ export function ProtocolosAdminPanel({ acciones = accionesProtocolos }: { accion
       toast({ variant: 'destructive', title: 'No se pudo generar', description: e instanceof Error ? e.message : '' });
     } finally {
       setGenerando(null);
+    }
+  };
+
+  const cambiarEnHilda = async (motivo: MotivoAdmin) => {
+    setCambiandoHilda(motivo.id);
+    try {
+      const r = await acciones.activarEnHilda(motivo.id, !motivo.en_hilda);
+      if (!r.success) toast({ variant: 'destructive', title: 'No se pudo cambiar', description: r.error });
+      else {
+        toast({
+          title: motivo.en_hilda ? 'Retirado de la Dra. Hilda' : 'Activado en la Dra. Hilda',
+          description: 'Las consultas nuevas lo toman en unos 5 minutos.',
+        });
+        await cargar();
+      }
+    } catch (e) {
+      toast({ variant: 'destructive', title: 'No se pudo cambiar', description: e instanceof Error ? e.message : '' });
+    } finally {
+      setCambiandoHilda(null);
     }
   };
 
@@ -237,8 +259,20 @@ export function ProtocolosAdminPanel({ acciones = accionesProtocolos }: { accion
                   </Button>
                 )}
                 {m.publicado && (
+                  <Button
+                    variant={m.en_hilda ? 'outline' : 'default'}
+                    className="rounded-full"
+                    onClick={() => cambiarEnHilda(m)}
+                    disabled={cambiandoHilda === m.id}
+                  >
+                    {cambiandoHilda === m.id && <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />}
+                    {m.en_hilda ? 'Retirar de la Dra. Hilda' : 'Activar en la Dra. Hilda'}
+                  </Button>
+                )}
+                {m.publicado && (
                   <span className="text-xs text-muted-foreground">
                     Versión {m.publicado.version} publicada {fecha(m.publicado.en)}
+                    {m.en_hilda ? ' · en uso por la Dra. Hilda' : ' · la Dra. Hilda todavía no la usa'}
                   </span>
                 )}
               </div>

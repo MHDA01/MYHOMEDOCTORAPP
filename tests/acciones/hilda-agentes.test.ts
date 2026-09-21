@@ -176,3 +176,29 @@ describe('Interruptor de emergencia', () => {
     expect(await trazas(ana.uid, convId)).toHaveLength(0);
   });
 });
+
+describe('Activar un protocolo en la Dra. Hilda (panel)', () => {
+  it('solo el administrador lo activa o retira, y la Dra. Hilda lo toma', async () => {
+    const { activarEnHildaAdmin } = await import('@/app/actions/admin-protocolos');
+    process.env.ADMIN_EMAILS = 'medico@ejemplo.test';
+    const medico = await crearUsuario('medico@ejemplo.test');
+    await publicarProtocolo(false);
+
+    expect(await activarEnHildaAdmin(ana.idToken, MOTIVO, true)).toMatchObject({ success: false });
+    expect(await activarEnHildaAdmin(medico.idToken, 'no-existe', true)).toMatchObject({ success: false });
+    expect(await activarEnHildaAdmin(medico.idToken, MOTIVO, true)).toEqual({ success: true, data: null });
+
+    const doc = (await getAdminDb().doc(`protocolos_publicados/${MOTIVO}`).get()).data()!;
+    expect(doc.en_uso_por_hilda).toBe(true);
+    expect(doc.activado_por).toBe('medico@ejemplo.test');
+
+    olvidarProtocolosEnCache();
+    const { protocolosActivos } = await import('@/lib/hilda/protocolos-activos');
+    expect((await protocolosActivos()).map((p) => p.motivoId)).toEqual([MOTIVO]);
+
+    expect(await activarEnHildaAdmin(medico.idToken, MOTIVO, false)).toEqual({ success: true, data: null });
+    olvidarProtocolosEnCache();
+    expect(await protocolosActivos()).toEqual([]);
+    delete process.env.ADMIN_EMAILS;
+  });
+});
