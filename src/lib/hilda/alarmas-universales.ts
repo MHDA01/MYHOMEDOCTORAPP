@@ -58,7 +58,14 @@ export const ALARMAS_UNIVERSALES: SignoDeAlarma[] = [
     id: 'u-sangrado',
     texto: 'sangrado activo que no se controla',
     origen: 'universal',
-    palabrasClave: [/no (para|deja) de sangrar/, /sangra(ndo)? (mucho|abundante|sin parar)/, /hemorragia/, /(vomit|tos)\w* (con )?sangre/],
+    palabrasClave: [
+      /no (para|deja) de sangrar/,
+      /sangra(ndo)? (mucho|abundante|bastante|sin parar)/,
+      /(sale|bota|echa|salia) (mucha |bastante )?sangre/,
+      /hemorragia/,
+      /(vomit|tos)\w* (con )?sangre/,
+      /(popo|heces|deposicion|caca)\w* negra/,
+    ],
   },
   {
     id: 'u-trauma',

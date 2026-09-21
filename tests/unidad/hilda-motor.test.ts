@@ -81,6 +81,16 @@ describe('Centinela', () => {
     expect(d.fase).toBe('sin_protocolo');
   });
 
+  it('palabra clave + lector que duda ("posible") deriva sin preguntar', () => {
+    const d = decidir({
+      estado: ESTADO_INICIAL,
+      protocolo: null,
+      lectura: lectura({ motivoId: null, signos: [{ id: 'u-alergia-grave', estado: 'posible', evidencia: 'se me hinchó la lengua', evidenciaVerificada: true }] }),
+      coincidencias: ['u-alergia-grave'],
+    });
+    expect(d.fase).toBe('derivacion_urgente');
+  });
+
   it('una palabra clave que el lector no evaluó obliga a aclarar el signo', () => {
     const d = decidir({ estado: ESTADO_INICIAL, protocolo: null, lectura: lectura({ motivoId: null }), coincidencias: ['u-dolor-toracico'] });
     expect(d.fase).toBe('entrevista');

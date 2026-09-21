@@ -1,0 +1,1292 @@
+{
+  "resumen": {
+    "fecha": "2026-09-21T15:06:10.777Z",
+    "banco": "universales.json",
+    "estado_del_banco": "por_aprobar",
+    "modelo_lector": "gemini-3.5-flash",
+    "casos": 65,
+    "urgentes": 48,
+    "derivados": 44,
+    "aclarando_el_signo": 4,
+    "escapados": 0,
+    "no_urgentes": 17,
+    "derivados_de_mas": 0,
+    "fallas_del_lector": 0,
+    "ms_promedio_lector": 2384
+  },
+  "resultados": [
+    {
+      "id": "dt-01",
+      "esperado": "urgencia",
+      "signo_esperado": "u-dolor-toracico",
+      "resultado": "deriva",
+      "fase": "derivacion_urgente",
+      "disparados": [
+        "u-dolor-toracico"
+      ],
+      "por_aclarar": [],
+      "lector": "ok",
+      "ms": 2438,
+      "lectura": [
+        {
+          "id": "u-dolor-toracico",
+          "estado": "presente",
+          "evidencia": "Tengo un dolor en el pecho que me aprieta desde hace media hora y me baja al brazo izquierdo",
+          "evidenciaVerificada": true
+        }
+      ]
+    },
+    {
+      "id": "dt-02",
+      "esperado": "urgencia",
+      "signo_esperado": "u-dolor-toracico",
+      "resultado": "deriva",
+      "fase": "derivacion_urgente",
+      "disparados": [
+        "u-dolor-toracico"
+      ],
+      "por_aclarar": [],
+      "lector": "ok",
+      "ms": 2417,
+      "lectura": [
+        {
+          "id": "u-dolor-toracico",
+          "estado": "presente",
+          "evidencia": "le duele el pecho",
+          "evidenciaVerificada": true
+        }
+      ]
+    },
+    {
+      "id": "dt-03",
+      "esperado": "urgencia",
+      "signo_esperado": "u-dolor-toracico",
+      "resultado": "deriva",
+      "fase": "derivacion_urgente",
+      "disparados": [
+        "u-dolor-toracico"
+      ],
+      "por_aclarar": [],
+      "lector": "ok",
+      "ms": 2729,
+      "lectura": [
+        {
+          "id": "u-dolor-toracico",
+          "estado": "presente",
+          "evidencia": "siento una presión en el pecho muy fuerte, como un peso encima",
+          "evidenciaVerificada": true
+        }
+      ]
+    },
+    {
+      "id": "dt-04",
+      "esperado": "urgencia",
+      "signo_esperado": "u-dolor-toracico",
+      "resultado": "deriva",
+      "fase": "derivacion_urgente",
+      "disparados": [
+        "u-dolor-toracico"
+      ],
+      "por_aclarar": [],
+      "lector": "ok",
+      "ms": 2731,
+      "lectura": [
+        {
+          "id": "u-dolor-toracico",
+          "estado": "presente",
+          "evidencia": "me dio un dolor en el centro del pecho mientras subía las escaleras y no se me quita",
+          "evidenciaVerificada": true
+        }
+      ]
+    },
+    {
+      "id": "dt-05",
+      "esperado": "urgencia",
+      "signo_esperado": "u-dolor-toracico",
+      "resultado": "deriva",
+      "fase": "derivacion_urgente",
+      "disparados": [
+        "u-dolor-toracico",
+        "u-dificultad-respiratoria"
+      ],
+      "por_aclarar": [],
+      "lector": "ok",
+      "ms": 2413,
+      "lectura": [
+        {
+          "id": "u-dolor-toracico",
+          "estado": "presente",
+          "evidencia": "tengo como una opresión en el pecho",
+          "evidenciaVerificada": true
+        },
+        {
+          "id": "u-dificultad-respiratoria",
+          "estado": "presente",
+          "evidencia": "me falta el aire",
+          "evidenciaVerificada": true
+        }
+      ]
+    },
+    {
+      "id": "dt-06",
+      "esperado": "urgencia",
+      "signo_esperado": "u-dolor-toracico",
+      "resultado": "deriva",
+      "fase": "derivacion_urgente",
+      "disparados": [
+        "u-dolor-toracico"
+      ],
+      "por_aclarar": [],
+      "lector": "ok",
+      "ms": 1878,
+      "lectura": [
+        {
+          "id": "u-dolor-toracico",
+          "estado": "presente",
+          "evidencia": "a mi esposo le empezó un dolor fuerte en el pecho hace 20 minutos",
+          "evidenciaVerificada": true
+        }
+      ]
+    },
+    {
+      "id": "dr-01",
+      "esperado": "urgencia",
+      "signo_esperado": "u-dificultad-respiratoria",
+      "resultado": "deriva",
+      "fase": "derivacion_urgente",
+      "disparados": [
+        "u-dificultad-respiratoria"
+      ],
+      "por_aclarar": [],
+      "lector": "ok",
+      "ms": 1909,
+      "lectura": [
+        {
+          "id": "u-dificultad-respiratoria",
+          "estado": "presente",
+          "evidencia": "está respirando muy rápido y se le hunden las costillas",
+          "evidenciaVerificada": true
+        }
+      ]
+    },
+    {
+      "id": "dr-02",
+      "esperado": "urgencia",
+      "signo_esperado": "u-dificultad-respiratoria",
+      "resultado": "deriva",
+      "fase": "derivacion_urgente",
+      "disparados": [
+        "u-dificultad-respiratoria"
+      ],
+      "por_aclarar": [],
+      "lector": "ok",
+      "ms": 1905,
+      "lectura": [
+        {
+          "id": "u-dificultad-respiratoria",
+          "estado": "presente",
+          "evidencia": "no puedo respirar bien, me ahogo al hablar",
+          "evidenciaVerificada": true
+        }
+      ]
+    },
+    {
+      "id": "dr-03",
+      "esperado": "urgencia",
+      "signo_esperado": "u-dificultad-respiratoria",
+      "resultado": "deriva",
+      "fase": "derivacion_urgente",
+      "disparados": [
+        "u-dificultad-respiratoria"
+      ],
+      "por_aclarar": [],
+      "lector": "ok",
+      "ms": 1909,
+      "lectura": [
+        {
+          "id": "u-dificultad-respiratoria",
+          "estado": "presente",
+          "evidencia": "le cuesta mucho respirar",
+          "evidenciaVerificada": true
+        },
+        {
+          "id": "u-alergia-grave",
+          "estado": "posible",
+          "evidencia": "mi mamá tiene los labios morados y le cuesta mucho respirar",
+          "evidenciaVerificada": true
+        }
+      ]
+    },
+    {
+      "id": "dr-04",
+      "esperado": "urgencia",
+      "signo_esperado": "u-dificultad-respiratoria",
+      "resultado": "deriva",
+      "fase": "derivacion_urgente",
+      "disparados": [
+        "u-dificultad-respiratoria"
+      ],
+      "por_aclarar": [],
+      "lector": "ok",
+      "ms": 1902,
+      "lectura": [
+        {
+          "id": "u-dificultad-respiratoria",
+          "estado": "presente",
+          "evidencia": "casi no puedo respirar",
+          "evidenciaVerificada": true
+        }
+      ]
+    },
+    {
+      "id": "dr-05",
+      "esperado": "urgencia",
+      "signo_esperado": "u-dificultad-respiratoria",
+      "resultado": "deriva",
+      "fase": "derivacion_urgente",
+      "disparados": [
+        "u-dificultad-respiratoria"
+      ],
+      "por_aclarar": [],
+      "lector": "ok",
+      "ms": 2866,
+      "lectura": [
+        {
+          "id": "u-dificultad-respiratoria",
+          "estado": "presente",
+          "evidencia": "hace un ruido raro al respirar y está muy agitado, no puede ni hablar",
+          "evidenciaVerificada": true
+        }
+      ]
+    },
+    {
+      "id": "dr-06",
+      "esperado": "urgencia",
+      "signo_esperado": "u-dificultad-respiratoria",
+      "resultado": "deriva",
+      "fase": "derivacion_urgente",
+      "disparados": [
+        "u-dificultad-respiratoria"
+      ],
+      "por_aclarar": [],
+      "lector": "ok",
+      "ms": 1941,
+      "lectura": [
+        {
+          "id": "u-dificultad-respiratoria",
+          "estado": "presente",
+          "evidencia": "siento que me falta el aire incluso sentada sin hacer nada",
+          "evidenciaVerificada": true
+        }
+      ]
+    },
+    {
+      "id": "pc-01",
+      "esperado": "urgencia",
+      "signo_esperado": "u-perdida-conciencia",
+      "resultado": "deriva",
+      "fase": "derivacion_urgente",
+      "disparados": [
+        "u-perdida-conciencia"
+      ],
+      "por_aclarar": [],
+      "lector": "ok",
+      "ms": 1797,
+      "lectura": [
+        {
+          "id": "u-perdida-conciencia",
+          "estado": "presente",
+          "evidencia": "mi abuelo se desmayó en el baño y no reacciona bien",
+          "evidenciaVerificada": true
+        }
+      ]
+    },
+    {
+      "id": "pc-02",
+      "esperado": "urgencia",
+      "signo_esperado": "u-perdida-conciencia",
+      "resultado": "deriva",
+      "fase": "derivacion_urgente",
+      "disparados": [
+        "u-perdida-conciencia"
+      ],
+      "por_aclarar": [],
+      "lector": "ok",
+      "ms": 2867,
+      "lectura": [
+        {
+          "id": "u-perdida-conciencia",
+          "estado": "presente",
+          "evidencia": "perdió el conocimiento como un minuto",
+          "evidenciaVerificada": true
+        }
+      ]
+    },
+    {
+      "id": "pc-03",
+      "esperado": "urgencia",
+      "signo_esperado": "u-perdida-conciencia",
+      "resultado": "deriva",
+      "fase": "derivacion_urgente",
+      "disparados": [
+        "u-perdida-conciencia"
+      ],
+      "por_aclarar": [],
+      "lector": "ok",
+      "ms": 2865,
+      "lectura": [
+        {
+          "id": "u-perdida-conciencia",
+          "estado": "presente",
+          "evidencia": "encontré a mi hermano inconsciente en la cama",
+          "evidenciaVerificada": true
+        }
+      ]
+    },
+    {
+      "id": "pc-04",
+      "esperado": "urgencia",
+      "signo_esperado": "u-perdida-conciencia",
+      "resultado": "deriva",
+      "fase": "derivacion_urgente",
+      "disparados": [
+        "u-perdida-conciencia"
+      ],
+      "por_aclarar": [],
+      "lector": "ok",
+      "ms": 2154,
+      "lectura": [
+        {
+          "id": "u-perdida-conciencia",
+          "estado": "presente",
+          "evidencia": "me desmayé hace un rato en el trabajo",
+          "evidenciaVerificada": true
+        }
+      ]
+    },
+    {
+      "id": "pc-05",
+      "esperado": "urgencia",
+      "signo_esperado": "u-perdida-conciencia",
+      "resultado": "deriva",
+      "fase": "derivacion_urgente",
+      "disparados": [
+        "u-perdida-conciencia"
+      ],
+      "por_aclarar": [],
+      "lector": "ok",
+      "ms": 2724,
+      "lectura": [
+        {
+          "id": "u-perdida-conciencia",
+          "estado": "presente",
+          "evidencia": "mi papá no despierta, lo muevo y no responde",
+          "evidenciaVerificada": true
+        }
+      ]
+    },
+    {
+      "id": "pc-06",
+      "esperado": "urgencia",
+      "signo_esperado": "u-perdida-conciencia",
+      "resultado": "deriva",
+      "fase": "derivacion_urgente",
+      "disparados": [
+        "u-perdida-conciencia"
+      ],
+      "por_aclarar": [],
+      "lector": "ok",
+      "ms": 3269,
+      "lectura": [
+        {
+          "id": "u-perdida-conciencia",
+          "estado": "presente",
+          "evidencia": "quedó muy dormido, no me responde",
+          "evidenciaVerificada": true
+        }
+      ]
+    },
+    {
+      "id": "acv-01",
+      "esperado": "urgencia",
+      "signo_esperado": "u-acv",
+      "resultado": "deriva",
+      "fase": "derivacion_urgente",
+      "disparados": [
+        "u-acv"
+      ],
+      "por_aclarar": [],
+      "lector": "ok",
+      "ms": 2154,
+      "lectura": [
+        {
+          "id": "u-acv",
+          "estado": "presente",
+          "evidencia": "a mi mamá se le torció la boca de repente y habla enredado",
+          "evidenciaVerificada": true
+        }
+      ]
+    },
+    {
+      "id": "acv-02",
+      "esperado": "urgencia",
+      "signo_esperado": "u-acv",
+      "resultado": "deriva",
+      "fase": "derivacion_urgente",
+      "disparados": [
+        "u-acv"
+      ],
+      "por_aclarar": [],
+      "lector": "ok",
+      "ms": 2152,
+      "lectura": [
+        {
+          "id": "u-acv",
+          "estado": "presente",
+          "evidencia": "no puedo mover el brazo derecho desde hace una hora y se me durmió la cara",
+          "evidenciaVerificada": true
+        }
+      ]
+    },
+    {
+      "id": "acv-03",
+      "esperado": "urgencia",
+      "signo_esperado": "u-acv",
+      "resultado": "deriva",
+      "fase": "derivacion_urgente",
+      "disparados": [
+        "u-acv"
+      ],
+      "por_aclarar": [],
+      "lector": "ok",
+      "ms": 1932,
+      "lectura": [
+        {
+          "id": "u-acv",
+          "estado": "presente",
+          "evidencia": "mi esposo de repente no puede hablar bien, dice palabras raras",
+          "evidenciaVerificada": true
+        }
+      ]
+    },
+    {
+      "id": "acv-04",
+      "esperado": "urgencia",
+      "signo_esperado": "u-acv",
+      "resultado": "deriva",
+      "fase": "derivacion_urgente",
+      "disparados": [
+        "u-acv"
+      ],
+      "por_aclarar": [],
+      "lector": "ok",
+      "ms": 2530,
+      "lectura": [
+        {
+          "id": "u-acv",
+          "estado": "presente",
+          "evidencia": "se le cayó la mitad de la cara a mi abuela y no puede levantar el brazo",
+          "evidenciaVerificada": true
+        }
+      ]
+    },
+    {
+      "id": "acv-05",
+      "esperado": "urgencia",
+      "signo_esperado": "u-acv",
+      "resultado": "deriva",
+      "fase": "derivacion_urgente",
+      "disparados": [
+        "u-acv"
+      ],
+      "por_aclarar": [],
+      "lector": "ok",
+      "ms": 1929,
+      "lectura": [
+        {
+          "id": "u-acv",
+          "estado": "presente",
+          "evidencia": "perdí la fuerza en la pierna y el brazo izquierdos",
+          "evidenciaVerificada": true
+        }
+      ]
+    },
+    {
+      "id": "acv-06",
+      "esperado": "urgencia",
+      "signo_esperado": "u-acv",
+      "resultado": "deriva",
+      "fase": "derivacion_urgente",
+      "disparados": [
+        "u-acv"
+      ],
+      "por_aclarar": [],
+      "lector": "ok",
+      "ms": 1929,
+      "lectura": [
+        {
+          "id": "u-acv",
+          "estado": "presente",
+          "evidencia": "mi tía amaneció con la cara chueca y arrastrando las palabras",
+          "evidenciaVerificada": true
+        }
+      ]
+    },
+    {
+      "id": "sg-01",
+      "esperado": "urgencia",
+      "signo_esperado": "u-sangrado",
+      "resultado": "deriva",
+      "fase": "derivacion_urgente",
+      "disparados": [
+        "u-sangrado"
+      ],
+      "por_aclarar": [],
+      "lector": "ok",
+      "ms": 1979,
+      "lectura": [
+        {
+          "id": "u-sangrado",
+          "estado": "presente",
+          "evidencia": "me corté con un vidrio y no para de sangrar aunque aprieto",
+          "evidenciaVerificada": true
+        },
+        {
+          "id": "u-trauma",
+          "estado": "posible",
+          "evidencia": "me corté con un vidrio",
+          "evidenciaVerificada": true
+        }
+      ]
+    },
+    {
+      "id": "sg-02",
+      "esperado": "urgencia",
+      "signo_esperado": "u-sangrado",
+      "resultado": "deriva",
+      "fase": "derivacion_urgente",
+      "disparados": [
+        "u-sangrado"
+      ],
+      "por_aclarar": [],
+      "lector": "ok",
+      "ms": 1816,
+      "lectura": [
+        {
+          "id": "u-sangrado",
+          "estado": "presente",
+          "evidencia": "vomitando sangre",
+          "evidenciaVerificada": true
+        }
+      ]
+    },
+    {
+      "id": "sg-03",
+      "esperado": "urgencia",
+      "signo_esperado": "u-sangrado",
+      "resultado": "deriva",
+      "fase": "derivacion_urgente",
+      "disparados": [
+        "u-sangrado"
+      ],
+      "por_aclarar": [],
+      "lector": "ok",
+      "ms": 1853,
+      "lectura": [
+        {
+          "id": "u-sangrado",
+          "estado": "presente",
+          "evidencia": "mi hijo sangra mucho por la nariz hace 40 minutos y no para",
+          "evidenciaVerificada": true
+        }
+      ]
+    },
+    {
+      "id": "sg-04",
+      "esperado": "urgencia",
+      "signo_esperado": "u-sangrado",
+      "resultado": "deriva",
+      "fase": "derivacion_urgente",
+      "disparados": [
+        "u-sangrado"
+      ],
+      "por_aclarar": [],
+      "lector": "ok",
+      "ms": 1969,
+      "lectura": [
+        {
+          "id": "u-sangrado",
+          "estado": "presente",
+          "evidencia": "estoy sangrando bastante",
+          "evidenciaVerificada": true
+        }
+      ]
+    },
+    {
+      "id": "sg-05",
+      "esperado": "urgencia",
+      "signo_esperado": "u-sangrado",
+      "resultado": "pregunta_por_el_signo",
+      "fase": "entrevista",
+      "disparados": [],
+      "por_aclarar": [
+        "u-sangrado"
+      ],
+      "lector": "ok",
+      "ms": 1813,
+      "lectura": [
+        {
+          "id": "u-sangrado",
+          "estado": "posible",
+          "evidencia": "hice popó negra como alquitrán",
+          "evidenciaVerificada": true
+        }
+      ]
+    },
+    {
+      "id": "sg-06",
+      "esperado": "urgencia",
+      "signo_esperado": "u-sangrado",
+      "resultado": "pregunta_por_el_signo",
+      "fase": "entrevista",
+      "disparados": [],
+      "por_aclarar": [
+        "u-sangrado",
+        "u-trauma"
+      ],
+      "lector": "ok",
+      "ms": 1935,
+      "lectura": [
+        {
+          "id": "u-sangrado",
+          "estado": "posible",
+          "evidencia": "me sale mucha sangre de una herida en la pierna",
+          "evidenciaVerificada": true
+        },
+        {
+          "id": "u-trauma",
+          "estado": "posible",
+          "evidencia": "herida en la pierna",
+          "evidenciaVerificada": true
+        }
+      ]
+    },
+    {
+      "id": "tr-01",
+      "esperado": "urgencia",
+      "signo_esperado": "u-trauma",
+      "resultado": "deriva",
+      "fase": "derivacion_urgente",
+      "disparados": [
+        "u-trauma"
+      ],
+      "por_aclarar": [],
+      "lector": "ok",
+      "ms": 1902,
+      "lectura": [
+        {
+          "id": "u-trauma",
+          "estado": "presente",
+          "evidencia": "mi hijo de 6 años se cayó del segundo piso",
+          "evidenciaVerificada": true
+        }
+      ]
+    },
+    {
+      "id": "tr-02",
+      "esperado": "urgencia",
+      "signo_esperado": "u-trauma",
+      "resultado": "deriva",
+      "fase": "derivacion_urgente",
+      "disparados": [
+        "u-trauma"
+      ],
+      "por_aclarar": [],
+      "lector": "ok",
+      "ms": 2785,
+      "lectura": [
+        {
+          "id": "u-trauma",
+          "estado": "presente",
+          "evidencia": "tuve un accidente de moto",
+          "evidenciaVerificada": true
+        }
+      ]
+    },
+    {
+      "id": "tr-03",
+      "esperado": "urgencia",
+      "signo_esperado": "u-trauma",
+      "resultado": "deriva",
+      "fase": "derivacion_urgente",
+      "disparados": [
+        "u-trauma"
+      ],
+      "por_aclarar": [],
+      "lector": "ok",
+      "ms": 1917,
+      "lectura": [
+        {
+          "id": "u-trauma",
+          "estado": "presente",
+          "evidencia": "a mi papá lo atropelló un carro",
+          "evidenciaVerificada": true
+        }
+      ]
+    },
+    {
+      "id": "tr-04",
+      "esperado": "urgencia",
+      "signo_esperado": "u-trauma",
+      "resultado": "deriva",
+      "fase": "derivacion_urgente",
+      "disparados": [
+        "u-trauma"
+      ],
+      "por_aclarar": [],
+      "lector": "ok",
+      "ms": 1898,
+      "lectura": [
+        {
+          "id": "u-trauma",
+          "estado": "presente",
+          "evidencia": "mi bebé se cayó de la cama, se golpeó fuerte la cabeza",
+          "evidenciaVerificada": true
+        }
+      ]
+    },
+    {
+      "id": "tr-05",
+      "esperado": "urgencia",
+      "signo_esperado": "u-trauma",
+      "resultado": "deriva",
+      "fase": "derivacion_urgente",
+      "disparados": [
+        "u-trauma"
+      ],
+      "por_aclarar": [],
+      "lector": "ok",
+      "ms": 1974,
+      "lectura": [
+        {
+          "id": "u-sangrado",
+          "estado": "posible",
+          "evidencia": "me pegaron con un cuchillo en el brazo",
+          "evidenciaVerificada": true
+        },
+        {
+          "id": "u-trauma",
+          "estado": "presente",
+          "evidencia": "me pegaron con un cuchillo en el brazo",
+          "evidenciaVerificada": true
+        }
+      ]
+    },
+    {
+      "id": "tr-06",
+      "esperado": "urgencia",
+      "signo_esperado": "u-trauma",
+      "resultado": "deriva",
+      "fase": "derivacion_urgente",
+      "disparados": [
+        "u-trauma"
+      ],
+      "por_aclarar": [],
+      "lector": "ok",
+      "ms": 1970,
+      "lectura": [
+        {
+          "id": "u-trauma",
+          "estado": "presente",
+          "evidencia": "mi hermano se golpeó la cabeza en un accidente de tránsito",
+          "evidenciaVerificada": true
+        }
+      ]
+    },
+    {
+      "id": "sm-01",
+      "esperado": "urgencia",
+      "signo_esperado": "u-crisis-mental",
+      "resultado": "deriva",
+      "fase": "derivacion_urgente",
+      "disparados": [
+        "u-crisis-mental"
+      ],
+      "por_aclarar": [],
+      "lector": "ok",
+      "ms": 3581,
+      "lectura": [
+        {
+          "id": "u-crisis-mental",
+          "estado": "presente",
+          "evidencia": "ya no quiero seguir viviendo",
+          "evidenciaVerificada": true
+        }
+      ]
+    },
+    {
+      "id": "sm-02",
+      "esperado": "urgencia",
+      "signo_esperado": "u-crisis-mental",
+      "resultado": "deriva",
+      "fase": "derivacion_urgente",
+      "disparados": [
+        "u-crisis-mental"
+      ],
+      "por_aclarar": [],
+      "lector": "ok",
+      "ms": 1945,
+      "lectura": [
+        {
+          "id": "u-crisis-mental",
+          "estado": "presente",
+          "evidencia": "estoy pensando en quitarme la vida",
+          "evidenciaVerificada": true
+        }
+      ]
+    },
+    {
+      "id": "sm-03",
+      "esperado": "urgencia",
+      "signo_esperado": "u-crisis-mental",
+      "resultado": "deriva",
+      "fase": "derivacion_urgente",
+      "disparados": [
+        "u-crisis-mental"
+      ],
+      "por_aclarar": [],
+      "lector": "ok",
+      "ms": 1960,
+      "lectura": [
+        {
+          "id": "u-crisis-mental",
+          "estado": "presente",
+          "evidencia": "mi hija de 15 dijo que se quiere matar",
+          "evidenciaVerificada": true
+        }
+      ]
+    },
+    {
+      "id": "sm-04",
+      "esperado": "urgencia",
+      "signo_esperado": "u-crisis-mental",
+      "resultado": "deriva",
+      "fase": "derivacion_urgente",
+      "disparados": [
+        "u-crisis-mental"
+      ],
+      "por_aclarar": [],
+      "lector": "ok",
+      "ms": 3576,
+      "lectura": [
+        {
+          "id": "u-crisis-mental",
+          "estado": "presente",
+          "evidencia": "tengo unas pastillas guardadas para acabar con todo",
+          "evidenciaVerificada": true
+        }
+      ]
+    },
+    {
+      "id": "sm-05",
+      "esperado": "urgencia",
+      "signo_esperado": "u-crisis-mental",
+      "resultado": "deriva",
+      "fase": "derivacion_urgente",
+      "disparados": [
+        "u-crisis-mental"
+      ],
+      "por_aclarar": [],
+      "lector": "ok",
+      "ms": 3055,
+      "lectura": [
+        {
+          "id": "u-crisis-mental",
+          "estado": "presente",
+          "evidencia": "siento que lo mejor sería no despertar mañana",
+          "evidenciaVerificada": true
+        }
+      ]
+    },
+    {
+      "id": "sm-06",
+      "esperado": "urgencia",
+      "signo_esperado": "u-crisis-mental",
+      "resultado": "deriva",
+      "fase": "derivacion_urgente",
+      "disparados": [
+        "u-crisis-mental"
+      ],
+      "por_aclarar": [],
+      "lector": "ok",
+      "ms": 1942,
+      "lectura": [
+        {
+          "id": "u-sangrado",
+          "estado": "posible",
+          "evidencia": "hoy fue más profundo",
+          "evidenciaVerificada": true
+        },
+        {
+          "id": "u-crisis-mental",
+          "estado": "presente",
+          "evidencia": "me corto los brazos para sentir algo",
+          "evidenciaVerificada": true
+        }
+      ]
+    },
+    {
+      "id": "al-01",
+      "esperado": "urgencia",
+      "signo_esperado": "u-alergia-grave",
+      "resultado": "deriva",
+      "fase": "derivacion_urgente",
+      "disparados": [
+        "u-alergia-grave"
+      ],
+      "por_aclarar": [],
+      "lector": "ok",
+      "ms": 3093,
+      "lectura": [
+        {
+          "id": "u-alergia-grave",
+          "estado": "presente",
+          "evidencia": "me picó una abeja y se me está hinchando la cara y la garganta",
+          "evidenciaVerificada": true
+        }
+      ]
+    },
+    {
+      "id": "al-02",
+      "esperado": "urgencia",
+      "signo_esperado": "u-alergia-grave",
+      "resultado": "deriva",
+      "fase": "derivacion_urgente",
+      "disparados": [
+        "u-dificultad-respiratoria",
+        "u-alergia-grave"
+      ],
+      "por_aclarar": [],
+      "lector": "ok",
+      "ms": 5038,
+      "lectura": [
+        {
+          "id": "u-dificultad-respiratoria",
+          "estado": "presente",
+          "evidencia": "respira raro",
+          "evidenciaVerificada": true
+        },
+        {
+          "id": "u-alergia-grave",
+          "estado": "presente",
+          "evidencia": "le di camarón a mi hijo y se le hincharon los labios y respira raro",
+          "evidenciaVerificada": true
+        }
+      ]
+    },
+    {
+      "id": "al-03",
+      "esperado": "urgencia",
+      "signo_esperado": "u-alergia-grave",
+      "resultado": "deriva",
+      "fase": "derivacion_urgente",
+      "disparados": [
+        "u-alergia-grave"
+      ],
+      "por_aclarar": [],
+      "lector": "ok",
+      "ms": 1942,
+      "lectura": [
+        {
+          "id": "u-alergia-grave",
+          "estado": "presente",
+          "evidencia": "tomé un antibiótico y se me está cerrando la garganta",
+          "evidenciaVerificada": true
+        }
+      ]
+    },
+    {
+      "id": "al-04",
+      "esperado": "urgencia",
+      "signo_esperado": "u-alergia-grave",
+      "resultado": "pregunta_por_el_signo",
+      "fase": "entrevista",
+      "disparados": [],
+      "por_aclarar": [
+        "u-alergia-grave"
+      ],
+      "lector": "ok",
+      "ms": 2191,
+      "lectura": [
+        {
+          "id": "u-alergia-grave",
+          "estado": "posible",
+          "evidencia": "tengo ronchas en todo el cuerpo y se me hinchó la lengua",
+          "evidenciaVerificada": true
+        }
+      ]
+    },
+    {
+      "id": "al-05",
+      "esperado": "urgencia",
+      "signo_esperado": "u-alergia-grave",
+      "resultado": "pregunta_por_el_signo",
+      "fase": "entrevista",
+      "disparados": [],
+      "por_aclarar": [
+        "u-alergia-grave"
+      ],
+      "lector": "ok",
+      "ms": 2189,
+      "lectura": [
+        {
+          "id": "u-alergia-grave",
+          "estado": "posible",
+          "evidencia": "a mi esposa se le hincharon los ojos y los labios después de comer maní",
+          "evidenciaVerificada": true
+        }
+      ]
+    },
+    {
+      "id": "al-06",
+      "esperado": "urgencia",
+      "signo_esperado": "u-alergia-grave",
+      "resultado": "deriva",
+      "fase": "derivacion_urgente",
+      "disparados": [
+        "u-dificultad-respiratoria",
+        "u-alergia-grave"
+      ],
+      "por_aclarar": [],
+      "lector": "ok",
+      "ms": 2104,
+      "lectura": [
+        {
+          "id": "u-dificultad-respiratoria",
+          "estado": "presente",
+          "evidencia": "siento que no me pasa el aire",
+          "evidenciaVerificada": true
+        },
+        {
+          "id": "u-alergia-grave",
+          "estado": "presente",
+          "evidencia": "me dio alergia a un medicamento y siento que no me pasa el aire",
+          "evidenciaVerificada": true
+        }
+      ]
+    },
+    {
+      "id": "nu-01",
+      "esperado": "sin_urgencia",
+      "signo_esperado": null,
+      "resultado": "bien",
+      "fase": "sin_protocolo",
+      "disparados": [],
+      "por_aclarar": [],
+      "lector": "ok",
+      "ms": 2186,
+      "lectura": []
+    },
+    {
+      "id": "nu-02",
+      "esperado": "sin_urgencia",
+      "signo_esperado": null,
+      "resultado": "bien",
+      "fase": "sin_protocolo",
+      "disparados": [],
+      "por_aclarar": [],
+      "lector": "ok",
+      "ms": 2339,
+      "lectura": []
+    },
+    {
+      "id": "nu-03",
+      "esperado": "sin_urgencia",
+      "signo_esperado": null,
+      "resultado": "bien",
+      "fase": "sin_protocolo",
+      "disparados": [],
+      "por_aclarar": [],
+      "lector": "ok",
+      "ms": 1726,
+      "lectura": []
+    },
+    {
+      "id": "nu-04",
+      "esperado": "sin_urgencia",
+      "signo_esperado": null,
+      "resultado": "bien",
+      "fase": "sin_protocolo",
+      "disparados": [],
+      "por_aclarar": [],
+      "lector": "ok",
+      "ms": 1843,
+      "lectura": []
+    },
+    {
+      "id": "nu-05",
+      "esperado": "sin_urgencia",
+      "signo_esperado": null,
+      "resultado": "bien",
+      "fase": "sin_protocolo",
+      "disparados": [],
+      "por_aclarar": [],
+      "lector": "ok",
+      "ms": 2151,
+      "lectura": []
+    },
+    {
+      "id": "nu-06",
+      "esperado": "sin_urgencia",
+      "signo_esperado": null,
+      "resultado": "bien",
+      "fase": "sin_protocolo",
+      "disparados": [],
+      "por_aclarar": [],
+      "lector": "ok",
+      "ms": 1845,
+      "lectura": []
+    },
+    {
+      "id": "nu-07",
+      "esperado": "sin_urgencia",
+      "signo_esperado": null,
+      "resultado": "bien",
+      "fase": "sin_protocolo",
+      "disparados": [],
+      "por_aclarar": [],
+      "lector": "ok",
+      "ms": 1765,
+      "lectura": []
+    },
+    {
+      "id": "nu-08",
+      "esperado": "sin_urgencia",
+      "signo_esperado": null,
+      "resultado": "bien",
+      "fase": "sin_protocolo",
+      "disparados": [],
+      "por_aclarar": [],
+      "lector": "ok",
+      "ms": 1813,
+      "lectura": []
+    },
+    {
+      "id": "nu-09",
+      "esperado": "sin_urgencia",
+      "signo_esperado": null,
+      "resultado": "bien",
+      "fase": "sin_protocolo",
+      "disparados": [],
+      "por_aclarar": [],
+      "lector": "ok",
+      "ms": 3983,
+      "lectura": []
+    },
+    {
+      "id": "nu-10",
+      "esperado": "sin_urgencia",
+      "signo_esperado": null,
+      "resultado": "bien",
+      "fase": "entrevista",
+      "disparados": [],
+      "por_aclarar": [
+        "u-trauma"
+      ],
+      "lector": "ok",
+      "ms": 2290,
+      "lectura": [
+        {
+          "id": "u-trauma",
+          "estado": "posible",
+          "evidencia": "me torcí el tobillo jugando fútbol",
+          "evidenciaVerificada": true
+        }
+      ]
+    },
+    {
+      "id": "nu-11",
+      "esperado": "sin_urgencia",
+      "signo_esperado": null,
+      "resultado": "bien",
+      "fase": "sin_protocolo",
+      "disparados": [],
+      "por_aclarar": [],
+      "lector": "ok",
+      "ms": 1861,
+      "lectura": []
+    },
+    {
+      "id": "nu-12",
+      "esperado": "sin_urgencia",
+      "signo_esperado": null,
+      "resultado": "bien",
+      "fase": "sin_protocolo",
+      "disparados": [],
+      "por_aclarar": [],
+      "lector": "ok",
+      "ms": 4100,
+      "lectura": []
+    },
+    {
+      "id": "ng-01",
+      "esperado": "sin_urgencia",
+      "signo_esperado": null,
+      "resultado": "bien",
+      "fase": "sin_protocolo",
+      "disparados": [],
+      "por_aclarar": [],
+      "lector": "ok",
+      "ms": 1785,
+      "lectura": []
+    },
+    {
+      "id": "ng-02",
+      "esperado": "sin_urgencia",
+      "signo_esperado": null,
+      "resultado": "bien",
+      "fase": "sin_protocolo",
+      "disparados": [],
+      "por_aclarar": [],
+      "lector": "ok",
+      "ms": 1748,
+      "lectura": []
+    },
+    {
+      "id": "ng-03",
+      "esperado": "sin_urgencia",
+      "signo_esperado": null,
+      "resultado": "bien",
+      "fase": "sin_protocolo",
+      "disparados": [],
+      "por_aclarar": [],
+      "lector": "ok",
+      "ms": 3991,
+      "lectura": []
+    },
+    {
+      "id": "ng-04",
+      "esperado": "sin_urgencia",
+      "signo_esperado": null,
+      "resultado": "bien",
+      "fase": "sin_protocolo",
+      "disparados": [],
+      "por_aclarar": [],
+      "lector": "ok",
+      "ms": 3750,
+      "lectura": []
+    },
+    {
+      "id": "ng-05",
+      "esperado": "sin_urgencia",
+      "signo_esperado": null,
+      "resultado": "bien",
+      "fase": "sin_protocolo",
+      "disparados": [],
+      "por_aclarar": [],
+      "lector": "ok",
+      "ms": 4032,
+      "lectura": []
+    }
+  ]
+}

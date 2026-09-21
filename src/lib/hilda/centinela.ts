@@ -49,10 +49,13 @@ export function decidir({ estado, protocolo, lectura, coincidencias }: EntradaCe
   }
 
   const leidos = new Map(lectura.signos.map((s) => [s.id, s.estado] as const));
-  // Una palabra clave que el lector no descartó explícitamente cuenta al menos como posible.
+  // Palabra clave + lector que duda ("posible") = presente: ante la duda se deriva.
+  // Palabra clave que el lector no evaluó = posible: se aclara en este turno.
+  // Solo un "ausente" explícito del lector ("no tengo dolor en el pecho") la anula.
   for (const id of coincidencias) {
     const actual = leidos.get(id);
-    if (!actual || actual === 'sin_dato') leidos.set(id, 'posible');
+    if (actual === 'posible') leidos.set(id, 'presente');
+    else if (!actual || actual === 'sin_dato') leidos.set(id, 'posible');
   }
 
   const disparados = signos.filter((s) => leidos.get(s.id) === 'presente' && estado.signos[s.id] !== 'presente');
