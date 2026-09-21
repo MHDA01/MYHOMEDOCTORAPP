@@ -38,7 +38,7 @@ const THINKING_BUDGET = -1;
  * System prompt de la Dra. Hilda.
  * Define su personalidad, límites éticos y protocolo de triage.
  */
-const SYSTEM_PROMPT = `SYSTEM PROMPT — Dra. Hilda v2.1 (myhomedoctorapp)
+const SYSTEM_PROMPT = `SYSTEM PROMPT — Dra. Hilda v2.2 (myhomedoctorapp)
 
 Eres Dra. Hilda, asistente de orientación médica con IA de myhomedoctorapp.
 Tu función es orientar, educar y apoyar al paciente sin reemplazar la consulta médica presencial.
@@ -55,7 +55,7 @@ Tu función es orientar, educar y apoyar al paciente sin reemplazar la consulta 
       "¡Hola, [Nombre]! Soy la Dra. Hilda, tu asistente de orientación en salud en myhomedoctorapp. Bienvenido/a. Antes de comenzar, quiero contarte brevemente qué es la teleorientación y cómo puedo ayudarte:
 
       **¿Qué es la teleorientación?**
-      La teleorientación es un servicio de salud regulado en Colombia por la Resolución 2654 de 2019 del Ministerio de Salud y Protección Social. Consiste en brindarte orientación, educación en salud, consejería y direccionamiento hacia los centros de atención médica que necesites.
+      La teleorientación es una actividad de telesalud regulada en Colombia por la Resolución 1644 de 2026 del Ministerio de Salud y Protección Social. Consiste en brindarte orientación, educación en salud, consejería y direccionamiento hacia los centros de atención médica que necesites.
 
       **¿Qué puedo hacer por ti?**
       - Orientarte sobre síntomas, hábitos saludables y prevención de enfermedades.
@@ -65,7 +65,7 @@ Tu función es orientar, educar y apoyar al paciente sin reemplazar la consulta 
 
       **¿Qué NO hago?**
       - No realizo diagnósticos definitivos.
-      - No formulo ni prescribo medicamentos (esto está reservado a la telemedicina interactiva, según el Artículo 19 de la Resolución 2654).
+      - No formulo ni prescribo medicamentos (la teleorientación no los incluye, según la Resolución 1644 de 2026).
       - No ordeno exámenes de laboratorio ni imágenes diagnósticas.
       - No reemplazo la consulta médica presencial.
 
@@ -124,8 +124,8 @@ Tu función es orientar, educar y apoyar al paciente sin reemplazar la consulta 
 - MEDICAMENTOS: nunca sugieras iniciar, suspender, cambiar, sustituir ni ajustar la dosis de ningún
   medicamento, incluidos los de venta libre, suplementos y productos naturales, y no propongas uno
   "en vez de" otro. Si el paciente pregunta qué tomar, explica que esa indicación debe darla un médico
-  (la prescripción solo es posible en telemedicina interactiva o telexperticia sincrónica, Resolución
-  2654 de 2019, art. 19) y oriéntalo al nivel de atención adecuado según sus síntomas.
+  (la teleorientación no incluye formular medicamentos, órdenes ni solicitudes diagnósticas, según la
+  Resolución 1644 de 2026) y oriéntalo al nivel de atención adecuado según sus síntomas.
 - ALERGIAS Y ANTECEDENTES DEL PERFIL: tenlos siempre presentes. Si el paciente menciona que va a tomar
   o ya tomó algo de su lista de alergias, adviértele con claridad que no lo haga y oriéntalo a consultar;
   si describe signos de reacción alérgica grave (dificultad para respirar, hinchazón de labios, lengua
@@ -238,6 +238,7 @@ import {
   MAX_IMAGENES_POR_MENSAJE,
   MENSAJE_MUY_LARGO,
 } from '@/lib/textos-chat';
+import { agentesEncendidos, responderTurno } from '@/lib/hilda/turno';
 
 export interface PatientStructuredContext {
   firstName: string;
@@ -651,17 +652,34 @@ export async function enviarMensajeConsulta(
     if (bloqueo) return fallo(bloqueo);
 
     const contenidos = await historialParaLaIA(uid, convId);
-    const resultado = await preguntarALaIA(instruccionDeSistema(paciente), contenidos);
-    if (!resultado.ok) return fallo(errorDeLaIA(resultado));
+    let respuesta: string;
+    if (agentesEncendidos()) {
+      const turno = await responderTurno({
+        uid,
+        convId,
+        contenidos,
+        ultimoMensaje: texto,
+        sistemaBase: instruccionDeSistema(paciente),
+        edadDelPerfil: typeof paciente?.age === 'number' ? paciente.age : null,
+        generar: preguntarALaIA,
+        modeloRedactor: MODEL_ID,
+      });
+      if (!turno.ok) return fallo(errorDeLaIA(turno.error));
+      respuesta = turno.texto;
+    } else {
+      const resultado = await preguntarALaIA(instruccionDeSistema(paciente), contenidos);
+      if (!resultado.ok) return fallo(errorDeLaIA(resultado));
+      respuesta = resultado.text;
+    }
 
     try {
-      await persistConversationMessage(uid, convId, { role: 'assistant', content: resultado.text });
+      await persistConversationMessage(uid, convId, { role: 'assistant', content: respuesta });
     } catch (error) {
       // El paciente igual recibe la respuesta; queda registro para revisar.
       console.error('[Dra. Hilda] Error guardando la respuesta de la IA:', error);
     }
 
-    return { success: true, message: resultado.text };
+    return { success: true, message: respuesta };
   } catch (error: any) {
     console.error('[Dra. Hilda] Error inesperado:', error);
     return fallo(conAvisoDeUrgencias('Ocurrió un error inesperado. Intenta de nuevo.'));

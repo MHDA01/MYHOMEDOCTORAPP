@@ -8,7 +8,15 @@ import {
   type PatientStructuredContext,
 } from '@/app/actions/teleorientacion';
 import { AVISO_URGENCIAS, IMAGEN_NO_VALIDA, MENSAJE_MUY_LARGO } from '@/lib/textos-chat';
-import { crearUsuario, fetchFalso, respuestaGemini, vaciarFirestore, type UsuarioDePrueba } from '../ayudas';
+import {
+  crearUsuario,
+  fetchFalso,
+  fetchPorAgente,
+  llamadasDelRedactor,
+  respuestaGemini,
+  vaciarFirestore,
+  type UsuarioDePrueba,
+} from '../ayudas';
 
 const BUCKET = 'demo-mhda.appspot.com';
 
@@ -119,7 +127,7 @@ describe('Enviar un mensaje a la Dra. Hilda (enviarMensajeConsulta)', () => {
   });
 
   it('arma el historial desde la base de datos, sin los textos de sistema, con el contexto del paciente', async () => {
-    const { falso, llamadasGemini } = fetchFalso(() => respuestaGemini('Desde ayer entonces.'));
+    const { falso, llamadasGemini } = fetchPorAgente({ redactor: () => respuestaGemini('Desde ayer entonces.') });
     vi.stubGlobal('fetch', falso);
     const convId = await crearConversacion(ana.uid);
     await persistSecureMessage(ana.idToken, convId, { role: 'assistant', content: 'Hola, soy la Dra. Hilda' });
@@ -128,7 +136,7 @@ describe('Enviar un mensaje a la Dra. Hilda (enviarMensajeConsulta)', () => {
 
     await enviarMensajeConsulta(ana.idToken, convId, { texto: 'Desde ayer' }, paciente);
 
-    const { cuerpo } = llamadasGemini[0];
+    const { cuerpo } = llamadasDelRedactor(llamadasGemini)[0];
     const textos = cuerpo.contents.map((c: any) => [c.role, c.parts[0].text]);
     expect(textos).toEqual([
       ['model', 'Hola, soy la Dra. Hilda'],
@@ -142,7 +150,7 @@ describe('Enviar un mensaje a la Dra. Hilda (enviarMensajeConsulta)', () => {
   });
 
   it('manda a la IA las fotos de la carpeta de la conversación como imagen', async () => {
-    const { falso, llamadasGemini } = fetchFalso(() => respuestaGemini('Veo la lesión.'));
+    const { falso, llamadasGemini } = fetchPorAgente({ redactor: () => respuestaGemini('Veo la lesión.') });
     vi.stubGlobal('fetch', falso);
     const convId = await crearConversacion(ana.uid);
     const url = await subirFoto(`medical-images/${ana.uid}/${convId}/lunar.jpg`);
@@ -150,7 +158,7 @@ describe('Enviar un mensaje a la Dra. Hilda (enviarMensajeConsulta)', () => {
     const resultado = await enviarMensajeConsulta(ana.idToken, convId, { texto: '', imageUrls: [url] }, paciente);
     expect(resultado.success).toBe(true);
 
-    const partes = llamadasGemini[0].cuerpo.contents.at(-1).parts;
+    const partes = llamadasDelRedactor(llamadasGemini)[0].cuerpo.contents.at(-1).parts;
     expect(partes[1].inlineData).toEqual({ mimeType: 'image/jpeg', data: Buffer.from([0xff, 0xd8, 0xff, 0xe0]).toString('base64') });
   });
 
@@ -204,13 +212,14 @@ describe('Enviar un mensaje a la Dra. Hilda (enviarMensajeConsulta)', () => {
 
   it('si Gemini falla una vez por saturación, reintenta solo y responde', async () => {
     silenciarErrores();
-    let intento = 0;
-    const { falso, llamadasGemini } = fetchFalso(() => (++intento === 1 ? new Response('overloaded', { status: 503 }) : respuestaGemini('Ya estoy aquí.')));
+    const { falso, llamadasGemini } = fetchPorAgente({
+      redactor: (n) => (n === 1 ? new Response('overloaded', { status: 503 }) : respuestaGemini('Ya estoy aquí.')),
+    });
     vi.stubGlobal('fetch', falso);
     const convId = await crearConversacion(ana.uid);
 
     expect(await enviarMensajeConsulta(ana.idToken, convId, { texto: 'hola' }, paciente)).toEqual({ success: true, message: 'Ya estoy aquí.' });
-    expect(llamadasGemini).toHaveLength(2);
+    expect(llamadasDelRedactor(llamadasGemini)).toHaveLength(2);
   });
 
   it('si Gemini sigue fallando, devuelve el error con el aviso de urgencias y conserva la pregunta', async () => {
@@ -219,11 +228,26 @@ describe('Enviar un mensaje a la Dra. Hilda (enviarMensajeConsulta)', () => {
     vi.stubGlobal('fetch', falso);
     const convId = await crearConversacion(ana.uid);
 
-    const resultado = await enviarMensajeConsulta(ana.idToken, convId, { texto: 'me duele el pecho' }, paciente);
+    const resultado = await enviarMensajeConsulta(ana.idToken, convId, { texto: 'hola, tengo gripa' }, paciente);
     expect(resultado.success).toBe(false);
     expect((resultado as { error: string }).error).toContain(AVISO_URGENCIAS);
-    expect(llamadasGemini).toHaveLength(2);
+    // Lector y redactor: cada uno con su reintento.
+    expect(llamadasGemini).toHaveLength(4);
     expect((await mensajesGuardados(ana.uid, convId)).map((m) => m.role)).toEqual(['user']);
+  });
+
+  it('aunque Gemini esté caído, un signo de alarma recibe la derivación a urgencias', async () => {
+    silenciarErrores();
+    const { falso, llamadasGemini } = fetchFalso(() => new Response('Service Unavailable', { status: 503 }));
+    vi.stubGlobal('fetch', falso);
+    const convId = await crearConversacion(ana.uid);
+
+    const resultado = await enviarMensajeConsulta(ana.idToken, convId, { texto: 'me duele el pecho' }, paciente);
+    expect(resultado.success).toBe(true);
+    expect(resultado.message).toContain('dolor en el pecho');
+    expect(resultado.message).toContain(AVISO_URGENCIAS);
+    expect(llamadasDelRedactor(llamadasGemini)).toHaveLength(0);
+    expect((await mensajesGuardados(ana.uid, convId)).map((m) => m.role)).toEqual(['user', 'assistant']);
   });
 
   it('si Gemini bloquea el contenido no reintenta', async () => {
@@ -234,7 +258,7 @@ describe('Enviar un mensaje a la Dra. Hilda (enviarMensajeConsulta)', () => {
 
     const resultado = await enviarMensajeConsulta(ana.idToken, convId, { texto: 'hola' }, paciente);
     expect((resultado as { error: string }).error).toContain('Reformula tu consulta');
-    expect(llamadasGemini).toHaveLength(1);
+    expect(llamadasDelRedactor(llamadasGemini)).toHaveLength(1);
   });
 });
 

@@ -57,3 +57,43 @@ export function fetchFalso(responder: (url: string, init?: RequestInit) => Promi
   }) as typeof fetch;
   return { falso, llamadasGemini };
 }
+
+/** Llamadas del agente lector (piden JSON) y del redactor (texto para el paciente). */
+export function esLlamadaDelLector(llamada: LlamadaGemini): boolean {
+  return llamada.cuerpo?.generationConfig?.responseMimeType === 'application/json';
+}
+
+export function llamadasDelRedactor(llamadas: LlamadaGemini[]): LlamadaGemini[] {
+  return llamadas.filter((l) => !esLlamadaDelLector(l));
+}
+
+/** Lectura que el agente lector devolvería; por defecto, "nada que reportar". */
+export function respuestaLector(lectura: {
+  motivo_id?: string;
+  edad_anios?: number | null;
+  signos?: Array<{ id: string; estado: string; evidencia: string }>;
+  preguntas_respondidas?: string[];
+} = {}): Response {
+  return respuestaGemini(
+    JSON.stringify({ motivo_id: 'ninguno', edad_anios: null, signos: [], preguntas_respondidas: [], ...lectura })
+  );
+}
+
+/**
+ * Responde distinto al lector y al redactor. Cada función recibe el número de
+ * llamada de su tipo (1, 2, ...) y el cuerpo enviado.
+ */
+export function fetchPorAgente(respuestas: {
+  lector?: (n: number, cuerpo: any) => Response | Promise<Response>;
+  redactor: (n: number, cuerpo: any) => Response | Promise<Response>;
+}) {
+  let nLector = 0;
+  let nRedactor = 0;
+  return fetchFalso((_url, init) => {
+    const cuerpo = init?.body ? JSON.parse(String(init.body)) : undefined;
+    if (cuerpo?.generationConfig?.responseMimeType === 'application/json') {
+      return (respuestas.lector ?? (() => respuestaLector()))(++nLector, cuerpo);
+    }
+    return respuestas.redactor(++nRedactor, cuerpo);
+  });
+}

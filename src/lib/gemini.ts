@@ -39,6 +39,11 @@ export interface GeminiRequest {
    * se esperó el límite completo). Por defecto 0.
    */
   reintentos?: number;
+  /**
+   * Respuesta en JSON con este esquema (subconjunto OpenAPI de Gemini). La usan
+   * los agentes que leen la conversación y devuelven datos, no texto para el paciente.
+   */
+  esquemaJson?: Record<string, unknown>;
 }
 
 export type GeminiResult =
@@ -80,6 +85,10 @@ async function intentarGemini(req: GeminiRequest): Promise<GeminiResult> {
         temperature: req.temperature ?? 0.7,
         maxOutputTokens: req.maxTokens ?? 1024,
       };
+      if (req.esquemaJson) {
+        generationConfig.responseMimeType = 'application/json';
+        generationConfig.responseSchema = req.esquemaJson;
+      }
       if (withThinking) {
         generationConfig.thinkingConfig = { thinkingBudget: req.thinkingBudget ?? 0 };
       }

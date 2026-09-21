@@ -71,6 +71,21 @@ describe('Cuentas_Tutor: cada cuenta solo ve y cambia lo suyo', () => {
   });
 });
 
+describe('Motor de agentes de la Dra. Hilda', () => {
+  it('la dueña no puede leer ni alterar el estado de la consulta ni las trazas (auditoría)', async () => {
+    await entorno.withSecurityRulesDisabled(async (contexto) => {
+      const db = contexto.firestore();
+      await setDoc(doc(db, 'Cuentas_Tutor/ana/conversaciones/c1/agente/estado'), { alarma_activada: true });
+      await setDoc(doc(db, 'Cuentas_Tutor/ana/conversaciones/c1/trazas/t1'), { fase: 'derivacion_urgente' });
+    });
+    const db = entorno.authenticatedContext('ana').firestore();
+    await assertFails(getDoc(doc(db, 'Cuentas_Tutor/ana/conversaciones/c1/agente/estado')));
+    await assertFails(setDoc(doc(db, 'Cuentas_Tutor/ana/conversaciones/c1/agente/estado'), { alarma_activada: false }));
+    await assertFails(getDoc(doc(db, 'Cuentas_Tutor/ana/conversaciones/c1/trazas/t1')));
+    await assertFails(addDoc(collection(db, 'Cuentas_Tutor/ana/conversaciones/c1/trazas'), { fase: 'falsa' }));
+  });
+});
+
 describe('Colecciones cerradas', () => {
   it('users y cualquier colección no declarada están cerradas', async () => {
     const db = entorno.authenticatedContext('ana').firestore();
