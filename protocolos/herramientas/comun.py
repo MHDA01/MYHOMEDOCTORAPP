@@ -35,6 +35,18 @@ def manifest() -> dict[str, dict]:
     return {f["id"]: f for f in leer_json(os.path.join(FUENTES, "manifest.json"))["fuentes"]}
 
 
+def exigir_procesable(fuente: dict) -> None:
+    """Las fuentes de solo lectura humana (procesable=false) nunca pasan por la IA.
+
+    Su licencia no lo permite (p. ej. NICE fuera del Reino Unido): el médico las lee
+    y las cita como referencia bibliográfica en el consenso.
+    """
+    if fuente.get("procesable") is False:
+        raise RuntimeError(
+            f"{fuente['id']}: es de solo lectura humana (licencia: {fuente.get('licencia')}). La fábrica no la procesa."
+        )
+
+
 def paginas(fuente_id: str) -> list[str]:
     """Texto de cada página del PDF (índice 0 = página 1 del PDF).
 
@@ -42,11 +54,12 @@ def paginas(fuente_id: str) -> list[str]:
     citar un PDF distinto del registrado en el manifest.
     """
     fuente = manifest()[fuente_id]
+    exigir_procesable(fuente)
     cache = os.path.join(FUENTES, "texto", f"{fuente_id}.json")
     if os.path.exists(cache):
         return leer_json(cache)
 
-    pdf = os.path.join(FUENTES, "pdf", fuente["archivo"])
+    pdf = os.path.join(FUENTES, fuente.get("carpeta", "pdf"), fuente["archivo"])
     sha = hashlib.sha256(open(pdf, "rb").read()).hexdigest()
     if sha != fuente["sha256"]:
         raise RuntimeError(f"{fuente_id}: el PDF no coincide con el sha256 del manifest")

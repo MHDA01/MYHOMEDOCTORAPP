@@ -4,3 +4,4 @@ fuentes/texto/
 borradores/*.raw.json
 __pycache__/
 .paridad/
+fuentes/referencia/

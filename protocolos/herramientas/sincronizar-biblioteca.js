@@ -56,9 +56,11 @@ async function main() {
   const manifest = leer(path.join(FUENTES, 'manifest.json')).fuentes;
   const plan = [];
   for (const f of manifest) {
+    // Solo lectura humana: su licencia no permite procesarla con IA; nunca se sube a la fábrica.
+    if (f.procesable === false) continue;
     const rutaTexto = path.join(FUENTES, 'texto', `${f.id}.json`);
     const rutaInventario = path.join(FUENTES, 'inventario', `${f.id}.json`);
-    const rutaPdf = path.join(FUENTES, 'pdf', f.archivo);
+    const rutaPdf = path.join(FUENTES, f.carpeta || 'pdf', f.archivo);
     const tieneTexto = fs.existsSync(rutaTexto);
     const tieneInventario = fs.existsSync(rutaInventario);
     if (fs.existsSync(rutaPdf) && sha256(fs.readFileSync(rutaPdf)) !== f.sha256) {
