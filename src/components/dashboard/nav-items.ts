@@ -1,10 +1,10 @@
-import { Home, MessageCircleHeart, FileText, UserRound, ShieldCheck, type LucideIcon } from 'lucide-react';
+import { Home, MessageCircleHeart, FileText, UserRound, Users, ShieldCheck, type LucideIcon } from 'lucide-react';
 
 /**
  * Destinos de navegación de la app. Es una sola lista para el menú lateral
  * (computador) y la barra inferior (celular), así los dos nunca se desfasan.
  *
- * Solo incluye lo que funciona hoy. Familia, Historial clínico, Medicamentos y
+ * Solo incluye lo que funciona hoy. Historial clínico, Medicamentos y
  * Educación aparecen en el mockup pero todavía no existen: se agregan aquí
  * cuando se implementen.
  */
@@ -19,6 +19,7 @@ export type NavItem = {
 export const MAIN_NAV_ITEMS: NavItem[] = [
   { href: '/dashboard', label: 'Inicio', shortLabel: 'Inicio', icon: Home },
   { href: '/dashboard/teleorientacion', label: 'Dra. Hilda', shortLabel: 'Dra. Hilda', icon: MessageCircleHeart },
+  { href: '/dashboard/familia', label: 'Mi familia', shortLabel: 'Familia', icon: Users },
   { href: '/dashboard/reportes', label: 'Mis informes', shortLabel: 'Informes', icon: FileText },
   { href: '/dashboard/cuenta', label: 'Mi cuenta', shortLabel: 'Cuenta', icon: UserRound },
 ];

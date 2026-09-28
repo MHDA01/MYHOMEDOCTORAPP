@@ -126,6 +126,13 @@ export type FamilyProfile = {
   medications?: string[];
   // Flag ligero — el historial clínico largo vive en la subcolección historial/registro
   hasHistory?: boolean;
+  /** Ya falleció: el familiograma lo dibuja tachado. */
+  deceased?: boolean;
+  // Historial en claro: solo lo entrega getSecureFamilyTree (el familiograma lo muestra completo).
+  pathologicalHistory?: string;
+  surgicalHistory?: string;
+  gynecologicalHistory?: string;
+  familyHistory?: string;
   createdAt?: any;
   updatedAt?: any;
 };

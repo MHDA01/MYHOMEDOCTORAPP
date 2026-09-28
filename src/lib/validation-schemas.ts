@@ -4,6 +4,7 @@
  */
 
 import { z } from 'zod';
+import { normalizarFechaNacimiento, normalizarSexo } from '@/lib/familia';
 
 /**
  * Schema para datos de alergias
@@ -42,20 +43,52 @@ export const MedicalHistorySchema = z.object({
 export type MedicalHistory = z.infer<typeof MedicalHistorySchema>;
 
 /**
+ * Sexo: el servidor aceptaba 'm'/'f' y la app usa 'male'/'female'; se aceptan los
+ * dos y se guarda siempre 'male' | 'female' | 'other'.
+ */
+const SexoSchema = z
+  .enum(['m', 'f', 'male', 'female', 'other'], { errorMap: () => ({ message: 'Sexo no válido' }) })
+  .transform(normalizarSexo);
+
+/**
+ * Fecha de nacimiento: acepta 'AAAA-MM-DD' (lo que entrega el campo de fecha),
+ * fecha ISO con hora o Date, y se guarda como 'AAAA-MM-DD'.
+ */
+const FechaNacimientoSchema = z
+  .union([z.string(), z.date()])
+  .transform((valor, ctx) => {
+    const fecha = normalizarFechaNacimiento(valor);
+    if (!fecha) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Fecha de nacimiento no válida' });
+      return z.NEVER;
+    }
+    if (fecha < '1900-01-01' || fecha > new Date().toISOString().slice(0, 10)) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'La fecha de nacimiento debe estar entre 1900 y hoy' });
+      return z.NEVER;
+    }
+    return fecha;
+  });
+
+/** Lista de textos cortos (alergias, medicamentos). */
+const ListaCortaSchema = z.array(z.string().trim().min(1).max(200)).max(50);
+
+/**
  * Schema para datos personales de integrante familiar
  */
 export const FamilyMemberPersonalInfoSchema = z.object({
-  firstName: z.string().min(1, 'Nombre requerido').max(100),
-  lastName: z.string().min(1, 'Apellido requerido').max(100),
-  sex: z.enum(['m', 'f', 'other']),
-  dateOfBirth: z.string().datetime({ offset: true }).or(z.date()),
+  firstName: z.string().trim().min(1, 'Nombre requerido').max(100),
+  lastName: z.string().trim().min(1, 'Apellido requerido').max(100),
+  sex: SexoSchema,
+  dateOfBirth: FechaNacimientoSchema,
   age: z.number().min(0).max(150).optional(),
   weight: z.number().min(0).max(500).optional(),
   country: z.string().max(100).optional(),
   insuranceProvider: z.string().max(50).optional(),
   insuranceProviderName: z.string().max(200).optional(),
-  relationship: z.string().max(100).optional(),
+  relationship: z.string().trim().max(100).optional(),
   esTitular: z.boolean().default(false),
+  /** Para el familiograma: la persona ya falleció (se dibuja tachada). */
+  deceased: z.boolean().optional(),
 });
 
 export type FamilyMemberPersonalInfo = z.infer<typeof FamilyMemberPersonalInfoSchema>;
@@ -65,8 +98,8 @@ export type FamilyMemberPersonalInfo = z.infer<typeof FamilyMemberPersonalInfoSc
  * (saveFamilyMember)
  */
 export const SaveFamilyMemberInputSchema = FamilyMemberPersonalInfoSchema.extend({
-  allergies: z.array(z.string()).optional(),
-  medications: z.array(z.string()).optional(),
+  allergies: ListaCortaSchema.optional(),
+  medications: ListaCortaSchema.optional(),
   pathologicalHistory: z.string().max(2000).optional(),
   surgicalHistory: z.string().max(2000).optional(),
   gynecologicalHistory: z.string().max(2000).optional(),
@@ -74,6 +107,28 @@ export const SaveFamilyMemberInputSchema = FamilyMemberPersonalInfoSchema.extend
 }).strict(); // Reject unknown properties
 
 export type SaveFamilyMemberInput = z.infer<typeof SaveFamilyMemberInputSchema>;
+
+/**
+ * Schema para guardar el perfil del titular (la cuenta). Vive en el documento de la
+ * cuenta, no en Integrantes: no lleva parentesco, y `sex`/`dateOfBirth` se validan igual.
+ */
+export const SaveTitularProfileInputSchema = z.object({
+  firstName: z.string().trim().min(1, 'Nombre requerido').max(100),
+  lastName: z.string().trim().min(1, 'Apellido requerido').max(100),
+  sex: SexoSchema,
+  dateOfBirth: FechaNacimientoSchema,
+  weight: z.number().min(0).max(500).optional(),
+  country: z.enum(['chile', 'argentina', 'colombia']).optional(),
+  insuranceProvider: z.string().max(50).optional(),
+  insuranceProviderName: z.string().max(200).optional(),
+  allergies: ListaCortaSchema.optional(),
+  medications: ListaCortaSchema.optional(),
+  pathologicalHistory: z.string().max(2000).optional(),
+  surgicalHistory: z.string().max(2000).optional(),
+  gynecologicalHistory: z.string().max(2000).optional(),
+}).strict();
+
+export type SaveTitularProfileInput = z.infer<typeof SaveTitularProfileInputSchema>;
 
 /**
  * Schema para actualizar información de salud del usuario
@@ -110,6 +165,10 @@ export type UserPersonalInfo = z.infer<typeof UserPersonalInfoSchema>;
  */
 export function validateFamilyMemberData(data: unknown): SaveFamilyMemberInput {
   return SaveFamilyMemberInputSchema.parse(data);
+}
+
+export function validateTitularProfile(data: unknown): SaveTitularProfileInput {
+  return SaveTitularProfileInputSchema.parse(data);
 }
 
 export function validateHealthInfo(data: unknown): UpdateHealthInfoInput {

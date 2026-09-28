@@ -95,6 +95,8 @@ interface UserContextType {
   medications: Medication[];
   updatePersonalInfo: (info: PersonalInfo) => Promise<void>;
   updateHealthInfo: (info: HealthInfo) => Promise<void>;
+  /** Vuelve a leer del servidor los datos personales y de salud (tras editar el perfil del titular). */
+  recargarPerfil: () => Promise<void>;
   addAppointment: (appointment: Omit<Appointment, 'id'>) => Promise<void>;
   updateAppointment: (id: string, appointment: Partial<Omit<Appointment, 'id'>>) => Promise<void>;
   deleteAppointment: (id: string) => Promise<void>;
@@ -264,6 +266,15 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  const recargarPerfil = async () => {
+    const idToken = await auth.currentUser?.getIdToken();
+    if (!idToken) return;
+    const userDoc = await getSecureUserDocument(idToken);
+    if (!userDoc) return;
+    setPersonalInfo({ ...userDoc.personalInfo, dateOfBirth: toDate(userDoc.personalInfo?.dateOfBirth) });
+    setHealthInfo(userDoc.healthInfo);
+  };
+
   const updateHealthInfo = async (info: HealthInfo) => {
       if (user) {
           setHealthInfo(info);
@@ -348,6 +359,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         signOutUser,
         updatePersonalInfo,
         updateHealthInfo,
+        recargarPerfil,
         addAppointment,
         updateAppointment,
         deleteAppointment,

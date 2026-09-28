@@ -1,22 +1,12 @@
 'use server';
 
 import { getAdminAuth, getAdminDb } from '@/lib/firebase-admin';
-import { encryptField, decryptField } from '@/lib/crypto';
+import { encryptField } from '@/lib/crypto';
+import { descifrarSaludTitular } from '@/lib/salud-cifrada';
 import { COLECCION_TUTOR } from '@/lib/constants';
 import { validateHealthInfo, formatZodErrors, type UpdateHealthInfoInput } from '@/lib/validation-schemas';
 import { checkRateLimit } from '@/lib/rate-limit';
 import { z } from 'zod';
-
-function safeDecryptJsonArray(value: unknown): string[] {
-  if (typeof value !== 'string' || !value) return [];
-  try {
-    const decrypted = decryptField(value);
-    const parsed = JSON.parse(decrypted);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-}
 
 function normalizeDateValue(value: any): string {
   if (!value) return new Date().toISOString();
@@ -38,34 +28,7 @@ export async function getSecureUserDocument(idToken: string) {
     if (!docSnap.exists) return null;
 
     const data = docSnap.data() as any;
-    const rawHealthInfo = data.healthInfo || {};
-    const healthInfo: any = { ...rawHealthInfo };
-
-    if (data.isEncrypted || rawHealthInfo.isEncrypted) {
-      healthInfo.allergies = safeDecryptJsonArray(rawHealthInfo.encryptedAllergies);
-      healthInfo.medications = safeDecryptJsonArray(rawHealthInfo.encryptedMedications);
-
-      const historyFields = ['pathologicalHistory', 'surgicalHistory', 'gynecologicalHistory'];
-      historyFields.forEach(field => {
-        const encField = `encrypted_${field}`;
-        const encryptedValue = rawHealthInfo[encField];
-        healthInfo[field] = typeof encryptedValue === 'string' && encryptedValue
-          ? decryptField(encryptedValue)
-          : (rawHealthInfo[field] || '');
-      });
-
-      delete healthInfo.encryptedAllergies;
-      delete healthInfo.encryptedMedications;
-      delete healthInfo.encrypted_pathologicalHistory;
-      delete healthInfo.encrypted_surgicalHistory;
-      delete healthInfo.encrypted_gynecologicalHistory;
-    } else {
-      healthInfo.allergies = Array.isArray(rawHealthInfo.allergies) ? rawHealthInfo.allergies : [];
-      healthInfo.medications = Array.isArray(rawHealthInfo.medications) ? rawHealthInfo.medications : [];
-      healthInfo.pathologicalHistory = rawHealthInfo.pathologicalHistory || '';
-      healthInfo.surgicalHistory = rawHealthInfo.surgicalHistory || '';
-      healthInfo.gynecologicalHistory = rawHealthInfo.gynecologicalHistory || '';
-    }
+    const healthInfo = descifrarSaludTitular(data);
 
     const rawPersonalInfo = data.personalInfo || {};
     const personalInfo = {

@@ -29,10 +29,9 @@ import {
   type PatientStructuredContext,
 } from '@/app/actions/teleorientacion';
 import { conAvisoDeUrgencias } from '@/lib/textos-chat';
-import {
-  saveFamilyMember,
-  getSecureFamilyMembers 
-} from '@/app/actions/family';
+import { getSecureFamilyMembers } from '@/app/actions/family';
+import { calcularEdad } from '@/lib/familia';
+import { AvisoFamiliaBienvenida, AvisoFamiliaSelector } from '@/components/familia/aviso-familia';
 import { checkTokenAvailability } from '@/app/actions/tokens';
 import { storage, functions } from '@/lib/firebase';
 import { httpsCallable } from 'firebase/functions';
@@ -83,16 +82,7 @@ function uid(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 }
 
-function calcAge(dob: string | undefined): number | undefined {
-  if (!dob) return undefined;
-  const birth = new Date(dob);
-  if (isNaN(birth.getTime())) return undefined;
-  const today = new Date();
-  let age = today.getFullYear() - birth.getFullYear();
-  const m = today.getMonth() - birth.getMonth();
-  if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
-  return age > 0 ? age : 0;
-}
+const calcAge = (dob: string | undefined) => calcularEdad(dob);
 
 function sexLabel(sex: string | undefined): string {
   if (!sex) return '';
@@ -471,6 +461,7 @@ function MemberPicker({ open, members, onSelect, onClose }: MemberPickerProps) {
             );
           })}
         </div>
+        <AvisoFamiliaSelector />
       </DialogContent>
     </Dialog>
   );
@@ -483,7 +474,6 @@ function MemberPicker({ open, members, onSelect, onClose }: MemberPickerProps) {
 export function TeleorientacionChatPage() {
   const ctx = useContext(UserContext);
   const user = ctx?.user ?? null;
-  const personalInfo = ctx?.personalInfo ?? null;
   const healthInfo = ctx?.healthInfo ?? null;
 
   const [members, setMembers] = useState<FamilyProfile[]>([]);
@@ -524,75 +514,6 @@ export function TeleorientacionChatPage() {
     };
     load();
   }, [user]);
-
-  /* ---- Crear titular por defecto si no existe ---- */
-  useEffect(() => {
-    if (!user || !personalInfo || members.length > 0) return;
-
-    const createTitularProfile = async () => {
-      try {
-        const titularRef = doc(
-          db,
-          COLECCION_TUTOR,
-          user.uid,
-          SUBCOLECCION_INTEGRANTES,
-          'titular'
-        );
-
-        const dateOfBirth =
-          personalInfo.dateOfBirth instanceof Date
-            ? personalInfo.dateOfBirth.toISOString().split('T')[0]
-            : '';
-
-        const fallbackMember: FamilyProfile = {
-          id: 'titular',
-          userId: user.uid,
-          firstName: personalInfo.firstName || 'Titular',
-          lastName: personalInfo.lastName || '',
-          sex: personalInfo.sex,
-          dateOfBirth,
-          country: personalInfo.country,
-          insuranceProvider: personalInfo.insuranceProvider,
-          insuranceProviderName: personalInfo.insuranceProviderName || '',
-          relationship: 'Titular',
-          esTitular: true,
-          allergies: healthInfo?.allergies ?? [],
-          medications: healthInfo?.medications ?? [],
-          hasHistory: !!(
-            healthInfo?.pathologicalHistory ||
-            healthInfo?.surgicalHistory ||
-            healthInfo?.gynecologicalHistory
-          ),
-        };
-
-        const idToken = await auth.currentUser?.getIdToken();
-        if (!idToken) return;
-
-        await saveFamilyMember(idToken, 'titular', {
-          userId: fallbackMember.userId,
-          firstName: fallbackMember.firstName,
-          lastName: fallbackMember.lastName,
-          sex: fallbackMember.sex,
-          dateOfBirth: fallbackMember.dateOfBirth,
-          country: fallbackMember.country,
-          insuranceProvider: fallbackMember.insuranceProvider,
-          insuranceProviderName: fallbackMember.insuranceProviderName,
-          relationship: fallbackMember.relationship,
-          esTitular: fallbackMember.esTitular,
-          allergies: fallbackMember.allergies,
-          medications: fallbackMember.medications,
-          hasHistory: fallbackMember.hasHistory,
-        });
-
-
-        setMembers([fallbackMember]);
-      } catch (err) {
-        console.error('[Teleorientación] Error creando titular por defecto:', err);
-      }
-    };
-
-    createTitularProfile();
-  }, [user, personalInfo, members.length, healthInfo]);
 
   /* ---- Cargar conversaciones ---- */
   useEffect(() => {
@@ -837,7 +758,7 @@ export function TeleorientacionChatPage() {
         const userName = selectedMember.firstName?.trim();
         const isFirstEver = conversations.length <= 1 && messages.length === 0;
 
-        const patientCtx = buildPatientContext(selectedMember, healthInfo?.allergies);
+        const patientCtx = buildPatientContext(selectedMember);
         const idToken = (await auth.currentUser?.getIdToken()) || '';
 
         // La instrucción del saludo se arma en el servidor, que además lo guarda.
@@ -980,7 +901,7 @@ export function TeleorientacionChatPage() {
         }
 
         const patientCtx = selectedMember
-          ? buildPatientContext(selectedMember, healthInfo?.allergies)
+          ? buildPatientContext(selectedMember)
           : { firstName: 'Paciente', lastName: '' };
 
         const idToken = (await auth.currentUser?.getIdToken()) || '';
@@ -1053,8 +974,10 @@ export function TeleorientacionChatPage() {
 
   /* ---- Nueva sesion ---- */
   const handleNewSession = useCallback(() => {
-    if (members.length === 1) {
-      handleCreateConversation(members[0]);
+    // Una persona fallecida no puede consultar: no se ofrece en el selector.
+    const consultables = members.filter((m) => !m.deceased);
+    if (consultables.length === 1) {
+      handleCreateConversation(consultables[0]);
     } else {
       setShowMemberPicker(true);
     }
@@ -1147,6 +1070,7 @@ export function TeleorientacionChatPage() {
                 <MessageSquarePlus className="h-4 w-4" />
                 Nueva conversación
               </button>
+              <AvisoFamiliaBienvenida />
             </div>
           </div>
         )}
@@ -1154,7 +1078,7 @@ export function TeleorientacionChatPage() {
 
       <MemberPicker
         open={showMemberPicker}
-        members={members}
+        members={members.filter((m) => !m.deceased)}
         onSelect={handleCreateConversation}
         onClose={() => setShowMemberPicker(false)}
       />

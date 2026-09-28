@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useContext, useEffect, useState } from 'react';
-import { ArrowRight, FileText, MessageCircleHeart, UserRound, type LucideIcon } from 'lucide-react';
+import { ArrowRight, FileText, MessageCircleHeart, UserRound, Users, type LucideIcon } from 'lucide-react';
 import { UserContext } from '@/context/user-context';
 import { auth } from '@/lib/firebase';
 import { getSecureFamilyMembers } from '@/app/actions/family';
@@ -30,6 +30,7 @@ type QuickAccess = { href: string; title: string; description: string; icon: Luc
 
 const QUICK_ACCESS: QuickAccess[] = [
   { href: '/dashboard/teleorientacion', title: 'Orientación médica', description: 'Con la Dra. Hilda', icon: MessageCircleHeart },
+  { href: '/dashboard/familia', title: 'Mi familia', description: 'Familiograma y datos', icon: Users },
   { href: '/dashboard/reportes', title: 'Mis informes', description: 'Resumen de salud en PDF', icon: FileText },
   { href: '/dashboard/cuenta', title: 'Mi cuenta', description: ACCESO_LIBRE ? 'Acceso gratuito' : 'Tu plan y consultas', icon: UserRound },
 ];
@@ -60,7 +61,7 @@ export function Inicio() {
         const idToken = await auth.currentUser?.getIdToken();
         if (!idToken) return;
         const list = (await getSecureFamilyMembers(idToken)) as FamilyProfile[];
-        const sorted = [...list].sort((a, b) => Number(!!b.esTitular) - Number(!!a.esTitular));
+        const sorted = [...list].filter((m) => !m.deceased).sort((a, b) => Number(!!b.esTitular) - Number(!!a.esTitular));
         if (!cancelado) setMembers(sorted);
       } catch (error) {
         // La fila de familia es informativa: si falla, simplemente no se muestra.
@@ -120,7 +121,7 @@ export function Inicio() {
           </Link>
 
           {/* Accesos rápidos */}
-          <nav aria-label="Accesos rápidos" className="grid grid-cols-3 gap-3">
+          <nav aria-label="Accesos rápidos" className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             {QUICK_ACCESS.map((item) => (
               <Link
                 key={item.href}
@@ -144,7 +145,12 @@ export function Inicio() {
 
           {members.length > 0 && (
             <section className="rounded-2xl border border-border/70 bg-white p-4 shadow-soft sm:p-5">
-              <h2 className="text-base font-bold md:text-lg">Tu familia</h2>
+              <div className="flex items-baseline justify-between gap-3">
+                <h2 className="text-base font-bold md:text-lg">Tu familia</h2>
+                <Link href="/dashboard/familia" className="text-xs font-semibold text-primary hover:underline">
+                  Ver familiograma
+                </Link>
+              </div>
               <ul className="mt-3 flex gap-4 overflow-x-auto pb-1">
                 {members.map((m) => (
                   <li key={m.id} className="shrink-0">

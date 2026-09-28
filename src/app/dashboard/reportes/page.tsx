@@ -8,7 +8,7 @@ import { UserContext } from '@/context/user-context';
 import { getSecureFamilyMembers, getSecureMemberMedicalHistory } from '@/app/actions/family';
 import { COLECCION_TUTOR, SUBCOLECCION_INTEGRANTES } from '@/lib/constants';
 import type { DatosInformeSalud } from '@/lib/informe-salud-pdf';
-import type { FamilyProfile } from '@/lib/types';
+import type { FamilyProfile, FamilyProfileMedical } from '@/lib/types';
 import { EncabezadoPantalla } from '@/components/dashboard/encabezado-pantalla';
 import { cn } from '@/lib/utils';
 
@@ -27,7 +27,9 @@ function aFecha(valor: unknown): Date | undefined {
   if (!valor) return undefined;
   if (valor instanceof Timestamp) return valor.toDate();
   if (valor instanceof Date) return valor;
-  const fecha = new Date(String(valor));
+  // 'AAAA-MM-DD' se lee como día local: con new Date() sería medianoche UTC y en Colombia se vería un día antes.
+  const soloFecha = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(valor));
+  const fecha = soloFecha ? new Date(Number(soloFecha[1]), Number(soloFecha[2]) - 1, Number(soloFecha[3]), 12) : new Date(String(valor));
   return isNaN(fecha.getTime()) ? undefined : fecha;
 }
 
@@ -111,7 +113,7 @@ export default function ReportesPage() {
 
       const idToken = await auth.currentUser?.getIdToken();
       if (!idToken) throw new Error('Sesión expirada');
-      const historial = (await getSecureMemberMedicalHistory(idToken, persona.id)) ?? {};
+      const historial: FamilyProfileMedical = (await getSecureMemberMedicalHistory(idToken, persona.id)) ?? {};
 
       let documentos: DatosInformeSalud['documents'] = [];
       try {
