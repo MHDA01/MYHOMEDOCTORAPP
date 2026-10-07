@@ -10,6 +10,7 @@ import type { UserRecord } from 'firebase-admin/auth';
 import { getAdminAuth, getAdminDb } from '@/lib/firebase-admin';
 import { verifyAdminAccess } from '@/lib/admin-access';
 import { COLECCION_TUTOR, SUBCOLECCION_CONVERSACIONES, SUBCOLECCION_INTEGRANTES } from '@/lib/constants';
+import { COLECCION_ORIGEN } from '@/lib/origen';
 
 const DIA_MS = 24 * 60 * 60 * 1000;
 const SEMANAS_EN_GRAFICA = 12;
@@ -23,6 +24,14 @@ export interface SemanaAdmin {
   consultas: number;
 }
 
+export interface OrigenAdmin {
+  fuente: string;
+  visitas: number;
+  registros: number;
+  visitas30: number;
+  registros30: number;
+}
+
 export interface ResumenAdmin {
   generadoEn: string;
   meta: number;
@@ -33,6 +42,7 @@ export interface ResumenAdmin {
   notificaciones: number;
   consejosHoy: { generados: number; enviados: number };
   semanas: SemanaAdmin[];
+  origenes: OrigenAdmin[];
 }
 
 export interface UsuarioAdmin {
@@ -129,13 +139,14 @@ export async function obtenerResumenAdmin(idToken: string): Promise<Resultado<Re
   try {
     const db = getAdminDb();
     const ahora = Date.now();
-    const [cuentas, consultas, integrantes, notificaciones, informes, consejos] = await Promise.all([
+    const [cuentas, consultas, integrantes, notificaciones, informes, consejos, origenes] = await Promise.all([
       todasLasCuentas(),
       consultasConMensajes(),
       integrantesPorCuenta(),
       cuentasConNotificaciones(),
       db.collectionGroup('reports').select().get(),
       db.collectionGroup('dailyTips').where('date', '==', diaBogota(ahora)).select('pushSent').get(),
+      db.collection(COLECCION_ORIGEN).get(),
     ]);
 
     const hace = (dias: number) => ahora - dias * DIA_MS;
@@ -159,6 +170,21 @@ export async function obtenerResumenAdmin(idToken: string): Promise<Resultado<Re
       const semana = indice.get(lunesBogota(c.iniciada));
       if (semana) semana.consultas++;
     }
+
+    // Los días se guardan como AAAA-MM-DD (Bogotá): comparar texto basta.
+    const desde30 = diaBogota(hace(29));
+    const porOrigen: OrigenAdmin[] = origenes.docs.map((doc) => {
+      const dias = (doc.get('dias') ?? {}) as Record<string, { visitas?: number; registros?: number }>;
+      const recientes = Object.entries(dias).filter(([dia]) => dia >= desde30).map(([, v]) => v);
+      return {
+        fuente: doc.id,
+        visitas: Number(doc.get('visitas') ?? 0),
+        registros: Number(doc.get('registros') ?? 0),
+        visitas30: recientes.reduce((s, v) => s + Number(v.visitas ?? 0), 0),
+        registros30: recientes.reduce((s, v) => s + Number(v.registros ?? 0), 0),
+      };
+    });
+    porOrigen.sort((a, b) => b.visitas - a.visitas || b.registros - a.registros);
 
     const totalMensajes = consultas.reduce((suma, c) => suma + c.mensajes, 0);
     return {
@@ -192,6 +218,7 @@ export async function obtenerResumenAdmin(idToken: string): Promise<Resultado<Re
           enviados: consejos.docs.filter((d) => duenoDe(d.ref) && d.get('pushSent') === true).length,
         },
         semanas,
+        origenes: porOrigen,
       },
     };
   } catch (error) {

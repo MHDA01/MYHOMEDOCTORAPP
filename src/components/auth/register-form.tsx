@@ -14,6 +14,20 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from 'lucide-react';
 import { COLECCION_TUTOR, SUBCOLECCION_INTEGRANTES, DOC_TOKENS } from '@/lib/constants';
 import { LegalConsentModal } from './legal-consent-modal';
+import { registrarRegistroOrigen } from '@/app/actions/origen';
+import { CLAVE_ORIGEN, origenVigente } from '@/lib/origen';
+
+/** Si la persona llegó desde una red en los últimos 30 días, suma el registro a esa red. */
+async function atribuirRegistro(idToken: string) {
+  try {
+    const fuente = origenVigente(localStorage.getItem(CLAVE_ORIGEN), Date.now());
+    if (!fuente) return;
+    await registrarRegistroOrigen(idToken, fuente);
+    localStorage.removeItem(CLAVE_ORIGEN);
+  } catch {
+    // Contar el origen nunca debe impedir el registro.
+  }
+}
 
 export function RegisterForm() {
   const router = useRouter();
@@ -127,6 +141,8 @@ export function RegisterForm() {
       if (!response.ok) {
         throw new Error('No se pudo establecer la sesión en el servidor.');
       }
+
+      await atribuirRegistro(idToken);
 
       // Usar window.location.href en lugar de router.push para asegurar que 
       // el middleware procese la nueva cookie de sesión en la siguiente carga

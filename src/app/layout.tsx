@@ -3,6 +3,7 @@
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster"
 import { AppUpdateManager } from "@/components/app-update-manager"
+import { OrigenVisita } from "@/components/origen-visita"
 
 export default function RootLayout({
   children,
@@ -32,6 +33,7 @@ export default function RootLayout({
       <body className="font-body antialiased">
         {children}
         <AppUpdateManager />
+        <OrigenVisita />
         <Toaster />
       </body>
     </html>

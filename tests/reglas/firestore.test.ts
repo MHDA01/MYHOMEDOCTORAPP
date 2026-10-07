@@ -79,6 +79,15 @@ describe('Colecciones cerradas', () => {
     await assertFails(getDoc(doc(db, 'rate_limits/ana')));
   });
 
+  it('Metricas_Origen: nadie la lee ni la escribe desde el teléfono', async () => {
+    const conSesion = entorno.authenticatedContext('ana').firestore();
+    const sinSesion = entorno.unauthenticatedContext().firestore();
+    for (const db of [conSesion, sinSesion]) {
+      await assertFails(getDoc(doc(db, 'Metricas_Origen/tiktok')));
+      await assertFails(setDoc(doc(db, 'Metricas_Origen/tiktok'), { visitas: 1_000_000 }));
+    }
+  });
+
   it('triage_logs: se puede crear con sesión pero no leer', async () => {
     const db = entorno.authenticatedContext('ana').firestore();
     await assertSucceeds(addDoc(collection(db, 'triage_logs'), { nivel: 'verde' }));

@@ -1,12 +1,20 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { Activity, Bell, FileText, HeartHandshake, Lightbulb, MessageCircleHeart, MessagesSquare, RefreshCw, UserCheck } from 'lucide-react';
+import { Activity, Bell, FileText, HeartHandshake, Lightbulb, MessageCircleHeart, MessagesSquare, RefreshCw, Share2, UserCheck } from 'lucide-react';
 import { auth } from '@/lib/firebase';
 import { obtenerResumenAdmin, type ResumenAdmin } from '@/app/actions/admin-seguimiento';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Cifra, MensajeError, Tarjeta, fecha, numero } from './piezas';
+
+const NOMBRE_RED: Record<string, string> = {
+  tiktok: 'TikTok',
+  instagram: 'Instagram',
+  youtube: 'YouTube',
+  facebook: 'Facebook',
+  whatsapp: 'WhatsApp',
+};
 
 function etiquetaSemana(inicio: string): string {
   const d = new Date(`${inicio}T12:00:00Z`);
@@ -141,6 +149,48 @@ export function ResumenAdminPanel({ obtener = obtenerConSesion }: { obtener?: ty
             ))}
           </div>
         </div>
+      </Tarjeta>
+
+      <Tarjeta>
+        <div className="flex items-center gap-2">
+          <Share2 className="h-4 w-4 text-primary" />
+          <h2 className="text-base font-bold md:text-lg">De dónde llegan</h2>
+        </div>
+        {datos.origenes.length === 0 ? (
+          <p className="mt-2 text-sm text-muted-foreground">
+            Todavía nadie ha entrado con el enlace de una red social.
+          </p>
+        ) : (
+          <div className="mt-3 overflow-x-auto">
+            <table className="w-full min-w-[420px] text-sm">
+              <thead>
+                <tr className="text-left text-xs text-muted-foreground">
+                  <th className="pb-2 font-semibold">Red</th>
+                  <th className="pb-2 text-right font-semibold">Visitas · 30 días</th>
+                  <th className="pb-2 text-right font-semibold">Registros · 30 días</th>
+                  <th className="pb-2 text-right font-semibold">Total (visitas / registros)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {datos.origenes.map((o) => (
+                  <tr key={o.fuente} className="border-t border-border/70">
+                    <td className="py-2 font-semibold text-brand-900">{NOMBRE_RED[o.fuente] ?? o.fuente}</td>
+                    <td className="py-2 text-right">{numero(o.visitas30)}</td>
+                    <td className="py-2 text-right">{numero(o.registros30)}</td>
+                    <td className="py-2 text-right text-muted-foreground">
+                      {numero(o.visitas)} / {numero(o.registros)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+        <p className="mt-3 text-xs text-muted-foreground">
+          Enlace de cada perfil: myhomedoctorapp.com/?utm_source=tiktok (o instagram, youtube, facebook, whatsapp).
+          Visita: una por navegador, red y día. Registro: la cuenta se creó dentro de los 30 días siguientes a esa visita.
+          Solo hay totales; nada queda unido a una persona.
+        </p>
       </Tarjeta>
 
       <div className="grid gap-3 md:grid-cols-2">
