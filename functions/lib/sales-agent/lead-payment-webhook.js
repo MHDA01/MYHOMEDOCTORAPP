@@ -68,7 +68,7 @@ function verifyWompiSignature(event) {
     return computed.toLowerCase() === String(checksum).toLowerCase();
 }
 exports.leadWompiWebhook = functions.region("us-central1").https.onRequest(async (req, res) => {
-    var _a, _b;
+    var _a;
     if (req.method !== "POST") {
         res.status(405).send("Método no permitido");
         return;
@@ -111,15 +111,25 @@ exports.leadWompiWebhook = functions.region("us-central1").https.onRequest(async
         }
         const txSnap = await ref.collection("transactions").where("wompy_id", "==", wompyId).limit(1).get();
         if (!txSnap.empty) {
-            const existingStatus = (_b = txSnap.docs[0].data()) === null || _b === void 0 ? void 0 : _b.status;
-            if (existingStatus === "success" || existingStatus === "failed") {
+            // En transacción, como en wompyWebhook: Wompi entrega cada evento al
+            // menos una vez, y sin esto dos entregas simultáneas marcaban el lead
+            // como convertido dos veces y le mandaban dos confirmaciones.
+            const txRef = txSnap.docs[0].ref;
+            const yaResuelta = await admin.firestore().runTransaction(async (t) => {
+                const snap = await t.get(txRef);
+                const estado = snap.get("status");
+                if (estado === "success" || estado === "failed")
+                    return true;
+                t.update(txRef, {
+                    status: status === "APPROVED" ? "success" : "failed",
+                    completedAt: admin.firestore.FieldValue.serverTimestamp(),
+                });
+                return false;
+            });
+            if (yaResuelta) {
                 res.status(200).json({ received: true, alreadyProcessed: true });
                 return;
             }
-            await txSnap.docs[0].ref.update({
-                status: status === "APPROVED" ? "success" : "failed",
-                completedAt: admin.firestore.FieldValue.serverTimestamp(),
-            });
         }
         if (status === "APPROVED") {
             await ref.update({ converted: true, stage: "cerrado_pago" });

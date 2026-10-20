@@ -56,6 +56,16 @@ pendiente.
 ## Trampas técnicas
 
 - Desplegar **siempre** con `--project myhomedoctorapp` explícito (ResiMed ya pisó este host una vez).
+- **Las reglas de Firestore se suman, no se sobreescriben.** Por eso el comodín
+  `match /{subcol}/{docId}` de `Cuentas_Tutor` excluye `tokens` y `transactions`: sin esa exclusión
+  anula su `allow write: if false` y el dueño se puede dar saldo solo. Nada del saldo ni de los
+  pagos se escribe desde el navegador; el documento de tokens lo crea el servidor
+  (`ensureTokenDocument`).
+- **Los webhooks de Meta (WhatsApp e Instagram) fallan cerrado**: sin `META_APP_SECRET` en el
+  entorno de las funciones rechazan todo. Es a propósito.
+- **El cobro mensual es idempotente por ciclo e intento** (`functions/src/cobro-idempotente.ts`):
+  reclamo en transacción antes de llamar a Wompi, y referencia derivada del ciclo. No volver a
+  armar la referencia con `Date.now()`.
 - **No desplegar `firestore.indexes.json` completo sin revisar**: crea el índice `tokens` y activa el
   cobro mensual con riesgo de doble cobro.
 - Los logs de Cloud Functions y Next no traen severity: buscar por texto, no por `ERROR`.

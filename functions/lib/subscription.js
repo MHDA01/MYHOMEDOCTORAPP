@@ -57,6 +57,7 @@ const wompi_client_1 = require("./wompi-client");
 const email_1 = require("./email");
 const wompy_1 = require("./wompy");
 const acceso_1 = require("./acceso");
+const cobro_idempotente_1 = require("./cobro-idempotente");
 try {
     admin.initializeApp();
 }
@@ -83,8 +84,13 @@ function buildIntegritySignature(reference, amountInCents, currency) {
         .update(`${reference}${amountInCents}${currency}${WOMPY_INTEGRITY_SECRET}`)
         .digest("hex");
 }
-async function chargeSubscription(uid, userEmail, paymentSourceId) {
-    const reference = `teleorientacion_recurring_${uid}_${Date.now()}`;
+/**
+ * Cobra un Payment Source. La `reference` la decide quien llama: la activación
+ * usa una única por intento y el cobro mensual una derivada del ciclo, para que
+ * un reintento del mismo mes lo rechace Wompi en vez de cobrarlo otra vez
+ * (ver `cobro-idempotente.ts`).
+ */
+async function chargeSubscription(uid, userEmail, paymentSourceId, reference) {
     const amountInCents = wompy_1.CONSULTATION_COST_COP * 100;
     const wompyResponse = await (0, wompi_client_1.wompiRequest)("POST", "/v1/transactions", {
         amount_in_cents: amountInCents,
@@ -158,8 +164,14 @@ exports.createPaymentSource = functions
             throw new Error(`Respuesta inesperada de Wompi al crear payment source: ${JSON.stringify(sourceResponse)}`);
         }
         const tokensRef = db.collection("Cuentas_Tutor").doc(uid).collection("tokens").doc("config");
+        // Si ya tiene la renovación activa, no se vuelve a cobrar: un doble clic
+        // o un reintento del cliente no puede terminar en dos cargos.
+        const estadoActual = (await tokensRef.get()).data();
+        if ((estadoActual === null || estadoActual === void 0 ? void 0 : estadoActual.autoRenew) === true && (estadoActual === null || estadoActual === void 0 ? void 0 : estadoActual.subscriptionStatus) === "active") {
+            throw new functions.https.HttpsError("already-exists", "Ya tienes la renovación automática activa.");
+        }
         // 2. Cobrar el primer período inmediatamente (mismo comportamiento que el pago único)
-        const charge = await chargeSubscription(uid, userEmail, paymentSourceId);
+        const charge = await chargeSubscription(uid, userEmail, paymentSourceId, (0, cobro_idempotente_1.referenciaDeAlta)(uid, Date.now()));
         const now = admin.firestore.Timestamp.now();
         const consentFields = {
             paymentSourceId,
@@ -291,18 +303,43 @@ exports.chargeMonthlySubscriptions = functions
             const uid = (_a = tokenDoc.ref.parent.parent) === null || _a === void 0 ? void 0 : _a.id;
             if (!uid)
                 continue;
-            const tokenData = tokenDoc.data();
-            const paymentSourceId = tokenData.paymentSourceId;
-            const failedAttempts = tokenData.failedChargeAttempts || 0;
-            if (!paymentSourceId) {
+            if (!tokenDoc.get("paymentSourceId")) {
                 console.warn(`[SUBSCRIPTION] ${uid} tiene autoRenew activo sin paymentSourceId, se ignora`);
                 continue;
             }
+            // Reclamar el ciclo ANTES de llamar a Wompi. La transacción vuelve a
+            // leer el documento: si otra ejecución ya movió la fecha o ya lo tiene
+            // reclamado, esta se retira sin cobrar (ver `cobro-idempotente.ts`).
+            const ahora = Date.now();
+            const reclamo = await db.runTransaction(async (t) => {
+                var _a, _b, _c;
+                const snap = await t.get(tokenDoc.ref);
+                const datos = snap.data();
+                if (!datos || datos.autoRenew !== true || !datos.paymentSourceId)
+                    return null;
+                const vence = (_c = (_b = (_a = datos.nextBillingDate) === null || _a === void 0 ? void 0 : _a.toMillis) === null || _b === void 0 ? void 0 : _b.call(_a)) !== null && _c !== void 0 ? _c : new Date(datos.nextBillingDate).getTime();
+                if (!vence || vence > ahora)
+                    return null; // otra ejecución ya cobró este ciclo
+                if ((0, cobro_idempotente_1.reclamoVigente)(datos.cobroEnCurso, ahora))
+                    return null; // alguien lo está cobrando
+                t.update(tokenDoc.ref, { cobroEnCurso: { ciclo: vence, desdeMs: ahora } });
+                return {
+                    ciclo: vence,
+                    intento: (datos.failedChargeAttempts || 0) + 1,
+                    paymentSourceId: datos.paymentSourceId,
+                };
+            });
+            if (!reclamo) {
+                console.log(`[SUBSCRIPTION] ${uid}: el ciclo ya está cobrado o en curso, se omite`);
+                continue;
+            }
+            const failedAttempts = reclamo.intento - 1;
+            const paymentSourceId = reclamo.paymentSourceId;
             const userDoc = await db.collection("Cuentas_Tutor").doc(uid).get();
             const userData = userDoc.data();
             const userEmail = (userData === null || userData === void 0 ? void 0 : userData.email) || `user-${uid}@myhomedoctorapp.local`;
             try {
-                const charge = await chargeSubscription(uid, userEmail, paymentSourceId);
+                const charge = await chargeSubscription(uid, userEmail, paymentSourceId, (0, cobro_idempotente_1.referenciaDeCiclo)(uid, reclamo.ciclo, reclamo.intento));
                 if (charge.result === "APPROVED") {
                     const nextBillingDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
                     await tokenDoc.ref.update({
@@ -311,6 +348,7 @@ exports.chargeMonthlySubscriptions = functions
                         nextBillingDate,
                         subscriptionStatus: "active",
                         failedChargeAttempts: 0,
+                        cobroEnCurso: admin.firestore.FieldValue.delete(),
                     });
                     console.log(`[SUBSCRIPTION] ✅ Cobro recurrente exitoso para ${uid}`);
                     if (userEmail) {
@@ -320,7 +358,10 @@ exports.chargeMonthlySubscriptions = functions
                     }
                 }
                 else if (charge.result === "PENDING") {
-                    // Todavía no se resuelve: el webhook lo confirmará (no consumimos reintentos).
+                    // Todavía no se resuelve: el webhook lo confirmará (no consumimos
+                    // reintentos). El reclamo se queda puesto a propósito, para que la
+                    // corrida de mañana no cobre encima de un cargo todavía vivo; el
+                    // webhook lo levanta al resolverse, y si nunca llega, vence solo.
                     await tokenDoc.ref.update({ subscriptionStatus: "pending" });
                     console.log(`[SUBSCRIPTION] Cobro recurrente pendiente de confirmación para ${uid}`);
                 }
@@ -331,6 +372,7 @@ exports.chargeMonthlySubscriptions = functions
                         subscriptionStatus: "payment_failed",
                         autoRenew: !shouldCancel,
                         failedChargeAttempts: attempts,
+                        cobroEnCurso: admin.firestore.FieldValue.delete(),
                     });
                     console.warn(`[SUBSCRIPTION] ❌ Cobro recurrente rechazado para ${uid} (intento ${attempts}/${MAX_CHARGE_RETRIES})`);
                     if (userEmail) {
