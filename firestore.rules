@@ -91,9 +91,22 @@ service cloud.firestore {
         allow write: if false;
       }
 
+      // Comodín para el resto de subcolecciones. `tokens` y `transactions`
+      // quedan fuera a propósito: las reglas se SUMAN, así que sin esta
+      // exclusión este comodín anularía el `allow write: if false` de arriba y
+      // la dueña podría darse saldo o marcar un pago como exitoso desde el
+      // navegador (hallazgo C1 de la auditoría). Leerlos sí se puede, por las
+      // reglas explícitas de arriba.
       match /{subcol}/{docId} {
-        allow read, write: if isOwner(tutorId);
+        allow read, write: if isOwner(tutorId) && !(subcol in ['tokens', 'transactions']);
       }
+    }
+
+    // Modalidad de acceso de cada cuenta (gratis de por vida o de pago). Vive
+    // fuera de Cuentas_Tutor justamente porque ahí el dueño puede escribir
+    // cualquier subcolección suya: aquí solo escribe el servidor.
+    match /acceso_usuarios/{tutorId} {
+      allow read, write: if false;
     }
 
     match /users/{userId} {

@@ -44,6 +44,19 @@ next-env.d.ts
 firebase-debug.log
 firestore-debug.log
 
+# INTERNO - NUNCA SUBIR (el repositorio es público)
+# Cifras de uso, precios y estrategia comercial. Lo técnico y lo legal va en CLAUDE.md.
+ESTADO.md
+PLAN-90-DIAS.md
+SESSION_SUMMARY.json
+MYHOMEDOCTORAPP_DESCRIPTION.json
+comparativa-mhda-mundo.html
+estrategia-comercial-mhda.html
+precio-b2c-mhda.html
+tablero-agentes.html
+muestra-informe-orientacion.pdf
+.claude/settings.local.json
+
 # ⚠️ CREDENCIALES SENSIBLES - NUNCA SUBIR
 serviceAcountkey.json
 serviceAccountKey.json

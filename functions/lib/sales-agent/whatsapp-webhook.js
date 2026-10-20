@@ -45,7 +45,9 @@ exports.whatsappWebhook = void 0;
 exports.sendWhatsAppMessage = sendWhatsAppMessage;
 const functions = __importStar(require("firebase-functions/v1"));
 const engine_1 = require("./engine");
+const firma_meta_1 = require("./firma-meta");
 const WHATSAPP_VERIFY_TOKEN = process.env.WHATSAPP_VERIFY_TOKEN;
+const META_APP_SECRET = process.env.META_APP_SECRET;
 const WHATSAPP_TOKEN = process.env.WHATSAPP_TOKEN;
 const WHATSAPP_PHONE_NUMBER_ID = process.env.WHATSAPP_PHONE_NUMBER_ID;
 const GRAPH_VERSION = "v21.0";
@@ -86,6 +88,15 @@ exports.whatsappWebhook = functions.region("us-central1").https.onRequest(async 
     }
     if (req.method !== "POST") {
         res.status(405).send("Método no permitido");
+        return;
+    }
+    // Solo Meta puede hacer hablar al agente: cada respuesta cuesta una llamada
+    // al modelo y un mensaje saliente a un número cualquiera.
+    if (!(0, firma_meta_1.firmaMetaValida)(req.rawBody, req.get("x-hub-signature-256"), META_APP_SECRET)) {
+        console.error(META_APP_SECRET
+            ? "[WHATSAPP WEBHOOK] Firma de Meta inválida: evento rechazado"
+            : "[WHATSAPP WEBHOOK] META_APP_SECRET sin configurar: se rechaza todo hasta que esté");
+        res.status(401).json({ error: "Firma inválida" });
         return;
     }
     try {

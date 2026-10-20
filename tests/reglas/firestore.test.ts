@@ -6,7 +6,7 @@ import {
   initializeTestEnvironment,
   type RulesTestEnvironment,
 } from '@firebase/rules-unit-testing';
-import { doc, getDoc, setDoc, collection, addDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc, deleteDoc, collection, addDoc } from 'firebase/firestore';
 import { afterAll, beforeAll, beforeEach, describe, it } from 'vitest';
 import { PROYECTO } from '../ayudas';
 
@@ -30,6 +30,8 @@ beforeEach(async () => {
     await setDoc(doc(db, 'Cuentas_Tutor/ana/Integrantes/hija'), { firstName: 'Sofía' });
     await setDoc(doc(db, 'Cuentas_Tutor/ana/Integrantes/hija/historial/registro'), { encrypted_x: '...' });
     await setDoc(doc(db, 'Cuentas_Tutor/ana/tokens/config'), { free: 6, paid: 0 });
+    await setDoc(doc(db, 'Cuentas_Tutor/ana/transactions/t1'), { status: 'pending' });
+    await setDoc(doc(db, 'acceso_usuarios/ana'), { modalidad: 'gratis_ilimitado' });
   });
 });
 
@@ -95,18 +97,37 @@ describe('Colecciones cerradas', () => {
   });
 });
 
-describe('Saldo y pagos (hallazgo C1 de la auditoría)', () => {
-  // Hoy la regla general `match /{subcol}/{docId}` anula el `allow write: if false`
-  // de tokens y transactions. Estas pruebas están marcadas como "falla esperada":
-  // cuando se corrija la regla (paso 5) empezarán a pasar y habrá que quitarles
-  // el `.fails` para que queden como protección permanente.
-  it.fails('la dueña no debería poder cambiar su saldo de tokens', async () => {
+describe('Saldo y pagos (hallazgo C1 de la auditoría, cerrado en el paso 5)', () => {
+  // El comodín `match /{subcol}/{docId}` anulaba el `allow write: if false` de
+  // tokens y transactions, porque las reglas se suman. Ahora los excluye.
+  it('la dueña no puede cambiar su saldo de tokens', async () => {
     const db = entorno.authenticatedContext('ana').firestore();
     await assertFails(setDoc(doc(db, 'Cuentas_Tutor/ana/tokens/config'), { free: 6, paid: 999 }));
+    await assertFails(updateDoc(doc(db, 'Cuentas_Tutor/ana/tokens/config'), { paid: 999 }));
+    await assertFails(deleteDoc(doc(db, 'Cuentas_Tutor/ana/tokens/config')));
   });
 
-  it.fails('la dueña no debería poder registrar un pago', async () => {
+  it('la dueña no puede registrar un pago ni tocar uno existente', async () => {
     const db = entorno.authenticatedContext('ana').firestore();
     await assertFails(addDoc(collection(db, 'Cuentas_Tutor/ana/transactions'), { status: 'success' }));
+    await assertFails(setDoc(doc(db, 'Cuentas_Tutor/ana/transactions/t1'), { status: 'success' }));
+  });
+
+  it('pero sí puede leer su saldo y su historial de pagos', async () => {
+    const db = entorno.authenticatedContext('ana').firestore();
+    await assertSucceeds(getDoc(doc(db, 'Cuentas_Tutor/ana/tokens/config')));
+    await assertSucceeds(getDoc(doc(db, 'Cuentas_Tutor/ana/transactions/t1')));
+  });
+
+  it('el resto de subcolecciones sigue siendo suya', async () => {
+    const db = entorno.authenticatedContext('ana').firestore();
+    await assertSucceeds(addDoc(collection(db, 'Cuentas_Tutor/ana/documents'), { nombre: 'examen' }));
+    await assertSucceeds(setDoc(doc(db, 'Cuentas_Tutor/ana/limits/chat'), { usados: 1 }));
+  });
+
+  it('la modalidad de acceso no la toca nadie desde el navegador', async () => {
+    const db = entorno.authenticatedContext('ana').firestore();
+    await assertFails(getDoc(doc(db, 'acceso_usuarios/ana')));
+    await assertFails(setDoc(doc(db, 'acceso_usuarios/ana'), { modalidad: 'gratis_ilimitado' }));
   });
 });

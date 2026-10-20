@@ -90,15 +90,25 @@ export const leadWompiWebhook = functions.region("us-central1").https.onRequest(
 
     const txSnap = await ref.collection("transactions").where("wompy_id", "==", wompyId).limit(1).get();
     if (!txSnap.empty) {
-      const existingStatus = txSnap.docs[0].data()?.status;
-      if (existingStatus === "success" || existingStatus === "failed") {
+      // En transacción, como en wompyWebhook: Wompi entrega cada evento al
+      // menos una vez, y sin esto dos entregas simultáneas marcaban el lead
+      // como convertido dos veces y le mandaban dos confirmaciones.
+      const txRef = txSnap.docs[0].ref;
+      const yaResuelta = await admin.firestore().runTransaction(async (t) => {
+        const snap = await t.get(txRef);
+        const estado = snap.get("status");
+        if (estado === "success" || estado === "failed") return true;
+        t.update(txRef, {
+          status: status === "APPROVED" ? "success" : "failed",
+          completedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+        return false;
+      });
+
+      if (yaResuelta) {
         res.status(200).json({ received: true, alreadyProcessed: true });
         return;
       }
-      await txSnap.docs[0].ref.update({
-        status: status === "APPROVED" ? "success" : "failed",
-        completedAt: admin.firestore.FieldValue.serverTimestamp(),
-      });
     }
 
     if (status === "APPROVED") {

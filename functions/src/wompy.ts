@@ -17,6 +17,7 @@ import * as admin from "firebase-admin";
 import * as crypto from "crypto";
 import { wompiRequest } from "./wompi-client";
 import { ACCESO_LIBRE } from "./acceso";
+import { uidDeReferencia } from "./cobro-idempotente";
 
 try {
   admin.initializeApp();
@@ -211,12 +212,12 @@ export const wompyWebhook = functions
         return;
       }
 
-      // Extraer UID del reference (formato: teleorientacion_monthly_{uid}_{timestamp})
-      const referenceParts = reference.split("_");
-      const uid = referenceParts[2];
+      // Extraer UID del reference (formato: teleorientacion_{monthly|recurring}_{uid}_{...}).
+      // Si no tiene uno de los dos prefijos conocidos, no se toca ninguna cuenta.
+      const uid = uidDeReferencia(reference);
 
       if (!uid) {
-        console.error("[WOMPY WEBHOOK] No se pudo extraer UID del reference");
+        console.error(`[WOMPY WEBHOOK] Reference que no reconozco, se ignora: ${reference}`);
         res.status(400).json({ error: "Reference inválido" });
         return;
       }
@@ -239,51 +240,71 @@ export const wompyWebhook = functions
       }
 
       const transactionDoc = transactionSnap.docs[0];
-      const existingStatus = transactionDoc.data()?.status;
+      const isRecurring = reference.startsWith("teleorientacion_recurring_");
+      const tokensRef = db.collection("Cuentas_Tutor").doc(uid).collection("tokens").doc("config");
 
-      // Idempotencia: si ya se resolvió sincrónicamente (createPaymentSource /
-      // chargeMonthlySubscriptions consultan y esperan la respuesta de Wompi),
-      // no volver a acreditar tokens cuando llegue este mismo evento por webhook.
-      if (existingStatus === "success" || existingStatus === "failed") {
-        console.log(`[WOMPY WEBHOOK] Transacción ${transactionDoc.id} ya estaba finalizada (${existingStatus}), se ignora`);
+      // Todo en una transacción: leer el estado, marcarlo como final y acreditar
+      // los tokens tienen que pasar juntos o no pasar.
+      //
+      // Wompi entrega cada evento "al menos una vez" y reintenta si no ve un
+      // 200. Sin transacción, dos entregas simultáneas leían las dos "pending",
+      // las dos pasaban el control de idempotencia y las dos sumaban 210 tokens.
+      // Y si la acreditación fallaba después de marcar la transacción como
+      // exitosa, el usuario pagaba y se quedaba sin tokens.
+      const resultado = await db.runTransaction(async (t) => {
+        const snap = await t.get(transactionDoc.ref);
+        const estadoActual = snap.get("status");
+
+        // Ya se resolvió sincrónicamente (createPaymentSource /
+        // chargeMonthlySubscriptions esperan la respuesta de Wompi) o por otra
+        // entrega de este mismo evento.
+        if (estadoActual === "success" || estadoActual === "failed") return null;
+
+        const nuevoEstado = status === "APPROVED" ? "success" : "failed";
+        t.update(transactionDoc.ref, {
+          status: nuevoEstado,
+          completedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+        if (nuevoEstado === "success") {
+          const nextBillingDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+          t.set(
+            tokensRef,
+            {
+              paid: admin.firestore.FieldValue.increment(PAID_TOKENS_PER_MONTH),
+              planExpires: nextBillingDate,
+              // El ciclo quedó resuelto: se libera el reclamo del cobro mensual.
+              cobroEnCurso: admin.firestore.FieldValue.delete(),
+              ...(isRecurring && {
+                autoRenew: true,
+                subscriptionStatus: "active",
+                nextBillingDate,
+                failedChargeAttempts: 0,
+              }),
+            },
+            { merge: true }
+          );
+        } else if (isRecurring) {
+          t.set(
+            tokensRef,
+            { subscriptionStatus: "payment_failed", cobroEnCurso: admin.firestore.FieldValue.delete() },
+            { merge: true }
+          );
+        }
+
+        return nuevoEstado;
+      });
+
+      if (resultado === null) {
+        console.log(`[WOMPY WEBHOOK] Transacción ${transactionDoc.id} ya estaba finalizada, se ignora`);
         res.status(200).json({ received: true, alreadyProcessed: true });
         return;
       }
 
-      const newStatus = status === "APPROVED" ? "success" : "failed";
-      const isRecurring = reference.startsWith("teleorientacion_recurring_");
-
-      await transactionDoc.ref.update({
-        status: newStatus,
-        completedAt: admin.firestore.FieldValue.serverTimestamp(),
-      });
-
-      console.log(`[WOMPY WEBHOOK] Transacción actualizada: ${transactionDoc.id} → ${newStatus}`);
-
-      const tokensRef = db.collection("Cuentas_Tutor").doc(uid).collection("tokens").doc("config");
-
-      if (newStatus === "success") {
-        const nextBillingDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
-
-        await tokensRef.set(
-          {
-            paid: admin.firestore.FieldValue.increment(PAID_TOKENS_PER_MONTH),
-            planExpires: nextBillingDate,
-            ...(isRecurring && {
-              autoRenew: true,
-              subscriptionStatus: "active",
-              nextBillingDate,
-              failedChargeAttempts: 0,
-            }),
-          },
-          { merge: true }
-        );
-
-        console.log(
-          `[WOMPY WEBHOOK] ✅ Tokens añadidos a ${uid}: +${PAID_TOKENS_PER_MONTH}`
-        );
+      console.log(`[WOMPY WEBHOOK] Transacción actualizada: ${transactionDoc.id} → ${resultado}`);
+      if (resultado === "success") {
+        console.log(`[WOMPY WEBHOOK] ✅ Tokens añadidos a ${uid}: +${PAID_TOKENS_PER_MONTH}`);
       } else if (isRecurring) {
-        await tokensRef.set({ subscriptionStatus: "payment_failed" }, { merge: true });
         console.log(`[WOMPY WEBHOOK] ❌ Cobro recurrente rechazado (confirmado por webhook) para ${uid}`);
       }
 

@@ -1,6 +1,7 @@
 import { getAdminDb } from '@/lib/firebase-admin';
 import { COLECCION_TUTOR, DOC_TOKENS } from '@/lib/constants';
 import { ACCESO_LIBRE } from '@/config/acceso';
+import { obtenerModalidad } from '@/lib/modalidad-acceso';
 
 const db = getAdminDb();
 
@@ -62,6 +63,23 @@ export async function getUserTokenState(uid: string) {
       dailyReset,
       trialExpired: false,
       accesoLibre: true,
+      gratisDePorVida: false,
+    };
+  }
+
+  // Promesa a quienes entraron durante la etapa gratuita: siguen entrando
+  // aunque el cobro esté encendido (src/lib/modalidad-acceso.ts). Se marca
+  // cuenta por cuenta desde el panel de administración.
+  if ((await obtenerModalidad(uid)) === 'gratis_ilimitado') {
+    return {
+      available: true,
+      tokens: { free, paid },
+      needsPayment: false,
+      freePeriodEnds,
+      dailyReset,
+      trialExpired: false,
+      accesoLibre: false,
+      gratisDePorVida: true,
     };
   }
 
@@ -76,5 +94,6 @@ export async function getUserTokenState(uid: string) {
     dailyReset,
     trialExpired,
     accesoLibre: false,
+    gratisDePorVida: false,
   };
 }

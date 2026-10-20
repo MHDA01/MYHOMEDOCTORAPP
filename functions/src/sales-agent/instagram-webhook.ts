@@ -7,8 +7,10 @@
 
 import * as functions from "firebase-functions/v1";
 import { handleInboundMessage } from "./engine";
+import { firmaMetaValida } from "./firma-meta";
 
 const IG_VERIFY_TOKEN = process.env.IG_VERIFY_TOKEN || process.env.WHATSAPP_VERIFY_TOKEN;
+const META_APP_SECRET = process.env.META_APP_SECRET;
 const IG_PAGE_ACCESS_TOKEN = process.env.IG_PAGE_ACCESS_TOKEN;
 const GRAPH_VERSION = "v21.0";
 
@@ -52,6 +54,17 @@ export const instagramWebhook = functions.region("us-central1").https.onRequest(
 
   if (req.method !== "POST") {
     res.status(405).send("Método no permitido");
+    return;
+  }
+
+  // Mismo App Secret que WhatsApp: es la misma aplicación de Meta.
+  if (!firmaMetaValida(req.rawBody, req.get("x-hub-signature-256"), META_APP_SECRET)) {
+    console.error(
+      META_APP_SECRET
+        ? "[INSTAGRAM WEBHOOK] Firma de Meta inválida: evento rechazado"
+        : "[INSTAGRAM WEBHOOK] META_APP_SECRET sin configurar: se rechaza todo hasta que esté"
+    );
+    res.status(401).json({ error: "Firma inválida" });
     return;
   }
 
