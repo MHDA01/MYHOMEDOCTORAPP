@@ -5,7 +5,7 @@
 // ============================================================
 'use client';
 
-import { useState, useEffect, useContext, useCallback, useRef } from 'react';
+import { useState, useEffect, useContext, useCallback, useMemo, useRef } from 'react';
 import { UserContext } from '@/context/user-context';
 import { auth, db } from '@/lib/firebase';
 import { 
@@ -65,6 +65,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import ChatInterface from '@/components/chat/ChatInterface';
+import type { DatosInformeOrientacion } from '@/lib/informe-orientacion-pdf';
 import { 
   COLECCION_TUTOR, 
   SUBCOLECCION_INTEGRANTES, 
@@ -990,6 +991,32 @@ export function TeleorientacionChatPage() {
     ? `${selectedMember.firstName} ${selectedMember.lastName}`.trim()
     : undefined;
 
+  /* ---- Informe de cierre ----
+     Solo cuando la consulta terminó. Es una transcripción literal de lo que se
+     ve en pantalla: no se resume ni se vuelve a pasar por la IA. */
+  const informeOrientacion = useMemo<DatosInformeOrientacion | null>(() => {
+    if (!conversationCompleted || !selectedMember || !selectedConv) return null;
+    const mensajes = messages.filter((m) => m.content.trim().length > 0);
+    if (mensajes.length === 0) return null;
+
+    return {
+      integrante: {
+        nombre: memberName || `${selectedMember.firstName}`.trim(),
+        edad: memberAge,
+        sexo: memberSex,
+        aseguradora: selectedMember.insuranceProviderName || selectedMember.insuranceProvider,
+        alergias: [...(selectedMember.allergies ?? []), ...(healthInfo?.allergies ?? [])].filter(Boolean),
+        medicamentos: selectedMember.medications ?? [],
+      },
+      fechaConsulta: selectedConv.createdAt ?? new Date(),
+      mensajes: mensajes.map((m) => ({
+        role: m.role,
+        content: m.content,
+        timestamp: m.timestamp,
+      })),
+    };
+  }, [conversationCompleted, selectedMember, selectedConv, messages, memberName, memberAge, memberSex, healthInfo]);
+
   if (!user || ctx?.loading) {
     return (
       <div className="flex h-full items-center justify-center">
@@ -1036,6 +1063,7 @@ export function TeleorientacionChatPage() {
             tokensAvailable={!ACCESO_LIBRE && tokenInfo ? (tokenInfo.free ?? 0) + (tokenInfo.paid ?? 0) : null}
             notice={chatDisabledReason}
             disabled={Boolean(chatDisabledReason)}
+            informe={informeOrientacion}
           />
         ) : (
           <div className="flex h-full min-h-0 flex-col">
