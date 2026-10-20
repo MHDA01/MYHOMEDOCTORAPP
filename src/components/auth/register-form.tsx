@@ -12,7 +12,7 @@ import { auth, db } from '@/lib/firebase';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from 'lucide-react';
-import { COLECCION_TUTOR, SUBCOLECCION_INTEGRANTES, DOC_TOKENS } from '@/lib/constants';
+import { COLECCION_TUTOR, SUBCOLECCION_INTEGRANTES } from '@/lib/constants';
 import { LegalConsentModal } from './legal-consent-modal';
 import { registrarRegistroOrigen } from '@/app/actions/origen';
 import { CLAVE_ORIGEN, origenVigente } from '@/lib/origen';
@@ -115,20 +115,11 @@ export function RegisterForm() {
         { merge: true }
       );
 
-      // Crear documento inicial de tokens para el nuevo usuario
-      const now = new Date();
-      const initialTokens = {
-        free: 6,
-        paid: 0,
-        dailyReset: now,
-        freePeriodEnds: new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000),
-      };
-
-      await setDoc(
-        doc(db, COLECCION_TUTOR, user.uid, DOC_TOKENS, 'config'),
-        initialTokens,
-        { merge: true }
-      );
+      // El documento de tokens ya NO se crea desde aquí: el saldo es lo único
+      // que decide si una consulta se cobra, así que el navegador no puede
+      // escribirlo (las reglas lo niegan desde el paso 5 de la auditoría). Lo
+      // crea el servidor en el primer acceso, con los mismos valores, en
+      // ensureTokenDocument (src/lib/token-system.ts).
 
       // Forzar la obtención de un nuevo token y crear sesión
       const idToken = await user.getIdToken(true);
