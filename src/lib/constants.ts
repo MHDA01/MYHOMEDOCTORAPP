@@ -27,6 +27,12 @@ export const DOC_TOKENS               = 'tokens';
 export const SUBCOLECCION_TRANSACTIONS = 'transactions';
 
 // ─────────────────────────────────────────────────────────
+// Modalidad de acceso por cuenta
+// ─────────────────────────────────────────────────────────
+// Colección propia y fuera de Cuentas_Tutor a propósito: ver src/lib/modalidad-acceso.ts.
+export const COLECCION_MODALIDAD = 'acceso_usuarios';
+
+// ─────────────────────────────────────────────────────────
 // Growth Agent (herramienta interna, solo fundador)
 // ─────────────────────────────────────────────────────────
 export const COLECCION_GROWTH_DRAFTS = 'growth_drafts';

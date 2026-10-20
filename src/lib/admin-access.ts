@@ -16,6 +16,12 @@ function correosAdmin(): string[] {
     .filter(Boolean);
 }
 
+/** ¿Ese correo es de un administrador? Para no dejar que el panel se borre a sí mismo. */
+export function esCorreoAdmin(correo: string | null | undefined): boolean {
+  if (!correo) return false;
+  return correosAdmin().includes(correo.trim().toLowerCase());
+}
+
 /**
  * Verifica que quien llama sea administrador. Toda acción de administración pasa
  * por aquí en el servidor: el menú del cliente solo decide qué se muestra.

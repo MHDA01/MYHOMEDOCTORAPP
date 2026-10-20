@@ -96,6 +96,13 @@ service cloud.firestore {
       }
     }
 
+    // Modalidad de acceso de cada cuenta (gratis de por vida o de pago). Vive
+    // fuera de Cuentas_Tutor justamente porque ahí el dueño puede escribir
+    // cualquier subcolección suya: aquí solo escribe el servidor.
+    match /acceso_usuarios/{tutorId} {
+      allow read, write: if false;
+    }
+
     match /users/{userId} {
       allow read, write: if false;
       match /{document=**} {

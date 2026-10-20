@@ -11,6 +11,8 @@ import { getAdminAuth, getAdminDb } from '@/lib/firebase-admin';
 import { verifyAdminAccess } from '@/lib/admin-access';
 import { COLECCION_TUTOR, SUBCOLECCION_CONVERSACIONES, SUBCOLECCION_INTEGRANTES } from '@/lib/constants';
 import { COLECCION_ORIGEN } from '@/lib/origen';
+import { MODALIDAD_POR_DEFECTO, type Modalidad } from '@/lib/modalidad';
+import { obtenerModalidades } from '@/lib/modalidad-acceso';
 
 const DIA_MS = 24 * 60 * 60 * 1000;
 const SEMANAS_EN_GRAFICA = 12;
@@ -50,6 +52,8 @@ export interface UsuarioAdmin {
   email: string | null;
   nombre: string | null;
   acceso: string;
+  /** Gratis de por vida o de pago cuando se encienda el cobro. */
+  modalidad: Modalidad;
   registrado: string;
   ultimoUso: string | null;
   deshabilitado: boolean;
@@ -253,6 +257,8 @@ export async function listarUsuariosAdmin(idToken: string): Promise<Resultado<Us
       porCuenta.set(c.uid, actual);
     }
 
+    const modalidades = await obtenerModalidades(cuentas.map((u) => u.uid));
+
     const PROVEEDORES: Record<string, string> = { password: 'Correo', 'google.com': 'Google', phone: 'Teléfono', 'apple.com': 'Apple' };
     const usuarios: UsuarioAdmin[] = cuentas.map((u) => {
       const uso = ultimoUsoMs(u);
@@ -262,6 +268,7 @@ export async function listarUsuariosAdmin(idToken: string): Promise<Resultado<Us
         email: u.email ?? null,
         nombre: nombres.get(u.uid) ?? u.displayName ?? null,
         acceso: u.providerData.map((p) => PROVEEDORES[p.providerId] ?? p.providerId).join(', '),
+        modalidad: modalidades.get(u.uid) ?? MODALIDAD_POR_DEFECTO,
         registrado: new Date(u.metadata.creationTime).toISOString(),
         ultimoUso: uso ? new Date(uso).toISOString() : null,
         deshabilitado: u.disabled,

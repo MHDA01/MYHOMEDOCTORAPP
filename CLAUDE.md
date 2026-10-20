@@ -36,8 +36,12 @@ pendiente.
 - Acceso libre durante el lanzamiento: `ACCESO_LIBRE` en `src/config/acceso.ts` y
   `functions/src/acceso.ts`, que **deben valer lo mismo**. El umbral no enciende el cobro solo; es
   una decisión manual.
-- Quienes se registraron durante la etapa gratis **quedan gratis de por vida**. No romper eso al
-  apagar el interruptor.
+- Las cuentas registradas **antes de encender el cobro quedan gratis de por vida** —27 al
+  20-oct-2026—, y se les dice. No romper eso al apagar el interruptor. La promesa se cumple cuenta
+  por cuenta con la **modalidad de acceso** (`src/lib/modalidad.ts` y `modalidad-acceso.ts`):
+  `gratis_ilimitado` entra siempre; `pago` pasa por tokens y pasarela. Se marca desde el panel de
+  administración, en Usuarios. Vive en `acceso_usuarios/{uid}` y **no** bajo `Cuentas_Tutor`, donde
+  el dueño puede escribir cualquier subcolección suya y se daría acceso gratis solo.
 - Salud mental queda fuera de los motivos de consulta de Hilda. La ideación suicida sigue como
   alarma universal.
 - Toda orientación termina en algo que la persona se lleva (hoy, el informe en PDF de
