@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { BookCheck, LayoutDashboard, Lightbulb, ShieldAlert, TrendingUp, Users, type LucideIcon } from 'lucide-react';
+import { BookCheck, LayoutDashboard, Lightbulb, ShieldAlert, Stethoscope, TrendingUp, Users, type LucideIcon } from 'lucide-react';
 import { DashboardHeader } from '@/components/dashboard/header';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useEsAdmin } from '@/hooks/use-es-admin';
@@ -12,6 +12,7 @@ type Seccion = { href: string; label: string; icon: LucideIcon };
 
 const SECCIONES: Seccion[] = [
   { href: '/dashboard/admin', label: 'Resumen', icon: LayoutDashboard },
+  { href: '/dashboard/admin/consultas', label: 'Consultas', icon: Stethoscope },
   { href: '/dashboard/admin/usuarios', label: 'Usuarios', icon: Users },
   { href: '/dashboard/admin/protocolos', label: 'Protocolos', icon: BookCheck },
   { href: '/dashboard/admin/consejos', label: 'Consejos del día', icon: Lightbulb },

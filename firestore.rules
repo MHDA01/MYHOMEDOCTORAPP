@@ -24,6 +24,15 @@ service cloud.firestore {
         match /mensajes/{messageId} {
           allow read, write: if isOwner(tutorId);
         }
+
+        // Resumen de la consulta para el médico y su revisión. Solo el servidor
+        // (Admin SDK, tras verifyAdminAccess) lo escribe y lo lee: la dueña no
+        // debe poder cambiar el nivel de atención ni borrar una señal de alarma
+        // desde el navegador, y el resto del panel nunca llega hasta aquí.
+        // Cuelga de la conversación para que se borre con la cuenta.
+        match /resumen/{docId} {
+          allow read, write: if false;
+        }
       }
 
       match /Integrantes/{integranteId} {
@@ -106,6 +115,13 @@ service cloud.firestore {
     // fuera de Cuentas_Tutor justamente porque ahí el dueño puede escribir
     // cualquier subcolección suya: aquí solo escribe el servidor.
     match /acceso_usuarios/{tutorId} {
+      allow read, write: if false;
+    }
+
+    // Quién abrió la consulta de qué paciente y cuándo. Solo escribe el
+    // servidor y no lo lee nadie desde la app: un registro de accesos que el
+    // propio panel pudiera editar no serviría de nada.
+    match /auditoria_consultas/{registroId} {
       allow read, write: if false;
     }
 
