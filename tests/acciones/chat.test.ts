@@ -140,6 +140,11 @@ describe('Enviar un mensaje a Hilda (enviarMensajeConsulta)', () => {
     // Hilda es un personaje creado con IA, no una médica: el prompt no debe
     // volver a presentarla con título. Si alguien lo reintroduce, esto falla.
     expect(sistema).not.toMatch(/Dra\.?\s*Hilda|doctora Hilda/i);
+    // La Res. 2654 de 2019 está derogada por la 1644 de 2026. Hilda le explica
+    // el marco legal a cada paciente nuevo, así que citar la vieja es decirle
+    // algo falso con autoridad. Si alguien la reintroduce, esto falla.
+    expect(sistema).not.toContain('2654');
+    expect(sistema).toContain('Resolución 1644 de 2026');
     expect(sistema).toContain('Nombre: Ana Pérez');
     expect(sistema).toContain('Alergias: penicilina');
   });

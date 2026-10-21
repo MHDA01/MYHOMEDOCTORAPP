@@ -56,13 +56,14 @@ export function LegalConsentModal({ open, onAccept }: LegalConsentModalProps) {
               </h3>
               <p>
                 MyHomeDoctorApp ofrece un servicio de <strong>teleorientación en salud</strong> asistido
-                por inteligencia artificial, conforme a la <strong>Resolución 2654 de 2019</strong> del
-                Ministerio de Salud y Protección Social de Colombia. Este servicio:
+                por inteligencia artificial, conforme a la <strong>Resolución 1644 de 2026</strong> del
+                Ministerio de Salud y Protección Social de Colombia, que regula la telesalud y derogó
+                la Resolución 2654 de 2019. Este servicio:
               </p>
               <ul className="list-disc ml-5 mt-2 space-y-1">
                 <li>Brinda orientación, educación en salud, consejería y direccionamiento hacia centros de atención médica.</li>
                 <li><strong>NO realiza diagnósticos definitivos</strong> de enfermedades.</li>
-                <li><strong>NO formula ni prescribe medicamentos</strong> (conforme al Artículo 19 de la Resolución 2654, la prescripción está restringida exclusivamente a la telemedicina interactiva y la telexperticia).</li>
+                <li><strong>NO formula ni prescribe medicamentos</strong> (la teleorientación no incluye prescripción conforme a la Resolución 1644 de 2026; prescribir corresponde a las modalidades de telemedicina).</li>
                 <li><strong>NO ordena exámenes de laboratorio ni imágenes diagnósticas.</strong></li>
                 <li><strong>NO reemplaza la consulta médica presencial</strong>, el examen físico ni los estudios paraclínicos.</li>
               </ul>
@@ -93,7 +94,7 @@ export function LegalConsentModal({ open, onAccept }: LegalConsentModalProps) {
                 3. Seguridad de la Información (Ley 527 de 1999)
               </h3>
               <p>
-                En cumplimiento de la Ley 527 de 1999 y la Resolución 2654 de 2019, las comunicaciones
+                En cumplimiento de la Ley 527 de 1999 y la Resolución 1644 de 2026, las comunicaciones
                 dentro de esta plataforma viajan bajo protocolos seguros (HTTPS). Las sesiones de
                 orientación quedan registradas como soporte del servicio, incluyendo fecha, hora,
                 motivo de consulta y recomendaciones entregadas.

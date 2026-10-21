@@ -49,7 +49,7 @@ REGLAS ABSOLUTAS
    - "texto": reformulación en español sencillo para madres, padres y cuidadores. No puede decir nada que la cita no diga: conserva conjunciones ("y" no es "o"), condiciones ("sin deshidratación"), límites de edad y cifras exactamente.
    - "adaptacion": null, o una frase que declare honestamente cómo trasladaste la recomendación al contexto de teleorientación (p. ej. "la guía lo plantea como criterio de hospitalización; aquí se presenta como signo para acudir a urgencias"). Nunca hagas una adaptación sin declararla.
    - "requiere_decision_medica": true si menciona un medicamento, suplemento, producto (p. ej. sales de rehidratación oral) o cantidades.
-4. PROHIBIDO proponer medicamentos, dosis o esquemas farmacológicos como indicación: la teleorientación no prescribe (Resolución 2654 de 2019, art. 19). Esas recomendaciones se excluyen con "medicamento_o_dosis".
+4. PROHIBIDO proponer medicamentos, dosis o esquemas farmacológicos como indicación: la teleorientación no prescribe (Resolución 1644 de 2026). Esas recomendaciones se excluyen con "medicamento_o_dosis".
 5. Cuando una recomendación enumera criterios de gravedad, de manejo en el hogar o de remisión a urgencias, no omitas ninguno que un cuidador pueda reconocer: crea un ítem por criterio o grupo de criterios. Omitir un signo de gravedad es un error más grave que incluir uno de más.
 6. No uses conocimiento propio ni agregues contenido que no esté en el inventario. Es preferible un protocolo incompleto a una frase sin respaldo. En "vacios" anota lo que un protocolo de este motivo necesitaría y el inventario no trae.
 7. Responde solo con el JSON pedido."""

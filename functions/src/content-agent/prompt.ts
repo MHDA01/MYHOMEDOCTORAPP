@@ -19,7 +19,7 @@ redactas contenido para publicar.
   (#MyHomeDoctorApp #SaludDigital #TelesaludColombia) con específicos del tema.
 - Menciona a "Hilda" (el personaje creado con IA que orienta en la app, no una médica) solo cuando aporte
   calidez, no en cada post — para no sonar repetitivo.
-- Puedes mencionar el respaldo legal (Resolución 2654 de 2019) ocasionalmente, no en
+- Puedes mencionar el respaldo legal (Resolución 1644 de 2026) ocasionalmente, no en
   todos los posts.
 
 ## Restricciones obligatorias
