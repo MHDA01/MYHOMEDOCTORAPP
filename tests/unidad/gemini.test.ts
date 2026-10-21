@@ -15,22 +15,55 @@ describe('Cliente de Gemini (generateWithGemini)', () => {
     expect(await generateWithGemini(pedido)).toEqual({ ok: true, text: 'Respuesta' });
   });
 
-  it('manda el presupuesto de razonamiento y, si el modelo no lo acepta (400), reintenta sin él', async () => {
+  it('manda el esfuerzo de razonamiento y, si el modelo no lo acepta (400), reintenta sin él', async () => {
     let intento = 0;
     const { falso, llamadasGemini } = fetchFalso(() => (++intento === 1 ? new Response('bad request', { status: 400 }) : respuestaGemini('ok')));
     vi.stubGlobal('fetch', falso);
 
     expect(await generateWithGemini({ ...pedido, thinkingBudget: -1 })).toEqual({ ok: true, text: 'ok' });
     expect(llamadasGemini).toHaveLength(2);
-    expect(llamadasGemini[0].cuerpo.generationConfig.thinkingConfig).toEqual({ thinkingBudget: -1 });
-    expect(llamadasGemini[1].cuerpo.generationConfig.thinkingConfig).toBeUndefined();
+    expect(llamadasGemini[0].cuerpo.reasoning_effort).toBe('medium');
+    expect(llamadasGemini[1].cuerpo.reasoning_effort).toBeUndefined();
+  });
+
+  it('por defecto pide que no razone, para que maxTokens sea presupuesto de salida', async () => {
+    const { falso, llamadasGemini } = fetchFalso(() => respuestaGemini('ok'));
+    vi.stubGlobal('fetch', falso);
+    await generateWithGemini(pedido);
+    expect(llamadasGemini[0].cuerpo.reasoning_effort).toBe('none');
+  });
+
+  it('traduce los contents de Gemini a messages de OpenAI, con el sistema de primero', async () => {
+    const { falso, llamadasGemini } = fetchFalso(() => respuestaGemini('ok'));
+    vi.stubGlobal('fetch', falso);
+    await generateWithGemini({
+      system: 'Eres Hilda',
+      contents: [
+        { role: 'user', parts: [{ text: 'tengo fiebre' }] },
+        { role: 'model', parts: [{ text: '¿desde cuándo?' }] },
+        { role: 'user', parts: [{ text: 'mira esto' }, { inlineData: { mimeType: 'image/jpeg', data: 'QUJD' } }] },
+      ],
+    });
+
+    const mensajes = llamadasGemini[0].cuerpo.messages;
+    expect(mensajes[0]).toEqual({ role: 'system', content: 'Eres Hilda' });
+    expect(mensajes[1]).toEqual({ role: 'user', content: 'tengo fiebre' });
+    // El rol `model` de Gemini se llama `assistant` en este formato.
+    expect(mensajes[2]).toEqual({ role: 'assistant', content: '¿desde cuándo?' });
+    expect(mensajes[3].content).toEqual([
+      { type: 'text', text: 'mira esto' },
+      { type: 'image_url', image_url: { url: 'data:image/jpeg;base64,QUJD' } },
+    ]);
   });
 
   it('distingue bloqueo, respuesta vacía y error HTTP', async () => {
-    vi.stubGlobal('fetch', fetchFalso(() => new Response(JSON.stringify({ promptFeedback: { blockReason: 'SAFETY' } }))).falso);
+    vi.stubGlobal(
+      'fetch',
+      fetchFalso(() => new Response(JSON.stringify({ choices: [{ finish_reason: 'content_filter', message: { content: '' } }] }))).falso
+    );
     expect(await generateWithGemini(pedido)).toMatchObject({ ok: false, kind: 'blocked' });
 
-    vi.stubGlobal('fetch', fetchFalso(() => new Response(JSON.stringify({ candidates: [] }))).falso);
+    vi.stubGlobal('fetch', fetchFalso(() => new Response(JSON.stringify({ choices: [] }))).falso);
     expect(await generateWithGemini(pedido)).toMatchObject({ ok: false, kind: 'empty' });
 
     vi.stubGlobal('fetch', fetchFalso(() => new Response('quota', { status: 429 })).falso);

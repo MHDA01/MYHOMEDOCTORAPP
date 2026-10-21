@@ -186,7 +186,7 @@ describe('Abrir una consulta', () => {
     expect(r.data.paciente.antecedentes).toContain('Patológicos: Asma en la infancia');
 
     // Lo que viajó al modelo: la ficha en claro y el chat sin los textos de sistema.
-    const texto = llamadas[0].cuerpo.contents[0].parts[0].text as string;
+    const texto = llamadas[0].cuerpo.messages[1].content as string;
     expect(texto).toContain('penicilina');
     expect(texto).toContain('PACIENTE: Tengo tos y fiebre hace 3 días');
     expect(texto).not.toContain('Error del servicio de IA');

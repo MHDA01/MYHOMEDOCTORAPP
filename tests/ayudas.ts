@@ -31,9 +31,12 @@ export async function vaciarFirestore(): Promise<void> {
   );
 }
 
-/** Respuesta de Gemini con el formato de la API real. */
+/**
+ * Respuesta de Gemini con el formato de la API real: el del endpoint compatible
+ * con OpenAI, que es por donde habla `src/lib/gemini.ts`.
+ */
 export function respuestaGemini(texto: string): Response {
-  return new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: texto }] } }] }), {
+  return new Response(JSON.stringify({ choices: [{ message: { content: texto }, finish_reason: 'stop' }] }), {
     status: 200,
     headers: { 'Content-Type': 'application/json' },
   });

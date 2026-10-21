@@ -129,13 +129,14 @@ describe('Enviar un mensaje a Hilda (enviarMensajeConsulta)', () => {
     await enviarMensajeConsulta(ana.idToken, convId, { texto: 'Desde ayer' }, paciente);
 
     const { cuerpo } = llamadasGemini[0];
-    const textos = cuerpo.contents.map((c: any) => [c.role, c.parts[0].text]);
+    // El primer mensaje es la instrucción de sistema; el historial va detrás.
+    const textos = cuerpo.messages.slice(1).map((m: any) => [m.role, m.content]);
     expect(textos).toEqual([
-      ['model', 'Hola, soy Hilda'],
+      ['assistant', 'Hola, soy Hilda'],
       ['user', 'Tengo fiebre'],
       ['user', 'Desde ayer'],
     ]);
-    const sistema = cuerpo.systemInstruction.parts[0].text as string;
+    const sistema = cuerpo.messages[0].content as string;
     expect(sistema).toContain('Eres Hilda');
     // Hilda es un personaje creado con IA, no una médica: el prompt no debe
     // volver a presentarla con título. Si alguien lo reintroduce, esto falla.
@@ -158,8 +159,9 @@ describe('Enviar un mensaje a Hilda (enviarMensajeConsulta)', () => {
     const resultado = await enviarMensajeConsulta(ana.idToken, convId, { texto: '', imageUrls: [url] }, paciente);
     expect(resultado.success).toBe(true);
 
-    const partes = llamadasGemini[0].cuerpo.contents.at(-1).parts;
-    expect(partes[1].inlineData).toEqual({ mimeType: 'image/jpeg', data: Buffer.from([0xff, 0xd8, 0xff, 0xe0]).toString('base64') });
+    const partes = llamadasGemini[0].cuerpo.messages.at(-1).content;
+    const base64 = Buffer.from([0xff, 0xd8, 0xff, 0xe0]).toString('base64');
+    expect(partes[1]).toEqual({ type: 'image_url', image_url: { url: `data:image/jpeg;base64,${base64}` } });
   });
 
   it('rechaza fotos de otra dirección, de otra cuenta o de otra conversación, sin descargarlas', async () => {
@@ -236,7 +238,9 @@ describe('Enviar un mensaje a Hilda (enviarMensajeConsulta)', () => {
 
   it('si Gemini bloquea el contenido no reintenta', async () => {
     silenciarErrores();
-    const { falso, llamadasGemini } = fetchFalso(() => new Response(JSON.stringify({ promptFeedback: { blockReason: 'SAFETY' } })));
+    const { falso, llamadasGemini } = fetchFalso(
+      () => new Response(JSON.stringify({ choices: [{ finish_reason: 'content_filter', message: { content: '' } }] }))
+    );
     vi.stubGlobal('fetch', falso);
     const convId = await crearConversacion(ana.uid);
 
@@ -254,7 +258,7 @@ describe('Saludo inicial (saludarEnConsulta)', () => {
 
     const resultado = await saludarEnConsulta(ana.idToken, convId, { nombre: 'Ana', primeraVez: true, periodo: 'Buenos días' }, paciente);
     expect(resultado).toEqual({ success: true, message: '¡Hola, Ana! Soy Hilda.' });
-    expect(llamadasGemini[0].cuerpo.contents[0].parts[0].text).toContain('Saluda al usuario llamado Ana por primera vez');
+    expect(llamadasGemini[0].cuerpo.messages[1].content).toContain('Saluda al usuario llamado Ana por primera vez');
     expect((await mensajesGuardados(ana.uid, convId)).map((m) => m.role)).toEqual(['assistant']);
   });
 
