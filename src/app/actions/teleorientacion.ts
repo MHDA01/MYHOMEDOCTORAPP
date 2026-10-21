@@ -1,5 +1,5 @@
 // ============================================================
-// app/actions/teleorientacion.ts — Server Action: Dra. Hilda AI
+// app/actions/teleorientacion.ts — Server Action: Hilda AI
 // El servidor guarda los mensajes y arma el historial; el teléfono solo manda lo nuevo.
 // Migrado desde Abacus AI (routellm), que dejó de responder con HTTP 402.
 // ============================================================
@@ -35,12 +35,19 @@ const TEMPERATURE = 0.4;
 const THINKING_BUDGET = -1;
 
 /**
- * System prompt de la Dra. Hilda.
- * Define su personalidad, límites éticos y protocolo de triage.
+ * System prompt de Hilda.
+ * Define su personalidad, límites éticos y cómo orienta al nivel de atención.
+ *
+ * Identidad corregida el 21-oct-2026: Hilda ya no se presenta como "Dra." ni
+ * como médica. Es un personaje creado con IA, y la misma frase se usa en la
+ * portada, en el ingreso y en el inicio. Esto es texto clínico: no se cambia
+ * sin aprobación del médico.
  */
-const SYSTEM_PROMPT = `SYSTEM PROMPT — Dra. Hilda v2.1 (myhomedoctorapp)
+const SYSTEM_PROMPT = `SYSTEM PROMPT — Hilda v2.1 (identidad corregida 21-oct-2026) (myhomedoctorapp)
 
-Eres Dra. Hilda, asistente de orientación médica con IA de myhomedoctorapp.
+Eres Hilda, un personaje creado con inteligencia artificial que da orientación en salud en myhomedoctorapp.
+NO eres médica ni profesional de la salud, y nunca digas ni insinúes que lo eres: no uses "Dra.", "doctora" ni ningún título para hablar de ti misma.
+Si el paciente te llama "doctora", acláralo con amabilidad una sola vez y sigue con la consulta; no lo repitas en cada mensaje.
 Tu función es orientar, educar y apoyar al paciente sin reemplazar la consulta médica presencial.
 
 ════════════════════════════════════════════════════════
@@ -50,9 +57,9 @@ Tu función es orientar, educar y apoyar al paciente sin reemplazar la consulta 
 - Verifica si es un nuevo día o una nueva conexión:
     • Nueva conexión (mismo día) → "¡Hola de nuevo, [Nombre]! Aquí estoy. ¿Cómo te sientes?"
     • Nuevo día → "¡Buenos días/tardes/noches, [Nombre]! Un nuevo día para cuidar tu salud. ¿En qué puedo ayudarte hoy?"
-    • Primera vez → Saluda calidamente, preséntate como Dra. Hilda y entrega la siguiente explicación de forma empática, clara y estructurada:
+    • Primera vez → Saluda calidamente, preséntate como Hilda, di que eres un personaje creado con inteligencia artificial, y entrega la siguiente explicación de forma empática, clara y estructurada:
 
-      "¡Hola, [Nombre]! Soy la Dra. Hilda, tu asistente de orientación en salud en myhomedoctorapp. Bienvenido/a. Antes de comenzar, quiero contarte brevemente qué es la teleorientación y cómo puedo ayudarte:
+      "¡Hola, [Nombre]! Soy Hilda, un personaje creado con inteligencia artificial que te orienta en salud en myhomedoctorapp. Bienvenido/a. Antes de comenzar, quiero contarte brevemente qué es la teleorientación y cómo puedo ayudarte:
 
       **¿Qué es la teleorientación?**
       La teleorientación es un servicio de salud regulado en Colombia por la Resolución 2654 de 2019 del Ministerio de Salud y Protección Social. Consiste en brindarte orientación, educación en salud, consejería y direccionamiento hacia los centros de atención médica que necesites.
@@ -611,7 +618,7 @@ async function puedeConsultar(uid: string): Promise<string | null> {
 }
 
 /**
- * Envía un mensaje del paciente a la Dra. Hilda.
+ * Envía un mensaje del paciente a Hilda.
  *
  * El servidor guarda la pregunta, arma el historial desde Firestore, llama a la IA
  * y guarda la respuesta. El teléfono solo manda el texto nuevo y las fotos que ya
@@ -669,7 +676,7 @@ export async function enviarMensajeConsulta(
 }
 
 /**
- * Saludo inicial de la Dra. Hilda en una conversación vacía. La instrucción se
+ * Saludo inicial de Hilda en una conversación vacía. La instrucción se
  * arma en el servidor; el teléfono solo dice si es la primera vez y la franja del día.
  */
 export async function saludarEnConsulta(

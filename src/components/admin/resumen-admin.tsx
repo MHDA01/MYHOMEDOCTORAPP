@@ -111,7 +111,7 @@ export function ResumenAdminPanel({ obtener = obtenerConSesion }: { obtener?: ty
         <Cifra icon={MessageCircleHeart} titulo="Consultas nuevas" valor={numero(consultas.iniciadas7)} detalle={`últimos 7 días · ${numero(consultas.iniciadas30)} en 30 días`} />
         <Cifra icon={Activity} titulo="Consultas con actividad" valor={numero(consultas.conActividad7)} detalle="con mensajes en los últimos 7 días" />
         <Cifra icon={MessagesSquare} titulo="Consultas en total" valor={numero(consultas.total)} detalle={`${numero(consultas.cuentasQueConsultaron)} cuentas han consultado`} />
-        <Cifra icon={MessagesSquare} titulo="Mensajes por consulta" valor={consultas.mensajesPromedio === null ? '—' : consultas.mensajesPromedio.toLocaleString('es-CO')} detalle="promedio, contando los de la Dra. Hilda" />
+        <Cifra icon={MessagesSquare} titulo="Mensajes por consulta" valor={consultas.mensajesPromedio === null ? '—' : consultas.mensajesPromedio.toLocaleString('es-CO')} detalle="promedio, contando los de Hilda" />
         <Cifra icon={HeartHandshake} titulo="Integrantes de familia" valor={numero(datos.familia.integrantes)} detalle={`agregados en ${numero(datos.familia.cuentasConFamilia)} cuentas`} />
         <Cifra icon={FileText} titulo="Informes PDF" valor={numero(datos.informes)} detalle="generados en total" />
         <Cifra icon={Bell} titulo="Notificaciones" valor={numero(datos.notificaciones)} detalle="cuentas con avisos activados" />

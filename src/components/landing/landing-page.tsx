@@ -7,7 +7,7 @@ import { ACCESO_LIBRE } from '@/config/acceso';
 
 // Página de entrada. Sigue la dirección de arte del mockup (azul profundo,
 // turquesa, superficies claras, tarjetas con íconos en círculo) sin copiar sus
-// fotos: se usan el logo y el avatar de la Dra. Hilda que ya tiene la app.
+// fotos: se usan el logo y el avatar de Hilda que ya tiene la app.
 // Los textos son los que ya existían.
 
 const FEATURES = [
@@ -86,7 +86,7 @@ export function LandingPage() {
                 <div className="flex items-center gap-3 border-b border-border/70 px-5 pb-4 pt-6">
                   <Image
                     src="/images/dra-hilda-avatar.png"
-                    alt="Dra. Hilda"
+                    alt="Hilda"
                     width={44}
                     height={44}
                     className="h-11 w-11 rounded-full object-cover shadow-soft ring-2 ring-white"
@@ -94,7 +94,7 @@ export function LandingPage() {
                   />
                   <div className="leading-tight">
                     <p className="flex items-center gap-1.5 text-[15px] font-bold text-brand-900">
-                      Dra. Hilda
+                      Hilda
                       <span className="rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-extrabold leading-none text-teal-700">IA</span>
                     </p>
                     <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -105,7 +105,7 @@ export function LandingPage() {
                 </div>
                 <div className="space-y-3 px-4 py-5">
                   <div className="ml-auto max-w-[85%] rounded-3xl rounded-br-lg bg-brand-900 px-4 py-2.5 text-sm leading-relaxed text-white">
-                    Hola Dra. Hilda, mi hijo tiene fiebre desde anoche.
+                    Hola Hilda, mi hijo tiene fiebre desde anoche.
                   </div>
                   <div className="max-w-[88%] rounded-3xl rounded-tl-lg bg-muted px-4 py-2.5 text-sm leading-relaxed text-foreground">
                     Te ayudo ahora mismo. Empecemos con temperatura, hidratación y señales de alarma para orientarte con seguridad.

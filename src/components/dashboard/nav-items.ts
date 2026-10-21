@@ -18,7 +18,7 @@ export type NavItem = {
 
 export const MAIN_NAV_ITEMS: NavItem[] = [
   { href: '/dashboard', label: 'Inicio', shortLabel: 'Inicio', icon: Home },
-  { href: '/dashboard/teleorientacion', label: 'Dra. Hilda', shortLabel: 'Dra. Hilda', icon: MessageCircleHeart },
+  { href: '/dashboard/teleorientacion', label: 'Hilda', shortLabel: 'Hilda', icon: MessageCircleHeart },
   { href: '/dashboard/familia', label: 'Mi familia', shortLabel: 'Familia', icon: Users },
   { href: '/dashboard/reportes', label: 'Mis informes', shortLabel: 'Informes', icon: FileText },
   { href: '/dashboard/cuenta', label: 'Mi cuenta', shortLabel: 'Cuenta', icon: UserRound },

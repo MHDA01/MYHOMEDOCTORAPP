@@ -237,7 +237,7 @@ export function Familiograma() {
           <AlertDialogHeader>
             <AlertDialogTitle>¿Eliminar a {nombrePropio(porEliminar?.firstName)}?</AlertDialogTitle>
             <AlertDialogDescription>
-              Se borra para siempre su perfil, su historial de salud, sus documentos y sus conversaciones con la Dra. Hilda. No se puede
+              Se borra para siempre su perfil, su historial de salud, sus documentos y sus conversaciones con Hilda. No se puede
               deshacer.
             </AlertDialogDescription>
           </AlertDialogHeader>

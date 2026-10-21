@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { ArrowRight, Users } from 'lucide-react';
 
 /**
- * Explica en el chat para qué sirve "Mi familia". Lo que dice es lo que la Dra. Hilda
+ * Explica en el chat para qué sirve "Mi familia". Lo que dice es lo que Hilda
  * realmente recibe de cada persona (nombre, edad, sexo, alergias y medicamentos, ver
  * PatientStructuredContext): si ese contexto cambia, este texto debe cambiar con él.
  */
@@ -18,7 +18,7 @@ export function AvisoFamiliaBienvenida() {
         <div className="min-w-0">
           <p className="text-[15px] font-bold text-brand-900">Consulta por cada persona de tu familia</p>
           <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
-            La Dra. Hilda tiene en cuenta su edad, sexo, alergias y medicamentos. Manténlos al día en Mi familia.
+            Hilda tiene en cuenta su edad, sexo, alergias y medicamentos. Manténlos al día en Mi familia.
           </p>
           <Link href="/dashboard/familia" className="mt-2 inline-flex items-center gap-1 text-sm font-semibold text-primary hover:underline">
             Mi familia <ArrowRight className="h-3.5 w-3.5" />

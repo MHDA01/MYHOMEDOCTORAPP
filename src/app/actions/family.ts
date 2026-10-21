@@ -323,7 +323,7 @@ export async function saveTitularProfile(idToken: string, profileData: any) {
 
 /**
  * Elimina a un integrante y todo lo que colgaba de él: historial cifrado, documentos,
- * episodios clínicos y sus conversaciones con la Dra. Hilda. Firestore no borra las
+ * episodios clínicos y sus conversaciones con Hilda. Firestore no borra las
  * subcolecciones al borrar el documento, por eso se hace con borrado recursivo.
  * El titular (la cuenta) no se elimina desde aquí.
  */

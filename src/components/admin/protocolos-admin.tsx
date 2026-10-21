@@ -145,7 +145,7 @@ export function ProtocolosAdminPanel({ acciones = accionesProtocolos }: { accion
             <ShieldCheck className="h-5 w-5" />
           </span>
           <div className="text-sm text-brand-900/85">
-            <h2 className="text-base font-bold text-brand-900">Protocolos de la Dra. Hilda</h2>
+            <h2 className="text-base font-bold text-brand-900">Protocolos de Hilda</h2>
             <p className="mt-1">
               Cada borrador sale solo de las guías oficiales de la biblioteca. Cada frase trae una cita literal que se comprueba
               automáticamente contra el texto de la guía, y un segundo modelo revisa que la frase no diga más que su cita.

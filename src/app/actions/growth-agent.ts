@@ -40,7 +40,7 @@ export interface GrowthDraftHistoryItem {
 /* ------------------------------------------------------------------ */
 const NEGOCIO_CONTEXTO = `
 Datos del negocio (usar exactamente estas cifras y hechos, no inventar otros):
-- Producto: myhomedoctorapp — asistente de orientación en salud familiar por IA (Dra. Hilda), PWA.
+- Producto: myhomedoctorapp — orientación en salud familiar con IA (Hilda, un personaje creado con IA), PWA.
 - Cumple Resolución 2654 de 2019 (teleorientación) y Ley 1581 de 2012 (datos sensibles) en Colombia.
 - No diagnostica ni prescribe — orienta, educa y hace triage hacia el nivel de atención adecuado.
 - Precio founder: 19.900 COP/mes, precio garantizado por 6-12 meses.
