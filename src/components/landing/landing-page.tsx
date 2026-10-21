@@ -85,7 +85,7 @@ export function LandingPage() {
               <div className="rounded-[2.75rem] border-[10px] border-brand-900 bg-white shadow-card-hover">
                 <div className="flex items-center gap-3 border-b border-border/70 px-5 pb-4 pt-6">
                   <Image
-                    src="/images/dra-hilda-avatar.png"
+                    src="/images/hilda-avatar.jpg"
                     alt="Hilda"
                     width={44}
                     height={44}

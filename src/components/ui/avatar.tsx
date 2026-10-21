@@ -66,7 +66,7 @@ export default function DraHildaAvatar({
   return (
     <div className={`relative inline-flex shrink-0 ${className}`}>
       <Image
-        src="/images/dra-hilda-avatar.png"
+        src="/images/hilda-avatar.jpg"
         alt="Hilda"
         width={px}
         height={px}
