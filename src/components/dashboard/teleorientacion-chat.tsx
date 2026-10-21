@@ -48,7 +48,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
-import { MessageSquarePlus, Trash2, Settings, LogOut, X, Coins, ChevronLeft, History } from 'lucide-react';
+import { MessageSquarePlus, Mic, Trash2, Settings, LogOut, X, Coins, ChevronLeft, History } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { LogoCompleto } from '@/components/brand-lockup';
@@ -65,6 +65,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import ChatInterface from '@/components/chat/ChatInterface';
+import { ModoVoz } from '@/components/chat/ModoVoz';
 import { 
   COLECCION_TUTOR, 
   SUBCOLECCION_INTEGRANTES, 
@@ -485,6 +486,7 @@ export function TeleorientacionChatPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isHistoryLoading, setIsHistoryLoading] = useState(false);
   const [showMemberPicker, setShowMemberPicker] = useState(false);
+  const [modoVozAbierto, setModoVozAbierto] = useState(false);
   const [hasTokens, setHasTokens] = useState<boolean | null>(null);
   const [tokenInfo, setTokenInfo] = useState<{ free: number; paid: number; needsPayment?: boolean; freePeriodEnds?: Date } | null>(null);
   const [tokenLoading, setTokenLoading] = useState(false);
@@ -897,7 +899,7 @@ export function TeleorientacionChatPage() {
             await checkTokens();
           }
 
-          return;
+          return assistantMsg.content;
         }
 
         const patientCtx = selectedMember
@@ -922,6 +924,8 @@ export function TeleorientacionChatPage() {
             timestamp: new Date(),
           };
           setMessages((prev) => [...prev, assistantMsg]);
+          // Lo que se devuelve es lo que el modo conversación dice en voz alta.
+          let loQueSeDice = result.message;
 
           if (isClosingMessage(text)) {
             const consumed = await consumeToken(selectedConv.id);
@@ -936,6 +940,8 @@ export function TeleorientacionChatPage() {
             setMessages((prev) => [...prev, closingAssistantMsg]);
             await persistSecureMessage((await auth.currentUser?.getIdToken()) || '', selectedConv.id, { ...closingAssistantMsg, sistema: true });
 
+            loQueSeDice = `${loQueSeDice} ${closingAssistantMsg.content}`;
+
             if (consumed) {
               setConversationCompleted(true);
               setChatDisabledReason(
@@ -944,6 +950,8 @@ export function TeleorientacionChatPage() {
               await checkTokens();
             }
           }
+
+          return loQueSeDice;
         } else {
           const errorMsg: ChatMessage = {
             id: uid(),
@@ -953,6 +961,9 @@ export function TeleorientacionChatPage() {
           };
           setMessages((prev) => [...prev, errorMsg]);
           await persistSecureMessage((await auth.currentUser?.getIdToken()) || '', selectedConv.id, { ...errorMsg, sistema: true });
+          // También se devuelve el error: en el modo conversación, quien no lee
+          // la pantalla tiene que oír que algo falló.
+          return errorMsg.content;
         }
       } catch (err) {
         console.error('[Teleorientación] Error enviando mensaje:', err);
@@ -965,11 +976,23 @@ export function TeleorientacionChatPage() {
         setMessages((prev) => [...prev, errorMsg]);
         await persistSecureMessage((await auth.currentUser?.getIdToken()) || '', selectedConv.id, { ...errorMsg, sistema: true })
           .catch(() => undefined);
+        return errorMsg.content;
       } finally {
         setIsLoading(false);
       }
     },
     [selectedConv, selectedMember, healthInfo, user, conversationCompleted, hasTokens, isExplicitTopicChange, isClosingMessage, consumeToken, checkTokens]
+  );
+
+  /* ---- Enviar hablando ---- */
+  // El modo conversación manda el mensaje por el mismo camino que el teclado y
+  // necesita, además, el texto de la respuesta para decirlo en voz alta.
+  const enviarPorVoz = useCallback(
+    async (texto: string): Promise<string | null> => {
+      const respuesta = await handleSendMessage(texto);
+      return typeof respuesta === 'string' ? respuesta : null;
+    },
+    [handleSendMessage]
   );
 
   /* ---- Nueva sesion ---- */
@@ -1036,6 +1059,7 @@ export function TeleorientacionChatPage() {
             tokensAvailable={!ACCESO_LIBRE && tokenInfo ? (tokenInfo.free ?? 0) + (tokenInfo.paid ?? 0) : null}
             notice={chatDisabledReason}
             disabled={Boolean(chatDisabledReason)}
+            onHablar={() => setModoVozAbierto(true)}
           />
         ) : (
           <div className="flex h-full min-h-0 flex-col">
@@ -1070,17 +1094,43 @@ export function TeleorientacionChatPage() {
                 <MessageSquarePlus className="h-4 w-4" />
                 Nueva conversación
               </button>
+              {/* Para quien no va a escribir, este es el camino corto: abre la
+                  conversación y entra hablando. El modo de voz aparece solo
+                  cuando la conversación ya existe. */}
+              <button
+                onClick={() => {
+                  setModoVozAbierto(true);
+                  handleNewSession();
+                }}
+                className="inline-flex h-14 items-center gap-2 rounded-full border-2 border-primary px-7 text-base font-semibold text-primary transition-all hover:bg-sky-50 active:scale-[0.98]"
+              >
+                <Mic className="h-5 w-5" />
+                Hablar con Hilda
+              </button>
               <AvisoFamiliaBienvenida />
             </div>
           </div>
         )}
       </div>
 
+      {modoVozAbierto && selectedConv && (
+        <ModoVoz
+          onEnviar={enviarPorVoz}
+          onCerrar={() => setModoVozAbierto(false)}
+          nombrePaciente={memberName}
+        />
+      )}
+
       <MemberPicker
         open={showMemberPicker}
         members={members.filter((m) => !m.deceased)}
         onSelect={handleCreateConversation}
-        onClose={() => setShowMemberPicker(false)}
+        onClose={() => {
+          setShowMemberPicker(false);
+          // Si cerró el selector sin elegir, el modo de voz no debe quedar
+          // armado para la próxima conversación que abra.
+          if (!selectedConv) setModoVozAbierto(false);
+        }}
       />
 
       {!ACCESO_LIBRE && (

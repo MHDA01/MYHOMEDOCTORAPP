@@ -238,4 +238,77 @@
   .animate-shake-x {
     animation: shake-x 0.35s ease-in-out 1;
   }
+
+  /* ─────────────────────────────────────────────────────────
+     Modo conversación: los estados de Hilda.
+     El paciente tiene que saber sin leer si lo están escuchando,
+     si Hilda está pensando o si está hablando. Por eso cada estado
+     tiene su movimiento y no solo su color.
+     ───────────────────────────────────────────────────────── */
+
+  /* Escuchando: ondas que salen del avatar. */
+  @keyframes onda-escucha {
+    0% {
+      transform: scale(1);
+      opacity: 0.55;
+    }
+    100% {
+      transform: scale(1.7);
+      opacity: 0;
+    }
+  }
+
+  .animate-onda-escucha {
+    animation: onda-escucha 2s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+  }
+
+  /* Hablando: el avatar respira. */
+  @keyframes respira-voz {
+    0%, 100% {
+      transform: scale(1);
+    }
+    50% {
+      transform: scale(1.04);
+    }
+  }
+
+  .animate-respira-voz {
+    animation: respira-voz 0.9s ease-in-out infinite;
+  }
+
+  /* Hablando: las barras de la onda de voz. */
+  @keyframes barra-voz {
+    0%, 100% {
+      transform: scaleY(0.35);
+    }
+    50% {
+      transform: scaleY(1);
+    }
+  }
+
+  .animate-barra-voz {
+    animation: barra-voz 0.7s ease-in-out infinite;
+  }
+
+  /* Pensando: el anillo gira. */
+  @keyframes giro-lento {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  .animate-giro-lento {
+    animation: giro-lento 2.4s linear infinite;
+  }
+
+  /* Quien pidió menos movimiento en su sistema no ve ninguno: el estado se
+     sigue entendiendo por el color y por el texto que lo acompaña. */
+  @media (prefers-reduced-motion: reduce) {
+    .animate-onda-escucha,
+    .animate-respira-voz,
+    .animate-barra-voz,
+    .animate-giro-lento {
+      animation: none;
+    }
+  }
 }
