@@ -74,7 +74,7 @@ export function AvatarHilda({
 
         <Image
           src="/images/dra-hilda-avatar.png"
-          alt="Dra. Hilda"
+          alt="Hilda"
           width={tamano}
           height={tamano}
           priority

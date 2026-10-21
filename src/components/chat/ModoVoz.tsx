@@ -178,7 +178,7 @@ export function ModoVoz({ onEnviar, onCerrar, nombrePaciente }: ModoVozProps) {
   const noSePuede = !micDisponible || !vozDisponible;
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-white" role="dialog" aria-modal="true" aria-label="Hablar con la Dra. Hilda">
+    <div className="fixed inset-0 z-50 flex flex-col bg-white" role="dialog" aria-modal="true" aria-label="Hablar con Hilda">
       <header className="flex items-center justify-between px-4 py-3">
         <p className="text-sm font-semibold text-muted-foreground">
           {nombrePaciente ? `Consulta sobre ${nombrePaciente}` : 'Consulta por voz'}

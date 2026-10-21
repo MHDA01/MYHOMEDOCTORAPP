@@ -208,7 +208,7 @@ export function resumenDesdeModelo(bruto: unknown): ResumenConsulta | null {
 // ─────────────────────────────────────────────────────────────
 
 export const PROMPT_RESUMEN = `Eres un asistente que prepara, para un médico colombiano, el resumen de una
-consulta de teleorientación que atendió la Dra. Hilda (un personaje con IA).
+consulta de teleorientación que atendió Hilda (un personaje creado con IA, no una médica).
 El médico va a leer SOLO tu resumen para decidir en menos de un minuto qué hacer
 con este paciente. No escribes para el paciente: escribes para un colega.
 
