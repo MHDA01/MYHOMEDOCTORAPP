@@ -10,8 +10,10 @@ import ChatMessage from './ChatMessage';
 import ChatInput from './ChatInput';
 import TriageBanner from './TriageBanner';
 import TypingIndicator from './TypingIndicator';
+import CierreOrientacion from './CierreOrientacion';
 import DraHildaAvatar from '@/components/ui/avatar';
 import type { ChatMessage as ChatMessageType } from '@/types/chat';
+import type { DatosInformeOrientacion } from '@/lib/informe-orientacion-pdf';
 
 interface ChatInterfaceProps {
   messages: ChatMessageType[];
@@ -27,6 +29,8 @@ interface ChatInterfaceProps {
   /** Aviso cuando el chat está bloqueado (sin tokens, período vencido...). */
   notice?: string | null;
   disabled?: boolean;
+  /** Cuando la consulta terminó: datos para armar el informe que se lleva al médico. */
+  informe?: DatosInformeOrientacion | null;
 }
 
 export default function ChatInterface({
@@ -42,6 +46,7 @@ export default function ChatInterface({
   tokensAvailable = null,
   notice = null,
   disabled = false,
+  informe = null,
 }: ChatInterfaceProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -83,6 +88,9 @@ export default function ChatInterface({
           ))}
 
           {isLoading && <TypingIndicator />}
+
+          {/* El desenlace de la consulta: el documento que se lleva al médico. */}
+          {informe && !isLoading && <CierreOrientacion datos={informe} />}
 
           <div ref={messagesEndRef} />
         </div>

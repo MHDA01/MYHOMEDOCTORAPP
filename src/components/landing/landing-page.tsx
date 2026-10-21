@@ -8,7 +8,9 @@ import { ACCESO_LIBRE } from '@/config/acceso';
 // Página de entrada. Sigue la dirección de arte del mockup (azul profundo,
 // turquesa, superficies claras, tarjetas con íconos en círculo) sin copiar sus
 // fotos: se usan el logo y el avatar de la Dra. Hilda que ya tiene la app.
-// Los textos son los que ya existían.
+// Los textos del encabezado se ajustaron a la regla de que Hilda es un
+// personaje creado con IA: la portada no la presenta como médica ni como
+// "IA médica", y dice qué no hace (diagnosticar, recetar).
 
 const FEATURES = [
   {
@@ -60,13 +62,13 @@ export function LandingPage() {
             <div className="space-y-6">
               <div className="inline-flex items-center gap-2 rounded-full bg-white px-3.5 py-1.5 text-xs font-semibold text-teal-700 shadow-soft">
                 <span className="h-1.5 w-1.5 rounded-full bg-primary" aria-hidden />
-                IA médica asistida por profesionales
+                Protocolos revisados por un médico
               </div>
               <h1 className="text-[40px] font-extrabold leading-[1.05] tracking-tight text-brand-900 sm:text-5xl lg:text-[56px]">
-                Tu médico de familia digital, disponible 24/7
+                Orientación en salud para tu familia, a cualquier hora
               </h1>
               <p className="max-w-xl text-lg leading-relaxed text-muted-foreground sm:text-xl">
-                Dra. Hilda es tu asistente de orientación en salud, creada por médicos para cuidar de ti y tu familia de forma humana y segura.
+                Hilda es un personaje creado con inteligencia artificial que te orienta siguiendo protocolos revisados por un médico. No diagnostica ni receta: te ayuda a entender qué está pasando y cuándo consultar.
               </p>
               <Link
                 href="/register"
@@ -145,11 +147,29 @@ export function LandingPage() {
       </main>
 
       <footer className="bg-brand-900 px-5 py-7 sm:px-10 lg:px-16">
-        <div className="mx-auto flex w-full max-w-6xl flex-col gap-3 text-sm text-white/75 sm:flex-row sm:items-center sm:justify-between">
-          <p>Un producto de MyHomeDoctorApp • IA médica asistida</p>
-          <div className="flex items-center gap-5">
-            <Link href="#" className="transition hover:text-white">TyC</Link>
-            <Link href="#" className="transition hover:text-white">Privacidad</Link>
+        <div className="mx-auto flex w-full max-w-6xl flex-col gap-5 text-sm text-white/75">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <p>Un producto de MyHomeDoctorApp • Orientación en salud, no reemplaza la consulta médica</p>
+            <div className="flex items-center gap-5">
+              <Link href="#" className="transition hover:text-white">TyC</Link>
+              <Link href="#" className="transition hover:text-white">Privacidad</Link>
+            </div>
+          </div>
+
+          {/* Firma de la casa. El isotipo va en negativo blanco porque el fondo
+              es el azul principal, y sin descriptor por el tamaño: así lo pide
+              el manual de identidad de Charis Integra. */}
+          <div className="flex items-center gap-2.5 border-t border-white/15 pt-4">
+            <Image
+              src="/marca/charis-integra-isotipo-blanco.svg"
+              alt=""
+              width={18}
+              height={18}
+              className="h-[18px] w-[18px] opacity-80"
+              unoptimized
+              aria-hidden
+            />
+            <span className="text-xs tracking-wide text-white/60">Desarrollado por Charis Integra</span>
           </div>
         </div>
       </footer>
