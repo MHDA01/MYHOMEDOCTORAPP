@@ -73,7 +73,7 @@ export function AvatarHilda({
         )}
 
         <Image
-          src="/images/dra-hilda-avatar.png"
+          src="/images/hilda-avatar.jpg"
           alt="Hilda"
           width={tamano}
           height={tamano}
