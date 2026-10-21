@@ -13,7 +13,7 @@ import type { Motivo, Recomendacion } from "./tipos";
 export const MODELO_REDACTOR = "gemini-pro-latest";
 
 export const SECCIONES: Record<string, string> = {
-  preguntas_triage: "Preguntas que la Dra. Hilda debe hacer al cuidador para clasificar la gravedad.",
+  preguntas_triage: "Preguntas que Hilda debe hacer al cuidador para clasificar la gravedad.",
   signos_de_alarma: "Signos que obligan a acudir a urgencias de inmediato.",
   medidas_en_casa: "Cuidados que la guía indica para el hogar.",
   cuando_consultar: "Situaciones en que debe llevarse a consulta médica (no urgente).",

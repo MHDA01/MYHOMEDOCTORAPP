@@ -113,7 +113,7 @@ export default function ChatMessage({ message }: ChatMessageProps) {
     minute: '2-digit',
   });
 
-  // Como en el mockup: el paciente en azul profundo a la derecha, la Dra. Hilda
+  // Como en el mockup: el paciente en azul profundo a la derecha, Hilda
   // en una burbuja clara a la izquierda con su avatar. El nombre ya está en la
   // cabecera, así que no se repite dentro de cada burbuja.
   return (

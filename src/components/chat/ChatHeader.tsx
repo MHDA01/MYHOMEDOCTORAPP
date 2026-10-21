@@ -53,7 +53,7 @@ export default function ChatHeader({
         <DraHildaAvatar size="md" showStatus />
         <div className="min-w-0 flex-1">
           <h1 className="flex items-center gap-1.5 text-base font-bold leading-tight text-brand-900 md:text-lg">
-            <span className="truncate">Dra. Hilda</span>
+            <span className="truncate">Hilda</span>
             <span className="shrink-0 rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-extrabold leading-none text-teal-700">
               IA
             </span>

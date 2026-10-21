@@ -374,7 +374,7 @@ export function RevisionProtocolo({ borradorId, acciones = accionesRevision }: {
                   {cuenta('corregir')} corregidas por ti). Las {cuenta('rechazar')} rechazadas no se incluyen.
                 </p>
                 <p>
-                  La Dra. Hilda todavía no usa los protocolos publicados: activarlo es un paso aparte. Publicar deja esta versión lista y
+                  Hilda todavía no usa los protocolos publicados: activarlo es un paso aparte. Publicar deja esta versión lista y
                   registrada con tu nombre y la fecha.
                 </p>
               </div>

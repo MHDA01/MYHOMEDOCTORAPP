@@ -19,10 +19,10 @@ export function PantallaAcceso({ children }: { children: React.ReactNode }) {
             <BrandLockup size="lg" />
           </Link>
           <h1 className="text-[44px] font-extrabold leading-[1.05] tracking-tight text-brand-900">
-            Tu médico de familia digital, disponible 24/7
+            Orientación en salud para tu familia, a cualquier hora
           </h1>
           <p className="max-w-md text-lg leading-relaxed text-muted-foreground">
-            Dra. Hilda es tu asistente de orientación en salud, creada por médicos para cuidar de ti y tu familia de forma humana y segura.
+            Hilda es un personaje creado con inteligencia artificial que te orienta siguiendo protocolos revisados por un médico. No diagnostica ni receta: te ayuda a entender qué está pasando y cuándo consultar.
           </p>
           {ACCESO_LIBRE && <p className="text-sm font-semibold text-teal-700">Gratis durante el lanzamiento · Sin tarjeta</p>}
         </aside>

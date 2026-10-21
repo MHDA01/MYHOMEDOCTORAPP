@@ -94,7 +94,7 @@ export default function CuentaPage() {
               <div>
                 <p className="text-lg font-bold leading-snug sm:text-xl">Tu cuenta es gratuita</p>
                 <p className="mt-1 text-sm leading-relaxed text-white/80 sm:text-[15px]">
-                  Durante el lanzamiento de MyHomeDoctorApp puedes usar la orientación con la Dra. Hilda sin
+                  Durante el lanzamiento de MyHomeDoctorApp puedes usar la orientación con Hilda sin
                   ningún costo y sin registrar una tarjeta. Si algún día esto cambia, te avisaremos con anticipación.
                 </p>
               </div>

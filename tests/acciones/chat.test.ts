@@ -88,7 +88,7 @@ describe('Textos de sistema y lectura (persistSecureMessage / getSecureMessages)
   });
 });
 
-describe('Enviar un mensaje a la Dra. Hilda (enviarMensajeConsulta)', () => {
+describe('Enviar un mensaje a Hilda (enviarMensajeConsulta)', () => {
   it('sin sesión o en una conversación ajena no llama a la IA ni guarda nada', async () => {
     silenciarErrores();
     const { falso, llamadasGemini } = fetchFalso(() => respuestaGemini('no debería llegar'));
@@ -122,7 +122,7 @@ describe('Enviar un mensaje a la Dra. Hilda (enviarMensajeConsulta)', () => {
     const { falso, llamadasGemini } = fetchFalso(() => respuestaGemini('Desde ayer entonces.'));
     vi.stubGlobal('fetch', falso);
     const convId = await crearConversacion(ana.uid);
-    await persistSecureMessage(ana.idToken, convId, { role: 'assistant', content: 'Hola, soy la Dra. Hilda' });
+    await persistSecureMessage(ana.idToken, convId, { role: 'assistant', content: 'Hola, soy Hilda' });
     await persistSecureMessage(ana.idToken, convId, { role: 'user', content: 'Tengo fiebre' });
     await persistSecureMessage(ana.idToken, convId, { role: 'assistant', content: 'Error del servicio de IA 503', sistema: true });
 
@@ -131,12 +131,15 @@ describe('Enviar un mensaje a la Dra. Hilda (enviarMensajeConsulta)', () => {
     const { cuerpo } = llamadasGemini[0];
     const textos = cuerpo.contents.map((c: any) => [c.role, c.parts[0].text]);
     expect(textos).toEqual([
-      ['model', 'Hola, soy la Dra. Hilda'],
+      ['model', 'Hola, soy Hilda'],
       ['user', 'Tengo fiebre'],
       ['user', 'Desde ayer'],
     ]);
     const sistema = cuerpo.systemInstruction.parts[0].text as string;
-    expect(sistema).toContain('Dra. Hilda');
+    expect(sistema).toContain('Eres Hilda');
+    // Hilda es un personaje creado con IA, no una médica: el prompt no debe
+    // volver a presentarla con título. Si alguien lo reintroduce, esto falla.
+    expect(sistema).not.toMatch(/Dra\.?\s*Hilda|doctora Hilda/i);
     expect(sistema).toContain('Nombre: Ana Pérez');
     expect(sistema).toContain('Alergias: penicilina');
   });
@@ -240,12 +243,12 @@ describe('Enviar un mensaje a la Dra. Hilda (enviarMensajeConsulta)', () => {
 
 describe('Saludo inicial (saludarEnConsulta)', () => {
   it('saluda en una conversación vacía y guarda el saludo', async () => {
-    const { falso, llamadasGemini } = fetchFalso(() => respuestaGemini('¡Hola, Ana! Soy la Dra. Hilda.'));
+    const { falso, llamadasGemini } = fetchFalso(() => respuestaGemini('¡Hola, Ana! Soy Hilda.'));
     vi.stubGlobal('fetch', falso);
     const convId = await crearConversacion(ana.uid);
 
     const resultado = await saludarEnConsulta(ana.idToken, convId, { nombre: 'Ana', primeraVez: true, periodo: 'Buenos días' }, paciente);
-    expect(resultado).toEqual({ success: true, message: '¡Hola, Ana! Soy la Dra. Hilda.' });
+    expect(resultado).toEqual({ success: true, message: '¡Hola, Ana! Soy Hilda.' });
     expect(llamadasGemini[0].cuerpo.contents[0].parts[0].text).toContain('Saluda al usuario llamado Ana por primera vez');
     expect((await mensajesGuardados(ana.uid, convId)).map((m) => m.role)).toEqual(['assistant']);
   });

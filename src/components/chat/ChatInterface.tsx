@@ -76,7 +76,7 @@ export default function ChatInterface({
           {messages.length === 0 && (
             <div className="flex flex-col items-center px-6 py-12 text-center">
               <DraHildaAvatar size="xl" />
-              <h3 className="mb-2 mt-4 text-2xl font-bold">Hola, soy la Dra. Hilda</h3>
+              <h3 className="mb-2 mt-4 text-2xl font-bold">Hola, soy Hilda</h3>
               <p className="max-w-md text-[15px] leading-7 text-muted-foreground">
                 Estoy lista para orientarte en salud familiar. Cuéntame qué está pasando y te acompaño paso a paso.
               </p>

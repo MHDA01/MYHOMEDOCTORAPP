@@ -4,7 +4,7 @@
 // El panel crea motivos, pide borradores (los genera functions/src/protocolos),
 // guarda la decisión del médico sobre cada frase y publica solo lo aprobado.
 // Nada de lo que está aquí llega a pacientes mientras la integración con la
-// Dra. Hilda no se active.
+// Hilda no se active.
 // ============================================================
 'use server';
 
@@ -366,7 +366,7 @@ export async function publicarProtocoloAdmin(idToken: string, borradorId: string
         borrador_id: borradorId,
         publicado_por: acceso.email,
         publicado_en: FieldValue.serverTimestamp(),
-        // La Dra. Hilda todavía no lee protocolos: activarlo es un paso aparte.
+        // Hilda todavía no lee protocolos: activarlo es un paso aparte.
         en_uso_por_hilda: false,
         items: aprobados.map((i) => {
           const r = revision[i.id];

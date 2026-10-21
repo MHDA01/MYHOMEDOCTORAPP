@@ -16,7 +16,7 @@ import { NotificationPermissionBanner } from './notification-permission-banner';
 
 /**
  * Pantalla de Inicio, siguiendo la jerarquía del mockup:
- * identidad → saludo → Dra. Hilda → accesos → consejo del día → familia.
+ * identidad → saludo → Hilda → accesos → consejo del día → familia.
  *
  * No agrega funciones: cada tarjeta lleva a una pantalla que ya existía, y el
  * consejo del día y el aviso de notificaciones son los mismos componentes que
@@ -29,7 +29,7 @@ import { NotificationPermissionBanner } from './notification-permission-banner';
 type QuickAccess = { href: string; title: string; description: string; icon: LucideIcon };
 
 const QUICK_ACCESS: QuickAccess[] = [
-  { href: '/dashboard/teleorientacion', title: 'Orientación médica', description: 'Con la Dra. Hilda', icon: MessageCircleHeart },
+  { href: '/dashboard/teleorientacion', title: 'Orientación en salud', description: 'Con Hilda', icon: MessageCircleHeart },
   { href: '/dashboard/familia', title: 'Mi familia', description: 'Familiograma y datos', icon: Users },
   { href: '/dashboard/reportes', title: 'Mis informes', description: 'Resumen de salud en PDF', icon: FileText },
   { href: '/dashboard/cuenta', title: 'Mi cuenta', description: ACCESO_LIBRE ? 'Acceso gratuito' : 'Tu plan y consultas', icon: UserRound },
@@ -92,7 +92,7 @@ export function Inicio() {
         <div className="flex flex-col gap-4 md:col-span-3 md:gap-6">
           <NotificationPermissionBanner />
 
-          {/* Tarjeta principal: la Dra. Hilda */}
+          {/* Tarjeta principal: Hilda */}
           <Link
             href="/dashboard/teleorientacion"
             className="group relative overflow-hidden rounded-3xl bg-gradient-to-br from-brand-900 to-brand-800 p-5 text-white shadow-card transition-transform active:scale-[0.99] sm:p-6"
@@ -109,13 +109,13 @@ export function Inicio() {
               <div className="min-w-0">
                 <p className="text-lg font-bold leading-snug sm:text-xl">¿Tienes una duda de salud?</p>
                 <p className="mt-1 text-sm leading-relaxed text-white/80">
-                  Cuéntale a la Dra. Hilda qué está pasando. Es tu asistente médica con inteligencia artificial y te
-                  orienta paso a paso.
+                  Cuéntale a Hilda qué está pasando. Es un personaje creado con inteligencia artificial y te orienta
+                  paso a paso. No diagnostica ni receta.
                 </p>
               </div>
             </div>
             <span className="relative mt-5 inline-flex h-11 items-center gap-2 rounded-full bg-white px-5 text-sm font-bold text-brand-900 shadow-soft transition-colors group-hover:bg-sky-50">
-              Hablar con la Dra. Hilda
+              Hablar con Hilda
               <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
             </span>
           </Link>

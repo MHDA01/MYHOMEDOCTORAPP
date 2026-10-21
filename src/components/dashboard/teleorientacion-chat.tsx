@@ -1,6 +1,6 @@
 // ============================================================
 // components/dashboard/teleorientacion-chat.tsx
-// Pagina completa de Teleorientacion con Dra. Hilda AI.
+// Pagina completa de Teleorientacion con Hilda AI.
 // Sidebar estilo ChatGPT con historial de conversaciones.
 // ============================================================
 'use client';
