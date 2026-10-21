@@ -32,6 +32,15 @@ export interface GeminiRequest {
    * tenía con el modelo sin razonamiento que se usaba antes.
    */
   thinkingBudget?: number;
+  /**
+   * Pide la respuesta como JSON que cumpla este esquema (el subconjunto de
+   * OpenAPI que acepta Gemini). Sin esto, el modelo contesta en prosa y hay que
+   * adivinar dónde empieza el JSON entre comillas de bloque.
+   *
+   * El esquema no es una garantía: quien lo use debe volver a validar lo que
+   * llega antes de creérselo.
+   */
+  responseSchema?: Record<string, unknown>;
   timeoutMs?: number;
   /**
    * Reintentos ante fallas pasajeras: saturación (429), errores 5xx del servicio o
@@ -82,6 +91,10 @@ async function intentarGemini(req: GeminiRequest): Promise<GeminiResult> {
       };
       if (withThinking) {
         generationConfig.thinkingConfig = { thinkingBudget: req.thinkingBudget ?? 0 };
+      }
+      if (req.responseSchema) {
+        generationConfig.responseMimeType = 'application/json';
+        generationConfig.responseSchema = req.responseSchema;
       }
 
       return fetch(`${GEMINI_API_BASE}/${model}:generateContent?key=${apiKey}`, {

@@ -5,6 +5,7 @@
 'use client';
 
 import { useRef, useEffect } from 'react';
+import { Mic } from 'lucide-react';
 import ChatHeader from './ChatHeader';
 import ChatMessage from './ChatMessage';
 import ChatInput from './ChatInput';
@@ -17,7 +18,8 @@ import type { DatosInformeOrientacion } from '@/lib/informe-orientacion-pdf';
 
 interface ChatInterfaceProps {
   messages: ChatMessageType[];
-  onSendMessage: (message: string, images?: File[]) => void | Promise<boolean | void>;
+  /** false = no salió. Un texto es la respuesta de Hilda (lo usa el modo de voz). */
+  onSendMessage: (message: string, images?: File[]) => void | Promise<string | boolean | void>;
   isLoading?: boolean;
   memberName?: string;
   memberAge?: number;
@@ -31,6 +33,8 @@ interface ChatInterfaceProps {
   disabled?: boolean;
   /** Cuando la consulta terminó: datos para armar el informe que se lleva al médico. */
   informe?: DatosInformeOrientacion | null;
+  /** Abre el modo conversación. Si no se pasa, el chat queda solo por escrito. */
+  onHablar?: () => void;
 }
 
 export default function ChatInterface({
@@ -47,6 +51,7 @@ export default function ChatInterface({
   notice = null,
   disabled = false,
   informe = null,
+  onHablar,
 }: ChatInterfaceProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -80,6 +85,17 @@ export default function ChatInterface({
               <p className="max-w-md text-[15px] leading-7 text-muted-foreground">
                 Estoy lista para orientarte en salud familiar. Cuéntame qué está pasando y te acompaño paso a paso.
               </p>
+              {onHablar && (
+                <button
+                  type="button"
+                  onClick={onHablar}
+                  disabled={disabled}
+                  className="mt-5 inline-flex h-14 items-center gap-2 rounded-full bg-primary px-7 text-base font-semibold text-white shadow-soft transition-all hover:bg-teal-600 active:scale-[0.98] disabled:opacity-50"
+                >
+                  <Mic className="h-5 w-5" />
+                  Hablar con Hilda
+                </button>
+              )}
             </div>
           )}
 
@@ -101,6 +117,22 @@ export default function ChatInterface({
           <p className="mx-auto w-full max-w-3xl rounded-2xl bg-destructive/10 px-4 py-2.5 text-xs font-medium leading-relaxed text-destructive">
             {notice}
           </p>
+        </div>
+      )}
+
+      {/* Una conversación ya empezada también se puede seguir hablando: el
+          paciente puede cansarse de escribir a mitad de camino. */}
+      {onHablar && messages.length > 0 && (
+        <div className="px-3 sm:px-6">
+          <button
+            type="button"
+            onClick={onHablar}
+            disabled={isLoading || disabled}
+            className="mx-auto flex h-11 items-center gap-2 rounded-full border border-primary/30 bg-sky-50 px-4 text-sm font-semibold text-primary transition-colors hover:bg-sky-100 disabled:opacity-50"
+          >
+            <Mic className="h-4 w-4" />
+            Seguir hablando con Hilda
+          </button>
         </div>
       )}
 

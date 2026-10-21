@@ -18,8 +18,12 @@ const MAX_IMAGE_SIZE_MB = 10;
 const MAX_IMAGE_SIZE_BYTES = MAX_IMAGE_SIZE_MB * 1024 * 1024;
 
 interface ChatInputProps {
-  /** Devuelve false cuando el mensaje no salió, para devolver el borrador. */
-  onSend: (message: string, images?: File[]) => void | Promise<boolean | void>;
+  /**
+   * Devuelve false cuando el mensaje no salió, para devolver el borrador.
+   * Cualquier otra cosa (incluido el texto de la respuesta, que necesita el
+   * modo de voz) cuenta como enviado.
+   */
+  onSend: (message: string, images?: File[]) => void | Promise<string | boolean | void>;
   disabled?: boolean;
   placeholder?: string;
   memberName?: string;
