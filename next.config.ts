@@ -88,6 +88,12 @@ const nextConfig: NextConfig = {
               `script-src 'self' 'unsafe-inline' ${isDev ? "'unsafe-eval' " : ''}https://*.firebaseapp.com https://*.googleapis.com https://www.gstatic.com`,
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com",
               "img-src 'self' data: https:",
+              // La voz de Hilda llega como MP3 en base64 desde el servidor y se
+              // reproduce con un `data:` URI. Sin `media-src` la CSP caía en
+              // `default-src 'self'`, que no lo admite, y el modo conversación
+              // se quedaba mudo sin un solo error en el servidor: el audio se
+              // generaba y se pagaba, y el navegador lo tiraba a la basura.
+              "media-src 'self' data: blob:",
               "font-src 'self' https://fonts.gstatic.com",
               "connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://us-central1-myhomedoctorapp.cloudfunctions.net https://firestore.googleapis.com https://*.cloudfunctions.net https://production.wompi.co",
               "frame-src 'self' https://*.firebaseapp.com",
