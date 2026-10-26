@@ -51,7 +51,17 @@ export function ModoVoz({ onEnviar, onCerrar, nombrePaciente }: ModoVozProps) {
   const estadoRef = useRef<EstadoHilda>('reposo');
   const vivoRef = useRef(true);
   const enviandoRef = useRef(false);
-  const loDicho = `${transcript} ${interimTranscript}`.trim();
+  /**
+   * Lo dicho en este turno desde que Hilda se calló.
+   *
+   * No basta con el `transcript` del micrófono: Chrome cierra el
+   * reconocimiento solo tras una pausa, y al volver a abrirlo empieza de cero
+   * (`startListening` limpia la transcripción). Si no se guardara aquí lo de
+   * antes, cada pausa al hablar borraría lo ya dicho y el paciente vería la
+   * pantalla en blanco por mucho que hablara.
+   */
+  const acumuladoRef = useRef('');
+  const loDicho = `${acumuladoRef.current} ${transcript} ${interimTranscript}`.replace(/\s+/g, ' ').trim();
   const loDichoRef = useRef('');
   loDichoRef.current = loDicho;
 
@@ -60,13 +70,22 @@ export function ModoVoz({ onEnviar, onCerrar, nombrePaciente }: ModoVozProps) {
     setEstado(nuevo);
   }, []);
 
-  /** Abre el micrófono y deja el turno en manos del paciente. */
+  /** Empieza un turno nuevo: se olvida lo anterior y se abre el micrófono. */
   const escuchar = useCallback(async () => {
     if (!vivoRef.current) return;
+    acumuladoRef.current = '';
     resetTranscript();
     cambiarEstado('escuchando');
     await startListening();
   }, [cambiarEstado, resetTranscript, startListening]);
+
+  /** Vuelve a abrir el micrófono SIN perder lo que el paciente ya llevaba dicho. */
+  const reanudarEscucha = useCallback(async () => {
+    if (!vivoRef.current) return;
+    acumuladoRef.current = `${acumuladoRef.current} ${transcript}`.replace(/\s+/g, ' ').trim();
+    resetTranscript();
+    await startListening();
+  }, [resetTranscript, startListening, transcript]);
 
   /** Manda lo dicho, lo contesta en voz alta y vuelve a escuchar. */
   const enviarYResponder = useCallback(
@@ -148,10 +167,10 @@ export function ModoVoz({ onEnviar, onCerrar, nombrePaciente }: ModoVozProps) {
     const reanudar = window.setTimeout(() => {
       if (estadoRef.current !== 'escuchando') return;
       if (valeLaPenaEnviar(loDichoRef.current)) void enviarYResponder(loDichoRef.current);
-      else void escuchar();
+      else void reanudarEscucha();
     }, 400);
     return () => window.clearTimeout(reanudar);
-  }, [isListening, estado, enviarYResponder, escuchar]);
+  }, [isListening, estado, enviarYResponder, reanudarEscucha]);
 
   /** El botón grande hace lo único que tiene sentido en cada momento. */
   function tocarBoton() {

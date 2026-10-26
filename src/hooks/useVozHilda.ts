@@ -46,8 +46,34 @@ function leerPreferencia(): boolean {
   }
 }
 
+/**
+ * El catálogo de voces del navegador. Chrome lo entrega tarde: la primera
+ * llamada a `getVoices()` devuelve una lista vacía y el catálogo real llega
+ * después, por el evento `voiceschanged`. Por eso se pregunta en el momento de
+ * hablar y, si todavía no está, se espera un poco en vez de darse por vencido.
+ */
+function vocesCuandoEsten(espera = 2000): Promise<SpeechSynthesisVoice[]> {
+  const sintetizador = typeof window !== 'undefined' ? window.speechSynthesis : undefined;
+  if (!sintetizador) return Promise.resolve([]);
+
+  const yaEstan = sintetizador.getVoices();
+  if (yaEstan.length) return Promise.resolve(yaEstan);
+
+  return new Promise((resolver) => {
+    const terminar = () => {
+      sintetizador.removeEventListener('voiceschanged', terminar);
+      window.clearTimeout(reloj);
+      resolver(sintetizador.getVoices());
+    };
+    const reloj = window.setTimeout(terminar, espera);
+    sintetizador.addEventListener('voiceschanged', terminar);
+  });
+}
+
 export function useVozHilda(): UseVozHildaReturn {
   const [voces, setVoces] = useState<SpeechSynthesisVoice[]>([]);
+  /** Hasta que el navegador conteste, no se sabe si hay voces; no es que no haya. */
+  const [catalogoLeido, setCatalogoLeido] = useState(false);
   const [estado, setEstado] = useState<EstadoVoz>('callada');
   const [activa, setActiva] = useState(true);
   /** Cada llamada a `hablar` tiene su número; si cambia, lo viejo se descarta. */
@@ -61,18 +87,29 @@ export function useVozHilda(): UseVozHildaReturn {
   useEffect(() => {
     if (typeof window === 'undefined' || !window.speechSynthesis) return;
 
-    const leerVoces = () => setVoces(window.speechSynthesis.getVoices());
+    const leerVoces = () => {
+      const lista = window.speechSynthesis.getVoices();
+      setVoces(lista);
+      if (lista.length) setCatalogoLeido(true);
+    };
     leerVoces();
     // En Chrome el catálogo llega tarde y la primera lectura viene vacía.
     window.speechSynthesis.addEventListener('voiceschanged', leerVoces);
+    // Si pasado un tiempo razonable no llegó nada, es que de verdad no hay voces.
+    const rendirse = window.setTimeout(() => setCatalogoLeido(true), 2500);
 
     return () => {
       window.speechSynthesis.removeEventListener('voiceschanged', leerVoces);
+      window.clearTimeout(rendirse);
       window.speechSynthesis.cancel();
     };
   }, []);
 
-  const disponible = voces.length > 0 && elegirVoz(voces) !== null;
+  // Mientras el catálogo no haya llegado no se sabe si hay voces, así que se
+  // supone que sí: dar por imposible la voz antes de preguntar hacía que el
+  // modo conversación mostrara "este teléfono no puede hablar" durante un
+  // instante, y sobre todo que el saludo se saltara en silencio.
+  const disponible = !catalogoLeido || elegirVoz(voces) !== null;
 
   const callar = useCallback(() => {
     turnoRef.current += 1;
@@ -114,11 +151,17 @@ export function useVozHilda(): UseVozHildaReturn {
   }, []);
 
   const hablar = useCallback(
-    (texto: string): Promise<boolean> => {
+    async (texto: string): Promise<boolean> => {
       const sintetizador = typeof window !== 'undefined' ? window.speechSynthesis : undefined;
-      const voz = elegirVoz(voces);
       const limpio = limpiarParaVoz(texto);
-      if (!sintetizador || !voz || !limpio) return Promise.resolve(false);
+      if (!sintetizador || !limpio) return false;
+
+      // El catálogo se pregunta AQUÍ, no se toma del estado. El saludo del modo
+      // conversación sale en cuanto se monta la pantalla, antes de que Chrome
+      // haya entregado las voces; leyéndolo del estado, `elegirVoz` recibía una
+      // lista vacía y Hilda se quedaba muda sin decir por qué.
+      const voz = elegirVoz(voces.length ? voces : await vocesCuandoEsten());
+      if (!voz) return false;
 
       // Lo nuevo manda: se calla lo anterior y se toma el turno.
       sintetizador.cancel();
