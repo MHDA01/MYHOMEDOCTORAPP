@@ -62,9 +62,23 @@ let credencial: JWT | null = null;
 
 function obtenerCredencial(): JWT {
   if (credencial) return credencial;
-  const email = process.env.FIREBASE_CLIENT_EMAIL;
-  const clave = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n');
-  if (!email || !clave) throw new Error('Faltan las credenciales de la cuenta de servicio');
+  // Los dos nombres, como en `firebase-admin.ts`: en producción las variables
+  // llevan el prefijo `MHD_` (así están declaradas en `apphosting.yaml`) y en
+  // `.env.local` no lo llevan. Leer solo el nombre corto es justo el fallo que
+  // dejó a Hilda hablando con la voz del navegador en producción el 26-oct:
+  // aquí se lanzaba el error, la acción fallaba y el hook caía al respaldo.
+  const email = process.env.MHD_FIREBASE_CLIENT_EMAIL || process.env.FIREBASE_CLIENT_EMAIL;
+  const clave = (process.env.MHD_FIREBASE_PRIVATE_KEY || process.env.FIREBASE_PRIVATE_KEY)?.replace(
+    /\\n/g,
+    '\n'
+  );
+  if (!email || !clave) {
+    // Se dice QUÉ falta: el fallo anterior se veía en los registros como un
+    // error genérico y había que leer el código para saber qué buscar.
+    throw new Error(
+      `Faltan las credenciales de la cuenta de servicio para la voz (correo: ${email ? 'sí' : 'no'}, clave: ${clave ? 'sí' : 'no'})`
+    );
+  }
   credencial = new JWT({
     email,
     key: clave,
@@ -107,7 +121,8 @@ export async function sintetizarVozHilda(idToken: string, texto: string): Promis
       method: 'POST',
       headers: {
         Authorization: `Bearer ${token}`,
-        'x-goog-user-project': process.env.FIREBASE_PROJECT_ID ?? '',
+        'x-goog-user-project':
+          process.env.MHD_FIREBASE_PROJECT_ID ?? process.env.FIREBASE_PROJECT_ID ?? '',
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
