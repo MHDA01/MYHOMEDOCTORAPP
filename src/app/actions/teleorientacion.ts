@@ -282,6 +282,7 @@ import {
   type GeminiContent,
   type GeminiPart,
   type GeminiResult,
+  type GeminiUso,
 } from '@/lib/gemini';
 import {
   conAvisoDeUrgencias,
@@ -617,11 +618,33 @@ Contexto del paciente actual:
 ${datos}`;
 }
 
+/**
+ * Deja en los registros lo que costó el turno.
+ *
+ * Importa por una razón concreta: el prompt de sistema son ~4.000 tokens que
+ * viajan idénticos en cada turno y son lo más caro de la consulta. Gemini los
+ * cobra al 10 % si su caché implícito reconoce el prefijo repetido, pero eso no
+ * se enciende con código ni se puede dar por hecho — menos aún desde que se
+ * habla por el endpoint compatible con OpenAI. `cacheados` en 0 turno tras
+ * turno significa que el descuento no está ocurriendo y que el costo por
+ * orientación del análisis de precio está subestimado.
+ *
+ * No lleva la palabra "Error": la alerta de Cloud Run filtra por ese texto y
+ * esto es información, no una incidencia.
+ */
+function registrarUso(uso?: GeminiUso): void {
+  if (!uso) return;
+  const porcentaje = uso.entrada > 0 ? Math.round((uso.cacheados / uso.entrada) * 100) : 0;
+  console.log(
+    `[Dra. Hilda] Uso: entrada ${uso.entrada}, cacheados ${uso.cacheados} (${porcentaje} %), salida ${uso.salida}`
+  );
+}
+
 async function preguntarALaIA(sistema: string, contenidos: GeminiContent[]): Promise<GeminiResult> {
   if (!process.env.GEMINI_API_KEY) {
     console.error('[Dra. Hilda] GEMINI_API_KEY no configurada');
   }
-  return generateWithGemini({
+  const resultado = await generateWithGemini({
     system: sistema,
     contents: contenidos,
     model: MODEL_ID,
@@ -631,6 +654,8 @@ async function preguntarALaIA(sistema: string, contenidos: GeminiContent[]): Pro
     timeoutMs: 60_000,
     reintentos: 1,
   });
+  if (resultado.ok) registrarUso(resultado.uso);
+  return resultado;
 }
 
 /** Mensaje para el paciente cuando la IA no respondió. */

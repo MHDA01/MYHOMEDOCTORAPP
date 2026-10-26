@@ -195,6 +195,14 @@ export const VELOCIDAD_VOZ = 0.95;
 /** Lo que se dice al entrar al modo conversación, antes de la primera escucha. */
 export const SALUDO_MODO_VOZ = 'Te escucho. Cuéntame qué te pasa.';
 
+/**
+ * Las frases de la aplicación que nunca cambian y, por tanto, se pueden
+ * sintetizar una vez y guardar. Solo estas: una respuesta de Hilda es distinta
+ * en cada consulta —no se repetiría nunca— y además es texto clínico de un
+ * paciente, que no tiene por qué quedarse en la memoria del servidor.
+ */
+export const FRASES_FIJAS: ReadonlySet<string> = new Set([SALUDO_MODO_VOZ]);
+
 /** Un texto demasiado corto suele ser ruido, no una consulta. */
 export function valeLaPenaEnviar(texto: string): boolean {
   return texto.trim().replace(/\s+/g, ' ').length >= 2;

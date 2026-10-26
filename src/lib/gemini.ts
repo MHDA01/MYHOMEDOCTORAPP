@@ -63,8 +63,24 @@ export interface GeminiRequest {
   reintentos?: number;
 }
 
+/**
+ * Lo que costó la llamada, cuando el proveedor lo informa.
+ *
+ * `cacheados` es la parte de la entrada que se cobró barata por el caché
+ * implícito de Gemini: el prompt de sistema es idéntico en cada turno y pesa
+ * unos 4.000 tokens, así que es con diferencia lo más caro de cada consulta. El
+ * caché no se activa con código —es automático cuando el prefijo se repite—,
+ * pero sin mirar este número no hay forma de saber si está ocurriendo, y el
+ * análisis de precio depende de que ocurra.
+ */
+export interface GeminiUso {
+  entrada: number;
+  salida: number;
+  cacheados: number;
+}
+
 export type GeminiResult =
-  | { ok: true; text: string }
+  | { ok: true; text: string; uso?: GeminiUso }
   | { ok: false; kind: 'timeout' | 'http' | 'blocked' | 'empty'; status?: number; detail: string };
 
 const ESPERA_ENTRE_REINTENTOS_MS = 1500;
@@ -201,7 +217,17 @@ async function intentarGemini(req: GeminiRequest): Promise<GeminiResult> {
       return { ok: false, kind: 'empty', detail: 'Respuesta sin texto' };
     }
 
-    return { ok: true, text };
+    // El formato OpenAI pone los tokens cacheados en prompt_tokens_details.
+    const u = data?.usage;
+    const uso: GeminiUso | undefined = u
+      ? {
+          entrada: Number(u.prompt_tokens ?? 0),
+          salida: Number(u.completion_tokens ?? 0),
+          cacheados: Number(u.prompt_tokens_details?.cached_tokens ?? 0),
+        }
+      : undefined;
+
+    return { ok: true, text, uso };
   } catch (error: any) {
     if (error?.name === 'AbortError') {
       return { ok: false, kind: 'timeout', detail: 'La solicitud excedió el tiempo límite' };

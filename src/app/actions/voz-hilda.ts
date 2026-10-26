@@ -22,6 +22,7 @@
 
 import { JWT } from 'google-auth-library';
 import { getAdminAuth } from '@/lib/firebase-admin';
+import { FRASES_FIJAS } from '@/lib/voz';
 
 /**
  * Erinome en la familia Chirp 3 HD, acento latinoamericano. Es la voz guardada
@@ -40,6 +41,22 @@ const MAX_CARACTERES = 1200;
 export type VozResultado =
   | { ok: true; audio: string; mimeType: 'audio/mpeg' }
   | { ok: false; error: string };
+
+/**
+ * Audio guardado de las frases que nunca cambian.
+ *
+ * Qué se guarda y qué no: **solo** las frases fijas de la aplicación, nunca una
+ * respuesta de Hilda. Las respuestas son distintas en cada consulta, así que no
+ * se repetirían nunca, y además son texto clínico de un paciente: no tienen por
+ * qué quedarse en la memoria del servidor.
+ *
+ * Lo que esto ahorra es **tiempo, no dinero**. El saludo son 33 caracteres: su
+ * costo es indistinguible de cero. Lo que vale es que se dice al abrir el modo
+ * conversación, y sin esto cada sesión empieza con dos segundos de silencio
+ * esperando a que Google lo sintetice — justo en el momento en que el paciente
+ * acaba de tocar el botón y no sabe si la aplicación lo oyó.
+ */
+const audioDeFrasesFijas = new Map<string, string>();
 
 let credencial: JWT | null = null;
 
@@ -78,6 +95,10 @@ export async function sintetizarVozHilda(idToken: string, texto: string): Promis
   if (!limpio) return { ok: false, error: 'Sin texto que decir.' };
   if (limpio.length > MAX_CARACTERES) return { ok: false, error: 'Texto demasiado largo.' };
 
+  const esFija = FRASES_FIJAS.has(limpio);
+  const guardado = esFija ? audioDeFrasesFijas.get(limpio) : undefined;
+  if (guardado) return { ok: true, audio: guardado, mimeType: 'audio/mpeg' };
+
   try {
     const { token } = await obtenerCredencial().getAccessToken();
     if (!token) return { ok: false, error: 'No se pudo autenticar la síntesis de voz.' };
@@ -108,7 +129,9 @@ export async function sintetizarVozHilda(idToken: string, texto: string): Promis
       return { ok: false, error: 'No se pudo generar la voz.' };
     }
 
-    return { ok: true, audio: datos.audioContent as string, mimeType: 'audio/mpeg' };
+    const audio = datos.audioContent as string;
+    if (esFija) audioDeFrasesFijas.set(limpio, audio);
+    return { ok: true, audio, mimeType: 'audio/mpeg' };
   } catch (error) {
     console.error('[Dra. Hilda] Error de voz inesperado:', error);
     return { ok: false, error: 'No se pudo generar la voz.' };
