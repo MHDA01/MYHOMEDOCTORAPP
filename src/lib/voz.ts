@@ -23,7 +23,21 @@ const PISTAS_FEMENINAS = ['sabina', 'monica', 'mónica', 'paulina', 'helena', 'l
 export interface VozDisponible {
   name: string;
   lang: string;
+  /**
+   * Falso cuando el navegador sintetiza en servidor. Lo expone la API web y es
+   * la mejor pista de calidad que hay: las voces de servidor son neuronales y
+   * suenan a persona; las locales del sistema (SAPI en Windows, eSpeak en
+   * Android viejo) suenan a robot de los noventa.
+   */
+  localService?: boolean;
 }
+
+/**
+ * Nombres que delatan una voz neuronal. Es un apaño, como el del género: la API
+ * no dice qué motor hay detrás. `localService` es más fiable, pero no todos los
+ * navegadores lo rellenan bien, así que se miran las dos cosas.
+ */
+const PISTAS_NATURALES = ['google', 'natural', 'neural', 'online', 'premium', 'enhanced', 'siri'];
 
 function sinTildes(texto: string): string {
   return texto.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
@@ -32,6 +46,16 @@ function sinTildes(texto: string): string {
 /**
  * Elige la mejor voz en español de las que ofrezca el aparato.
  * Devuelve null si no hay ninguna: entonces no se habla, en vez de leer en inglés.
+ *
+ * El orden de las preferencias importa y está puesto a propósito:
+ *
+ *  1. **Que suene a persona.** Una voz neuronal con acento de España se escucha
+ *     mucho mejor que una robótica con acento de aquí. Quien usa el modo
+ *     conversación no va a leer la pantalla: si la voz suena a máquina, la
+ *     experiencia se cae entera, y eso pesa más que el acento.
+ *  2. **El español más cercano**, entre las que ya suenan bien. En Chrome esto
+ *     suele dar "Google español de Estados Unidos", que es de Latinoamérica.
+ *  3. **Que sea femenina**, porque Hilda lo es en los videos.
  */
 export function elegirVoz<T extends VozDisponible>(voces: T[]): T | null {
   const enEspanol = voces.filter((v) => sinTildes(v.lang).startsWith('es'));
@@ -42,9 +66,14 @@ export function elegirVoz<T extends VozDisponible>(voces: T[]): T | null {
     return i === -1 ? IDIOMAS.length : i;
   };
   const esFemenina = (v: T) => PISTAS_FEMENINAS.some((p) => sinTildes(v.name).includes(sinTildes(p)));
+  const esNatural = (v: T) =>
+    v.localService === false || PISTAS_NATURALES.some((p) => sinTildes(v.name).includes(p));
 
   return [...enEspanol].sort(
-    (a, b) => puesto(a) - puesto(b) || Number(esFemenina(b)) - Number(esFemenina(a))
+    (a, b) =>
+      Number(esNatural(b)) - Number(esNatural(a)) ||
+      puesto(a) - puesto(b) ||
+      Number(esFemenina(b)) - Number(esFemenina(a))
   )[0];
 }
 

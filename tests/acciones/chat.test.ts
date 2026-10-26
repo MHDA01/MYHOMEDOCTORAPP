@@ -146,6 +146,9 @@ describe('Enviar un mensaje a Hilda (enviarMensajeConsulta)', () => {
     // algo falso con autoridad. Si alguien la reintroduce, esto falla.
     expect(sistema).not.toContain('2654');
     expect(sistema).toContain('Resolución 1644 de 2026');
+    // Una sola pregunta por mensaje: con varias juntas, quien escucha en voz
+    // alta solo retiene la última y la anamnesis queda coja.
+    expect(sistema).toMatch(/una\s+sola pregunta/i);
     expect(sistema).toContain('Nombre: Ana Pérez');
     expect(sistema).toContain('Alergias: penicilina');
   });

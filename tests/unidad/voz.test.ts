@@ -25,6 +25,30 @@ describe('Elegir la voz del aparato', () => {
     expect(elegida?.name).toBe('Mónica');
   });
 
+  it('prefiere una voz que suene a persona aunque su acento quede más lejos', () => {
+    // Sabina es la voz local de Windows: correcta de acento, robótica de sonido.
+    // La de Google se sintetiza en servidor y suena a persona; eso pesa más,
+    // porque en el modo conversación la voz es toda la experiencia.
+    const elegida = elegirVoz([
+      { name: 'Microsoft Sabina', lang: 'es-MX', localService: true },
+      { name: 'Google español', lang: 'es-ES', localService: false },
+    ]);
+    expect(elegida?.name).toBe('Google español');
+  });
+
+  it('entre varias voces naturales, vuelve a mandar la cercanía del acento', () => {
+    const elegida = elegirVoz([
+      { name: 'Google español', lang: 'es-ES', localService: false },
+      { name: 'Google español de Estados Unidos', lang: 'es-US', localService: false },
+    ]);
+    expect(elegida?.lang).toBe('es-US');
+  });
+
+  it('reconoce la voz natural por el nombre cuando el navegador no dice si es local', () => {
+    const elegida = elegirVoz([voz('Microsoft Sabina', 'es-MX'), voz('Microsoft Dalia Online (Natural)', 'es-MX')]);
+    expect(elegida?.name).toBe('Microsoft Dalia Online (Natural)');
+  });
+
   it('sin ninguna voz en español devuelve null y Hilda se queda callada', () => {
     expect(elegirVoz([voz('Samantha', 'en-US'), voz('Luciana', 'pt-BR')])).toBeNull();
     expect(elegirVoz([])).toBeNull();
