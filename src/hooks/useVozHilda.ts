@@ -2,21 +2,30 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { MAX_CARACTERES_POR_TROZO, VELOCIDAD_VOZ, elegirVoz, limpiarParaVoz, partirParaVoz } from '@/lib/voz';
+import { sintetizarVozHilda } from '@/app/actions/voz-hilda';
+import { auth } from '@/lib/firebase';
 
 /**
  * La voz de Hilda: dice en voz alta lo que ella responde.
  *
- * Usa el sintetizador del propio aparato (`speechSynthesis`): no cuesta nada
- * por consulta, funciona sin conexión y no manda el texto clínico a un tercero.
- * A cambio, la voz es la que traiga el teléfono. `hablar` es el único punto que
- * habría que cambiar para pasar a una voz propia por servidor.
+ * Tiene dos motores y los usa en este orden:
  *
- * Reglas que el hook garantiza:
+ *  1. **La voz del servidor (Erinome)**, la misma que el personaje tiene en los
+ *     videos. Suena a persona, que es lo único que hace usable el modo
+ *     conversación para quien no va a leer la pantalla. Cuesta por carácter.
+ *  2. **El sintetizador del aparato**, si lo primero falla. Suena a máquina,
+ *     pero es gratis, funciona sin conexión y evita que Hilda se quede muda
+ *     justo cuando alguien le está hablando.
+ *
+ * El texto se trocea por frases y los trozos se piden de uno en uno: generar la
+ * respuesta entera tarda más de dos segundos, y esa espera antes de que Hilda
+ * abra la boca se nota demasiado. Mientras suena un trozo se va pidiendo el
+ * siguiente.
+ *
+ * Reglas que el hook garantiza, con cualquiera de los dos motores:
  *  - solo se habla de una cosa a la vez; empezar algo nuevo calla lo anterior;
  *  - `hablar` resuelve `true` si terminó la frase y `false` si la cortaron, que
- *    es lo que el modo conversación necesita para saber cuándo volver a escuchar;
- *  - si el aparato no tiene ninguna voz en español, no se habla (mejor callada
- *    que leyendo español con acento inglés).
+ *    es lo que el modo conversación necesita para saber cuándo volver a escuchar.
  */
 
 const CLAVE_PREFERENCIA = 'mhda:voz-hilda';
@@ -72,8 +81,6 @@ function vocesCuandoEsten(espera = 2000): Promise<SpeechSynthesisVoice[]> {
 
 export function useVozHilda(): UseVozHildaReturn {
   const [voces, setVoces] = useState<SpeechSynthesisVoice[]>([]);
-  /** Hasta que el navegador conteste, no se sabe si hay voces; no es que no haya. */
-  const [catalogoLeido, setCatalogoLeido] = useState(false);
   const [estado, setEstado] = useState<EstadoVoz>('callada');
   const [activa, setActiva] = useState(true);
   /** Cada llamada a `hablar` tiene su número; si cambia, lo viejo se descarta. */
@@ -87,29 +94,26 @@ export function useVozHilda(): UseVozHildaReturn {
   useEffect(() => {
     if (typeof window === 'undefined' || !window.speechSynthesis) return;
 
-    const leerVoces = () => {
-      const lista = window.speechSynthesis.getVoices();
-      setVoces(lista);
-      if (lista.length) setCatalogoLeido(true);
-    };
+    const leerVoces = () => setVoces(window.speechSynthesis.getVoices());
     leerVoces();
     // En Chrome el catálogo llega tarde y la primera lectura viene vacía.
     window.speechSynthesis.addEventListener('voiceschanged', leerVoces);
-    // Si pasado un tiempo razonable no llegó nada, es que de verdad no hay voces.
-    const rendirse = window.setTimeout(() => setCatalogoLeido(true), 2500);
 
     return () => {
       window.speechSynthesis.removeEventListener('voiceschanged', leerVoces);
-      window.clearTimeout(rendirse);
       window.speechSynthesis.cancel();
     };
   }, []);
 
-  // Mientras el catálogo no haya llegado no se sabe si hay voces, así que se
-  // supone que sí: dar por imposible la voz antes de preguntar hacía que el
-  // modo conversación mostrara "este teléfono no puede hablar" durante un
-  // instante, y sobre todo que el saludo se saltara en silencio.
-  const disponible = !catalogoLeido || elegirVoz(voces) !== null;
+  // Desde que la voz la pone el servidor, que el aparato tenga o no voces en
+  // español dejó de decidir nada: cualquier navegador que sepa reproducir un
+  // MP3 puede hablar con la voz de Hilda. Se conserva el campo porque el modo
+  // conversación lo consulta, pero ya no hay razón para cerrarle la puerta a
+  // nadie antes de intentarlo.
+  const disponible = true;
+
+  /** El reproductor del audio del servidor. Uno solo, reutilizado. */
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const callar = useCallback(() => {
     turnoRef.current += 1;
@@ -117,6 +121,12 @@ export function useVozHilda(): UseVozHildaReturn {
       window.speechSynthesis?.cancel();
     } catch {
       // Si el motor ya no está, no hay nada que callar.
+    }
+    const audio = audioRef.current;
+    if (audio) {
+      audio.pause();
+      audio.removeAttribute('src');
+      audio.load();
     }
     setEstado('callada');
   }, []);
@@ -135,40 +145,91 @@ export function useVozHilda(): UseVozHildaReturn {
   );
 
   /**
-   * iPhone no deja hablar si la primera llamada no nace de un toque. Se gasta
-   * un enunciado vacío dentro del gesto que enciende el modo conversación.
+   * iPhone no deja sonar nada —ni voz sintetizada ni un audio— si la primera
+   * reproducción no nace de un toque. Se gastan las dos primeras dentro del
+   * gesto que enciende el modo conversación: un enunciado vacío para el
+   * sintetizador y un audio mudo para el reproductor.
    */
   const preparar = useCallback(() => {
-    if (preparadoRef.current || typeof window === 'undefined' || !window.speechSynthesis) return;
+    if (preparadoRef.current || typeof window === 'undefined') return;
+    preparadoRef.current = true;
+
     try {
-      const vacio = new SpeechSynthesisUtterance(' ');
-      vacio.volume = 0;
-      window.speechSynthesis.speak(vacio);
-      preparadoRef.current = true;
+      if (window.speechSynthesis) {
+        const vacio = new SpeechSynthesisUtterance(' ');
+        vacio.volume = 0;
+        window.speechSynthesis.speak(vacio);
+      }
     } catch {
       // Si no se puede preparar, el primer intento real fallará y se verá en pantalla.
     }
+
+    try {
+      const audio = audioRef.current ?? new Audio();
+      audioRef.current = audio;
+      audio.muted = true;
+      // Un MP3 de silencio, el más corto que se puede escribir.
+      audio.src =
+        'data:audio/mpeg;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4Ljc2LjEwMAAAAAAAAAAAAAAA//tUxAADB8AhSmxhIIEVCSiJrDCQBTcu3UrAIwUdkRgQbFAZC1CQEwTJ9mjRvBA4UOLD8nKVOWfh+UlK3z/177OXrfOdKl7pyn3Xf//WreyTRUoAWgBgkOAGbZHBgG1OF6zM82DWbZaUmMBptgQhGjsyYqc9ae9XFz280948NMBWInljyzsNRFLPWdnZGWrddDsjK1unuSrVN9jJsK8KuQtQCtMBjCEtImISdNKJOopIpBFpNSMbIHCSRpRR5iakjTiyzLhchUUBwCgyKiweBv/7UsQbg8isVNoMPMjAAAA0gAAABEVF/4EBYHAIGAsHgaA4AwKAIBAIAgIBAECgEAgEAgEAgEAgEAgEAgEAgEAgEAgEAgEAgEAgEAgEAgEAgEAgEAgEAgEAgEAgEAgEAgEAgEAgEAgEAgEAgEAgEAgEAgEAgEAgEAgEAgEAgEAgEAgEAgEAgEAgEAgEAgEAgEAg';
+      void audio.play().then(
+        () => {
+          audio.pause();
+          audio.muted = false;
+        },
+        () => {
+          audio.muted = false;
+        }
+      );
+    } catch {
+      // Igual que arriba: si no se desbloquea, se verá al primer intento real.
+    }
   }, []);
 
-  const hablar = useCallback(
-    async (texto: string): Promise<boolean> => {
-      const sintetizador = typeof window !== 'undefined' ? window.speechSynthesis : undefined;
-      const limpio = limpiarParaVoz(texto);
-      if (!sintetizador || !limpio) return false;
+  /** Pide al servidor el audio de un trozo. null si no se pudo. */
+  const pedirAudio = useCallback(async (token: string, trozo: string): Promise<string | null> => {
+    try {
+      const resultado = await sintetizarVozHilda(token, trozo);
+      return resultado.ok ? resultado.audio : null;
+    } catch {
+      return null;
+    }
+  }, []);
 
-      // El catálogo se pregunta AQUÍ, no se toma del estado. El saludo del modo
-      // conversación sale en cuanto se monta la pantalla, antes de que Chrome
-      // haya entregado las voces; leyéndolo del estado, `elegirVoz` recibía una
-      // lista vacía y Hilda se quedaba muda sin decir por qué.
+  /** Reproduce un MP3 en base64. Resuelve false si lo cortaron o no sonó. */
+  const reproducir = useCallback((base64: string, turno: number): Promise<boolean> => {
+    return new Promise<boolean>((resolver) => {
+      if (turnoRef.current !== turno) return resolver(false);
+
+      const audio = audioRef.current ?? new Audio();
+      audioRef.current = audio;
+
+      let resuelto = false;
+      const acabar = (completado: boolean) => {
+        if (resuelto) return;
+        resuelto = true;
+        audio.onended = null;
+        audio.onerror = null;
+        resolver(completado);
+      };
+
+      audio.onended = () => acabar(turnoRef.current === turno);
+      audio.onerror = () => acabar(false);
+      audio.src = `data:audio/mpeg;base64,${base64}`;
+      audio.play().catch(() => acabar(false));
+    });
+  }, []);
+
+  /** El sintetizador del aparato. Es la red de seguridad, no la primera opción. */
+  const decirConNavegador = useCallback(
+    async (trozos: string[], turno: number): Promise<boolean> => {
+      const sintetizador = typeof window !== 'undefined' ? window.speechSynthesis : undefined;
+      if (!sintetizador) return false;
+
+      // El catálogo se pregunta AQUÍ, no se toma del estado: cuando esto corre
+      // puede que Chrome aún no lo haya entregado, y con una lista vacía
+      // `elegirVoz` devolvía null y Hilda se quedaba muda sin decir por qué.
       const voz = elegirVoz(voces.length ? voces : await vocesCuandoEsten());
       if (!voz) return false;
-
-      // Lo nuevo manda: se calla lo anterior y se toma el turno.
-      sintetizador.cancel();
-      turnoRef.current += 1;
-      const turno = turnoRef.current;
-      const trozos = partirParaVoz(limpio, MAX_CARACTERES_POR_TROZO);
-      setEstado('hablando');
 
       return new Promise<boolean>((resolver) => {
         let i = 0;
@@ -184,7 +245,6 @@ export function useVozHilda(): UseVozHildaReturn {
 
         const terminar = (completado: boolean) => {
           window.clearInterval(insistir);
-          if (turnoRef.current === turno) setEstado('callada');
           resolver(completado);
         };
 
@@ -213,6 +273,59 @@ export function useVozHilda(): UseVozHildaReturn {
       });
     },
     [voces]
+  );
+
+  const hablar = useCallback(
+    async (texto: string): Promise<boolean> => {
+      const limpio = limpiarParaVoz(texto);
+      if (!limpio) return false;
+
+      // Lo nuevo manda: se calla lo anterior y se toma el turno.
+      try {
+        window.speechSynthesis?.cancel();
+      } catch {
+        // Si el motor ya no está, no hay nada que callar.
+      }
+      audioRef.current?.pause();
+      turnoRef.current += 1;
+      const turno = turnoRef.current;
+
+      const trozos = partirParaVoz(limpio, MAX_CARACTERES_POR_TROZO);
+      setEstado('hablando');
+
+      const terminar = (completado: boolean) => {
+        if (turnoRef.current === turno) setEstado('callada');
+        return completado;
+      };
+
+      const token = await auth.currentUser?.getIdToken().catch(() => null);
+
+      if (token) {
+        // Se pide el siguiente trozo mientras suena el actual: generar la
+        // respuesta entera de una vez tarda más de dos segundos, y esa espera
+        // antes de que Hilda abra la boca es justo lo que hay que evitar.
+        let pendiente = pedirAudio(token, trozos[0]);
+
+        for (let i = 0; i < trozos.length; i++) {
+          const audio = await pendiente;
+          if (turnoRef.current !== turno) return terminar(false);
+
+          if (!audio) {
+            // La voz buena falló a mitad: mejor la del aparato que el silencio.
+            return terminar(await decirConNavegador(trozos.slice(i), turno));
+          }
+
+          pendiente = i + 1 < trozos.length ? pedirAudio(token, trozos[i + 1]) : Promise.resolve(null);
+
+          if (!(await reproducir(audio, turno))) return terminar(false);
+        }
+
+        return terminar(true);
+      }
+
+      return terminar(await decirConNavegador(trozos, turno));
+    },
+    [decirConNavegador, pedirAudio, reproducir]
   );
 
   return { disponible, activa, cambiarActiva, estado, hablar, callar, preparar };
