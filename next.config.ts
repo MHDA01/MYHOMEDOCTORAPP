@@ -95,7 +95,15 @@ const nextConfig: NextConfig = {
               // generaba y se pagaba, y el navegador lo tiraba a la basura.
               "media-src 'self' data: blob:",
               "font-src 'self' https://fonts.gstatic.com",
-              "connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://us-central1-myhomedoctorapp.cloudfunctions.net https://firestore.googleapis.com https://*.cloudfunctions.net https://production.wompi.co",
+              // Con NEXT_PUBLIC_USAR_EMULADORES=1 se agregan los emuladores de la
+              // máquina. Sin esto la CSP bloquea el login contra el emulador de Auth
+              // y no hay forma de abrir la app con sesión sin escribir en la base real
+              // (ver src/lib/firebase.ts). En producción la variable no existe.
+              `connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://us-central1-myhomedoctorapp.cloudfunctions.net https://firestore.googleapis.com https://*.cloudfunctions.net https://production.wompi.co${
+                process.env.NEXT_PUBLIC_USAR_EMULADORES === '1'
+                  ? ' http://127.0.0.1:9099 http://127.0.0.1:8080 http://127.0.0.1:9199 http://127.0.0.1:5001 ws://127.0.0.1:8080 ws://127.0.0.1:9150'
+                  : ''
+              }`,
               "frame-src 'self' https://*.firebaseapp.com",
               "object-src 'none'",
               "base-uri 'self'",
