@@ -6,7 +6,8 @@ import { httpsCallable } from 'firebase/functions';
 import { db, functions } from '@/lib/firebase';
 import { UserContext } from '@/context/user-context';
 import { EncabezadoPantalla } from '@/components/dashboard/encabezado-pantalla';
-import { AlertCircle, CheckCircle2, Gift, Loader2, ShieldCheck } from 'lucide-react';
+import Link from 'next/link';
+import { AlertCircle, CheckCircle2, ChevronRight, FileDown, Gift, Loader2, ShieldCheck } from 'lucide-react';
 import { ACCESO_LIBRE } from '@/config/acceso';
 
 type TokenInfo = {
@@ -184,6 +185,24 @@ export default function CuentaPage() {
             </div>
           </section>
         )}
+
+        {/* Ley 1581 de 2012: la persona tiene que poder llevarse sus datos y
+            pedir que no quede nada, sin escribirle a nadie. */}
+        <Link
+          href="/dashboard/cuenta/mis-datos"
+          className="flex items-center gap-4 rounded-3xl border border-border/70 bg-white p-5 shadow-soft transition-shadow hover:shadow-card sm:p-6"
+        >
+          <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-teal-700">
+            <FileDown className="h-6 w-6" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <h2 className="text-lg font-bold text-brand-900">Mis datos</h2>
+            <p className="mt-0.5 text-sm leading-relaxed text-muted-foreground">
+              Descarga una copia de todo lo que guardamos de tu familia, o bórralo.
+            </p>
+          </div>
+          <ChevronRight className="h-5 w-5 flex-shrink-0 text-muted-foreground" aria-hidden />
+        </Link>
       </div>
     </div>
   );

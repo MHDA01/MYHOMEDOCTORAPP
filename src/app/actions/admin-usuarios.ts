@@ -8,11 +8,11 @@
 // ============================================================
 'use server';
 
-import { getAdminAuth, getAdminDb } from '@/lib/firebase-admin';
+import { getAdminAuth } from '@/lib/firebase-admin';
 import { esCorreoAdmin, verifyAdminAccess } from '@/lib/admin-access';
-import { COLECCION_TUTOR } from '@/lib/constants';
+import { borrarDatosDeLaCuenta } from '@/lib/datos-de-la-cuenta';
 import { esModalidad, type Modalidad } from '@/lib/modalidad';
-import { fijarModalidad, olvidarModalidad } from '@/lib/modalidad-acceso';
+import { fijarModalidad } from '@/lib/modalidad-acceso';
 
 type Resultado<T> = { success: true; data: T } | { success: false; error: string };
 
@@ -51,11 +51,13 @@ export async function cambiarModalidadUsuario(
 
 /**
  * Borra una cuenta y todo lo suyo: ficha, familia, conversaciones, informes,
- * documentos y su modalidad de acceso. No tiene vuelta atrás.
+ * documentos, archivos y su modalidad de acceso. No tiene vuelta atrás.
  *
  * Pide el correo escrito a mano (`confirmacion`) porque la lista está ordenada
- * y un clic de más borraría a la persona equivocada. Es también la vía para
- * atender una solicitud de supresión de datos (Ley 1581 de 2012).
+ * y un clic de más borraría a la persona equivocada. Atiende una solicitud de
+ * supresión de datos (Ley 1581 de 2012) que llegue por fuera de la app; la
+ * persona también puede hacerlo sola desde "Mis datos" (app/actions/mis-datos.ts),
+ * y las dos vías borran lo mismo.
  */
 export async function eliminarUsuarioAdmin(
   idToken: string,
@@ -89,8 +91,7 @@ export async function eliminarUsuarioAdmin(
     // Primero los datos y después la cuenta: si algo falla a mitad de camino,
     // la persona conserva su acceso y se puede reintentar, en vez de quedar
     // una cuenta viva sin nada o datos sin dueño.
-    await getAdminDb().recursiveDelete(getAdminDb().collection(COLECCION_TUTOR).doc(uid));
-    await olvidarModalidad(uid);
+    await borrarDatosDeLaCuenta(uid);
     await getAdminAuth().deleteUser(uid);
     console.info(`[Admin] ${acceso.email} eliminó la cuenta ${uid} y todos sus datos.`);
     return { success: true, data: { uid } };
