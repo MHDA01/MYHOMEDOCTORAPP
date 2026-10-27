@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { useToast } from "@/hooks/use-toast";
+import { useHidratado } from '@/hooks/use-hidratado';
 import { Loader2 } from 'lucide-react';
 
 
@@ -19,6 +20,7 @@ export function LoginForm() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const hidratado = useHidratado();
   const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsLoading(true);
@@ -61,7 +63,10 @@ export function LoginForm() {
         <CardDescription>Ingresa tus credenciales para acceder a tu cuenta.</CardDescription>
       </CardHeader>
       <CardContent>
-        <form className="space-y-4" onSubmit={handleLogin}>
+        {/* method="post" es el segundo cerrojo: si por lo que sea llegara a
+            ocurrir un envío nativo, los datos van en el cuerpo y nunca en la
+            URL. El primero es el botón deshabilitado hasta hidratar. */}
+        <form className="space-y-4" method="post" onSubmit={handleLogin}>
           <div className="space-y-2">
             <Label htmlFor="email">Correo Electrónico</Label>
             <Input id="email" name="email" type="email" placeholder="nombre@ejemplo.com" required value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" className="h-12 rounded-xl" />
@@ -70,7 +75,7 @@ export function LoginForm() {
             <Label htmlFor="password">Contraseña</Label>
             <Input id="password" name="password" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" className="h-12 rounded-xl" />
           </div>
-          <Button type="submit" className="h-12 w-full rounded-full text-[15px] font-bold" disabled={isLoading}>
+          <Button type="submit" className="h-12 w-full rounded-full text-[15px] font-bold" disabled={isLoading || !hidratado}>
             {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Iniciar Sesión
           </Button>

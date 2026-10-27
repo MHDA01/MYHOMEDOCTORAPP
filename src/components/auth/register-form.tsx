@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useState } from 'react';
+import { useHidratado } from '@/hooks/use-hidratado';
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { auth, db } from '@/lib/firebase';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
@@ -38,6 +39,7 @@ export function RegisterForm() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showConsent, setShowConsent] = useState(false);
+  const hidratado = useHidratado();
 
   const handleFormSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -158,7 +160,10 @@ export function RegisterForm() {
           <CardDescription>Completa los siguientes datos para comenzar.</CardDescription>
         </CardHeader>
         <CardContent>
-          <form className="space-y-4" onSubmit={handleFormSubmit}>
+          {/* Igual que en el login: el botón no existe habilitado hasta que
+              React hidrate, y method="post" evita que un envío nativo ponga la
+              contraseña en la URL. */}
+          <form className="space-y-4" method="post" onSubmit={handleFormSubmit}>
             <div className="space-y-2">
               <Label htmlFor="name">Nombre Completo</Label>
               <Input id="name" name="name" type="text" placeholder="Nombre y apellido" required value={name} onChange={e => setName(e.target.value)} autoComplete="name" className="h-12 rounded-xl" />
@@ -175,7 +180,7 @@ export function RegisterForm() {
               <Label htmlFor="confirm-password">Confirmar Contraseña</Label>
               <Input id="confirm-password" name="confirm-password" type="password" required value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} autoComplete="new-password" className="h-12 rounded-xl" />
             </div>
-            <Button type="submit" className="h-12 w-full rounded-full text-[15px] font-bold" disabled={isLoading}>
+            <Button type="submit" className="h-12 w-full rounded-full text-[15px] font-bold" disabled={isLoading || !hidratado}>
               {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Registrarse
             </Button>
