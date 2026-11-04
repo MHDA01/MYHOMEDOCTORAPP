@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { MAX_CARACTERES_POR_TROZO, VELOCIDAD_VOZ, elegirVoz, limpiarParaVoz, partirParaVoz } from '@/lib/voz';
+import type { RelojVoz } from '@/lib/tiempos-voz';
 import { sintetizarVozHilda } from '@/app/actions/voz-hilda';
 import { auth } from '@/lib/firebase';
 
@@ -39,8 +40,13 @@ export interface UseVozHildaReturn {
   activa: boolean;
   cambiarActiva: (valor: boolean) => void;
   estado: EstadoVoz;
-  /** Dice el texto. Resuelve true si lo terminó, false si lo cortaron o no se pudo. */
-  hablar: (texto: string) => Promise<boolean>;
+  /**
+   * Dice el texto. Resuelve true si lo terminó, false si lo cortaron o no se pudo.
+   *
+   * El `reloj` es opcional y solo sirve para medir: marca cuándo se pidió el
+   * primer trozo de audio, cuándo llegó y cuándo empezó a sonar.
+   */
+  hablar: (texto: string, reloj?: RelojVoz) => Promise<boolean>;
   callar: () => void;
   /** Desbloquea el sintetizador dentro de un gesto del usuario (hace falta en iPhone). */
   preparar: () => void;
@@ -195,8 +201,14 @@ export function useVozHilda(): UseVozHildaReturn {
     }
   }, []);
 
-  /** Reproduce un MP3 en base64. Resuelve false si lo cortaron o no sonó. */
-  const reproducir = useCallback((base64: string, turno: number): Promise<boolean> => {
+  /**
+   * Reproduce un MP3 en base64. Resuelve false si lo cortaron o no sonó.
+   *
+   * `alSonar` se avisa cuando el audio empieza de verdad —la promesa de `play()`
+   * resuelve al arrancar la reproducción, no al terminarla— y es el instante en
+   * que el paciente deja de esperar.
+   */
+  const reproducir = useCallback((base64: string, turno: number, alSonar?: () => void): Promise<boolean> => {
     return new Promise<boolean>((resolver) => {
       if (turnoRef.current !== turno) return resolver(false);
 
@@ -215,13 +227,16 @@ export function useVozHilda(): UseVozHildaReturn {
       audio.onended = () => acabar(turnoRef.current === turno);
       audio.onerror = () => acabar(false);
       audio.src = `data:audio/mpeg;base64,${base64}`;
-      audio.play().catch(() => acabar(false));
+      audio.play().then(
+        () => alSonar?.(),
+        () => acabar(false)
+      );
     });
   }, []);
 
   /** El sintetizador del aparato. Es la red de seguridad, no la primera opción. */
   const decirConNavegador = useCallback(
-    async (trozos: string[], turno: number): Promise<boolean> => {
+    async (trozos: string[], turno: number, reloj?: RelojVoz): Promise<boolean> => {
       const sintetizador = typeof window !== 'undefined' ? window.speechSynthesis : undefined;
       if (!sintetizador) return false;
 
@@ -257,6 +272,9 @@ export function useVozHilda(): UseVozHildaReturn {
           frase.voice = voz;
           frase.lang = voz.lang;
           frase.rate = VELOCIDAD_VOZ;
+          // Con el respaldo del aparato no hay nada que pedir, así que la
+          // espera es solo esto: se mide igual para poder compararlas.
+          frase.onstart = () => reloj?.marcar('primera-palabra');
           frase.onend = siguiente;
           frase.onerror = () => {
             // 'interrupted'/'canceled' son lo normal cuando alguien corta a Hilda.
@@ -276,7 +294,7 @@ export function useVozHilda(): UseVozHildaReturn {
   );
 
   const hablar = useCallback(
-    async (texto: string): Promise<boolean> => {
+    async (texto: string, reloj?: RelojVoz): Promise<boolean> => {
       const limpio = limpiarParaVoz(texto);
       if (!limpio) return false;
 
@@ -304,6 +322,7 @@ export function useVozHilda(): UseVozHildaReturn {
         // Se pide el siguiente trozo mientras suena el actual: generar la
         // respuesta entera de una vez tarda más de dos segundos, y esa espera
         // antes de que Hilda abra la boca es justo lo que hay que evitar.
+        reloj?.marcar('audio-pedido');
         let pendiente = pedirAudio(token, trozos[0]);
 
         for (let i = 0; i < trozos.length; i++) {
@@ -312,18 +331,21 @@ export function useVozHilda(): UseVozHildaReturn {
 
           if (!audio) {
             // La voz buena falló a mitad: mejor la del aparato que el silencio.
-            return terminar(await decirConNavegador(trozos.slice(i), turno));
+            return terminar(await decirConNavegador(trozos.slice(i), turno, reloj));
           }
 
+          reloj?.marcar('audio-listo');
           pendiente = i + 1 < trozos.length ? pedirAudio(token, trozos[i + 1]) : Promise.resolve(null);
 
-          if (!(await reproducir(audio, turno))) return terminar(false);
+          if (!(await reproducir(audio, turno, () => reloj?.marcar('primera-palabra')))) {
+            return terminar(false);
+          }
         }
 
         return terminar(true);
       }
 
-      return terminar(await decirConNavegador(trozos, turno));
+      return terminar(await decirConNavegador(trozos, turno, reloj));
     },
     [decirConNavegador, pedirAudio, reproducir]
   );

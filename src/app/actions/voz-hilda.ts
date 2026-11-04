@@ -111,11 +111,20 @@ export async function sintetizarVozHilda(idToken: string, texto: string): Promis
 
   const esFija = FRASES_FIJAS.has(limpio);
   const guardado = esFija ? audioDeFrasesFijas.get(limpio) : undefined;
-  if (guardado) return { ok: true, audio: guardado, mimeType: 'audio/mpeg' };
+  if (guardado) {
+    console.log(`[Dra. Hilda] Tiempos de voz: guardada, ${limpio.length} caracteres`);
+    return { ok: true, audio: guardado, mimeType: 'audio/mpeg' };
+  }
+
+  // Cronometrado para separar dos cosas que se confundían en un solo número: el
+  // permiso de la cuenta de servicio (una ida y vuelta a OAuth que en una
+  // instancia recién arrancada no es gratis) y la síntesis en sí.
+  const tInicio = Date.now();
 
   try {
     const { token } = await obtenerCredencial().getAccessToken();
     if (!token) return { ok: false, error: 'No se pudo autenticar la síntesis de voz.' };
+    const tCredencial = Date.now();
 
     const respuesta = await fetch(TTS_URL, {
       method: 'POST',
@@ -145,6 +154,11 @@ export async function sintetizarVozHilda(idToken: string, texto: string): Promis
     }
 
     const audio = datos.audioContent as string;
+    const tFin = Date.now();
+    console.log(
+      `[Dra. Hilda] Tiempos de voz: credencial ${tCredencial - tInicio} ms, síntesis ${tFin - tCredencial} ms, ` +
+        `total ${tFin - tInicio} ms (${limpio.length} caracteres, ${Math.round(audio.length / 1024)} KB en base64)`
+    );
     if (esFija) audioDeFrasesFijas.set(limpio, audio);
     return { ok: true, audio, mimeType: 'audio/mpeg' };
   } catch (error) {

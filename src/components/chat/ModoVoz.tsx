@@ -5,6 +5,7 @@ import { Keyboard, Mic, Square, X } from 'lucide-react';
 import { useSpeechRecognition } from '@/hooks/useSpeechRecognition';
 import { useVozHilda } from '@/hooks/useVozHilda';
 import { SALUDO_MODO_VOZ, SILENCIO_PARA_ENVIAR_MS, valeLaPenaEnviar } from '@/lib/voz';
+import { crearRelojVoz, tiemposALaVista } from '@/lib/tiempos-voz';
 import { AvatarHilda, type EstadoHilda } from '@/components/chat/AvatarHilda';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -47,6 +48,9 @@ export function ModoVoz({ onEnviar, onCerrar, nombrePaciente }: ModoVozProps) {
   const [estado, setEstado] = useState<EstadoHilda>('reposo');
   const [ultimaRespuesta, setUltimaRespuesta] = useState('');
   const [fallo, setFallo] = useState<string | null>(null);
+  /** Solo para medir, y solo con `?tiempos=1`. Ver `lib/tiempos-voz.ts`. */
+  const [midiendo, setMidiendo] = useState(false);
+  const [tiempos, setTiempos] = useState('');
 
   const estadoRef = useRef<EstadoHilda>('reposo');
   const vivoRef = useRef(true);
@@ -64,6 +68,11 @@ export function ModoVoz({ onEnviar, onCerrar, nombrePaciente }: ModoVozProps) {
   const loDicho = `${acumuladoRef.current} ${transcript} ${interimTranscript}`.replace(/\s+/g, ' ').trim();
   const loDichoRef = useRef('');
   loDichoRef.current = loDicho;
+  /**
+   * Cuándo entró la última palabra que el micrófono entendió. Es el cero del
+   * turno para medir la espera: desde ahí el paciente ya se calló.
+   */
+  const ultimaPalabraRef = useRef(0);
 
   const cambiarEstado = useCallback((nuevo: EstadoHilda) => {
     estadoRef.current = nuevo;
@@ -96,6 +105,19 @@ export function ModoVoz({ onEnviar, onCerrar, nombrePaciente }: ModoVozProps) {
       cambiarEstado('pensando');
       setFallo(null);
 
+      // El reparto de la espera, tramo por tramo. Se imprime en cuanto Hilda
+      // abre la boca, no al final de lo que diga: si se esperara a que termine,
+      // el número llegaría medio minuto después del momento que se mide.
+      const reloj = crearRelojVoz({
+        origen: ultimaPalabraRef.current || Date.now(),
+        alMarcar: (etapa, r) => {
+          if (etapa !== 'primera-palabra') return;
+          console.log(`[Dra. Hilda] Tiempos del turno hablado: ${r.resumen()}`);
+          setTiempos(r.resumen());
+        },
+      });
+      reloj.marcar('envio');
+
       try {
         const respuesta = await onEnviar(texto);
         if (!vivoRef.current) return;
@@ -106,9 +128,10 @@ export function ModoVoz({ onEnviar, onCerrar, nombrePaciente }: ModoVozProps) {
           return;
         }
 
+        reloj.marcar('respuesta');
         setUltimaRespuesta(respuesta);
         cambiarEstado('hablando');
-        await hablar(respuesta);
+        await hablar(respuesta, reloj);
         if (!vivoRef.current) return;
         // Tanto si terminó como si la cortaron, el turno vuelve al paciente.
         await escuchar();
@@ -127,9 +150,22 @@ export function ModoVoz({ onEnviar, onCerrar, nombrePaciente }: ModoVozProps) {
   useEffect(() => {
     vivoRef.current = true;
     preparar();
+    setMidiendo(tiemposALaVista());
     (async () => {
       cambiarEstado('hablando');
-      await hablar(SALUDO_MODO_VOZ);
+      // El saludo se mide también: es el primer silencio que vive el paciente,
+      // justo cuando acaba de tocar el botón y no sabe si la app lo oyó.
+      const reloj = crearRelojVoz({
+        origen: Date.now(),
+        alMarcar: (etapa, r) => {
+          if (etapa !== 'primera-palabra') return;
+          console.log(`[Dra. Hilda] Tiempos del saludo: ${r.resumen()}`);
+          setTiempos(r.resumen());
+        },
+      });
+      reloj.marcar('envio');
+      reloj.marcar('respuesta');
+      await hablar(SALUDO_MODO_VOZ, reloj);
       if (vivoRef.current) await escuchar();
     })();
 
@@ -146,6 +182,7 @@ export function ModoVoz({ onEnviar, onCerrar, nombrePaciente }: ModoVozProps) {
   // nuevo se reinicia la cuenta, y cuando se calla el tiempo suficiente, sale.
   useEffect(() => {
     if (estado !== 'escuchando' || !valeLaPenaEnviar(loDicho)) return;
+    ultimaPalabraRef.current = Date.now();
     const temporizador = window.setTimeout(() => {
       if (estadoRef.current === 'escuchando' && valeLaPenaEnviar(loDichoRef.current)) {
         void enviarYResponder(loDichoRef.current);
@@ -268,6 +305,14 @@ export function ModoVoz({ onEnviar, onCerrar, nombrePaciente }: ModoVozProps) {
                 <Mic className="h-8 w-8" />
               )}
             </button>
+
+            {/* Solo con `?tiempos=1`: medir hace falta en un teléfono de
+                verdad, y ahí no hay consola a la vista. No es para pacientes. */}
+            {midiendo && tiempos && (
+              <p className="max-w-xs text-center font-mono text-[11px] leading-snug text-muted-foreground">
+                {tiempos}
+              </p>
+            )}
 
             <p className="max-w-xs text-center text-sm text-muted-foreground">
               {estado === 'escuchando'

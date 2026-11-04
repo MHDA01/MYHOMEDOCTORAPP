@@ -46,6 +46,13 @@ const THINKING_BUDGET = -1;
  * 2019, derogada por la Resolución 1644 de 2026. La redacción es la que ya
  * existía en la rama `hilda-agentes`, para no escribir una tercera versión.
  *
+ * Exploración ampliada el 28-oct-2026, aprobada por el médico responsable: el
+ * orden de la Sección 3.1 pasó de siete pasos a nueve. Faltaban si el síntoma
+ * es permanente o intermitente, y si la presentación es aguda o viene
+ * evolucionando hacia la cronicidad. Son las dos variables que distinguen un
+ * lumbago crónico de una lumbalgia aguda, y las que hacen comparable el
+ * seguimiento entre la consulta y las reevaluaciones.
+ *
  * Esto es texto clínico y legal: no se cambia sin aprobación del médico.
  */
 const SYSTEM_PROMPT = `SYSTEM PROMPT — Hilda v2.2 (Res. 1644 de 2026) (myhomedoctorapp)
@@ -167,12 +174,14 @@ con cinco preguntas cada uno.
 
 Cómo exploras cada síntoma, en este orden, una pregunta por turno:
   1. Desde cuándo lo tiene y cómo empezó (de repente o poco a poco).
-  2. Dónde exactamente lo siente, y si se corre hacia otra parte.
-  3. Cómo es: punzante, opresivo, ardor, cólico…
-  4. Qué tan intenso, de 1 a 10.
-  5. Qué lo mejora y qué lo empeora.
-  6. Qué otros síntomas lo acompañan.
-  7. Si le ha pasado antes y qué hizo entonces.
+  2. Si lo siente todo el tiempo o va y viene.
+  3. Si empezó hace poco, o es algo que lleva semanas o meses.
+  4. Dónde exactamente lo siente, y si se corre hacia otra parte.
+  5. Cómo es: punzante, opresivo, ardor, cólico…
+  6. Qué tan intenso, de 1 a 10.
+  7. Qué lo mejora y qué lo empeora.
+  8. Qué otros síntomas lo acompañan.
+  9. Si le ha pasado antes y qué hizo entonces.
 
 Reglas de la conversación:
 - Termina de explorar un síntoma antes de pasar al siguiente. Si el paciente
@@ -640,6 +649,23 @@ function registrarUso(uso?: GeminiUso): void {
   );
 }
 
+/**
+ * Deja en los registros cuánto tardó cada tramo del turno.
+ *
+ * Para qué: el teléfono mide la espera entera, pero no puede ver dónde se fue.
+ * Esto separa lo que cuesta preparar el turno —media docena de idas y vueltas a
+ * Firestore, una detrás de otra— de lo que cuesta la respuesta del modelo, que
+ * es lo único que se puede atacar con streaming.
+ *
+ * Solo duraciones y tamaños: ni lo que preguntó el paciente ni lo que contestó
+ * Hilda. Y sin la palabra "Error", igual que `registrarUso`: la alerta de Cloud
+ * Run filtra por ese texto y esto es información, no una incidencia.
+ */
+function registrarTiempos(etiqueta: string, tramos: Array<[string, number]>, extra?: string): void {
+  const linea = tramos.map(([nombre, ms]) => `${nombre} ${Math.round(ms)} ms`).join(', ');
+  console.log(`[Dra. Hilda] Tiempos ${etiqueta}: ${linea}${extra ? ` (${extra})` : ''}`);
+}
+
 async function preguntarALaIA(sistema: string, contenidos: GeminiContent[]): Promise<GeminiResult> {
   if (!process.env.GEMINI_API_KEY) {
     console.error('[Dra. Hilda] GEMINI_API_KEY no configurada');
@@ -700,6 +726,14 @@ export async function enviarMensajeConsulta(
   entrada: { texto: string; imageUrls?: string[] },
   paciente: PatientStructuredContext
 ): Promise<Resultado> {
+  // Cada tramo se cronometra para saber cuánto de la espera es Firestore y
+  // cuánto es el modelo. Ver `registrarTiempos`.
+  const tInicio = Date.now();
+  let tSesion = tInicio;
+  let tGuardado = tInicio;
+  let tPermisos = tInicio;
+  let tHistorial = tInicio;
+
   try {
     const sesion = await sesionConConversacion(idToken, convId);
     if ('error' in sesion) return fallo(sesion.error);
@@ -715,6 +749,7 @@ export async function enviarMensajeConsulta(
       const ruta = rutaDeFotoDeLaConsulta(url, uid, convId);
       if (!ruta || !(await fotoValida(ruta))) return fallo(IMAGEN_NO_VALIDA);
     }
+    tSesion = Date.now();
 
     // Como antes, la pregunta queda guardada aunque luego la frene el límite por hora.
     try {
@@ -723,12 +758,29 @@ export async function enviarMensajeConsulta(
       console.error('[Dra. Hilda] Error guardando el mensaje del paciente:', error);
       return fallo(conAvisoDeUrgencias('Ocurrió un error inesperado. Intenta de nuevo.'));
     }
+    tGuardado = Date.now();
 
     const bloqueo = await puedeConsultar(uid);
     if (bloqueo) return fallo(bloqueo);
+    tPermisos = Date.now();
 
     const contenidos = await historialParaLaIA(uid, convId);
+    tHistorial = Date.now();
+
     const resultado = await preguntarALaIA(instruccionDeSistema(paciente), contenidos);
+    const tIA = Date.now();
+    registrarTiempos(
+      'del turno',
+      [
+        ['sesión', tSesion - tInicio],
+        ['guardar pregunta', tGuardado - tSesion],
+        ['permisos', tPermisos - tGuardado],
+        ['historial', tHistorial - tPermisos],
+        ['IA', tIA - tHistorial],
+        ['total', tIA - tInicio],
+      ],
+      `${contenidos.length} mensajes de contexto, respuesta de ${resultado.ok ? resultado.text.length : 0} caracteres`
+    );
     if (!resultado.ok) return fallo(errorDeLaIA(resultado));
 
     try {
