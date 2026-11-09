@@ -18,6 +18,19 @@ import { LegalConsentModal } from './legal-consent-modal';
 import { registrarRegistroOrigen } from '@/app/actions/origen';
 import { CLAVE_ORIGEN, origenVigente } from '@/lib/origen';
 
+/**
+ * Selector nativo, igual que en el formulario de integrantes: el desplegable de
+ * Radix no está en este árbol de componentes y en el celular el del sistema es
+ * más cómodo.
+ */
+const CLASE_SELECT =
+  'h-12 w-full rounded-xl border border-input bg-white px-3 text-[15px] text-brand-900 focus:outline-none focus:ring-2 focus:ring-ring';
+
+/** Hoy en texto AAAA-MM-DD, para que nadie nazca en el futuro. */
+function hoyEnTexto(): string {
+  return new Date().toLocaleDateString('en-CA', { timeZone: 'America/Bogota' });
+}
+
 /** Si la persona llegó desde una red en los últimos 30 días, suma el registro a esa red. */
 async function atribuirRegistro(idToken: string) {
   try {
@@ -34,6 +47,13 @@ export function RegisterForm() {
   const router = useRouter();
   const { toast } = useToast();
   const [name, setName] = useState('');
+  // Sin valor por defecto a propósito: la edad y el sexo son los dos
+  // estratificadores de toda la orientación, y ninguno se infiere. Hasta el
+  // 8-nov-2026 el formulario no los preguntaba y guardaba un sexo fijo más la
+  // fecha del día, o sea un sexo inventado y una edad de cero.
+  // Ver tests/unidad/registro-pide-edad-y-sexo.test.ts.
+  const [dateOfBirth, setDateOfBirth] = useState('');
+  const [sex, setSex] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -47,6 +67,17 @@ export function RegisterForm() {
       toast({
         variant: 'destructive',
         title: 'Las contraseñas no coinciden',
+      });
+      return;
+    }
+    // El navegador ya exige los dos campos; esto es la red por si alguien
+    // envía el formulario sin pasar por él. Mejor no crear la cuenta que
+    // crearla con los dos datos inventados, que es lo que pasaba antes.
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dateOfBirth) || dateOfBirth > hoyEnTexto() || !sex) {
+      toast({
+        variant: 'destructive',
+        title: 'Faltan la fecha de nacimiento y el sexo',
+        description: 'Los necesitamos para orientarte bien: la edad y el sexo cambian lo que hay que revisar.',
       });
       return;
     }
@@ -70,8 +101,10 @@ export function RegisterForm() {
         personalInfo: {
           firstName: firstName || '',
           lastName: lastName || '',
-          sex: 'other',
-          dateOfBirth: new Date().toISOString(),
+          sex,
+          // Mediodía UTC, igual que `saveTitularProfile` en actions/family.ts:
+          // así el día no se corre al pasar por una zona horaria.
+          dateOfBirth: new Date(`${dateOfBirth}T12:00:00.000Z`),
           country: 'colombia',
           insuranceProvider: '',
           insuranceProviderName: '',
@@ -100,8 +133,10 @@ export function RegisterForm() {
         userId: user.uid,
         firstName: firstName || '',
         lastName: lastName || '',
-        sex: 'other',
-        dateOfBirth: new Date().toISOString().split('T')[0],
+        sex,
+        // En el integrante la fecha va como texto AAAA-MM-DD, nunca ISO con
+        // hora: es la regla de la casa y lo que espera `fechaGuardada`.
+        dateOfBirth,
         relationship: 'Titular',
         esTitular: true,
         allergies: [],
@@ -168,6 +203,42 @@ export function RegisterForm() {
               <Label htmlFor="name">Nombre Completo</Label>
               <Input id="name" name="name" type="text" placeholder="Nombre y apellido" required value={name} onChange={e => setName(e.target.value)} autoComplete="name" className="h-12 rounded-xl" />
             </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label htmlFor="register-dob">Fecha de nacimiento</Label>
+                <Input
+                  id="register-dob"
+                  name="dateOfBirth"
+                  type="date"
+                  required
+                  min="1900-01-01"
+                  max={hoyEnTexto()}
+                  value={dateOfBirth}
+                  onChange={(e) => setDateOfBirth(e.target.value)}
+                  autoComplete="bday"
+                  className="h-12 rounded-xl"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="register-sex">Sexo</Label>
+                <select
+                  id="register-sex"
+                  name="sex"
+                  required
+                  value={sex}
+                  onChange={(e) => setSex(e.target.value)}
+                  className={CLASE_SELECT}
+                >
+                  <option value="">Selecciona…</option>
+                  <option value="female">Mujer</option>
+                  <option value="male">Hombre</option>
+                  <option value="other">Otro</option>
+                </select>
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              La edad y el sexo cambian lo que hay que revisar, así que los necesitamos desde el principio.
+            </p>
             <div className="space-y-2">
               <Label htmlFor="register-email">Correo Electrónico</Label>
               <Input id="register-email" name="email" type="email" placeholder="nombre@ejemplo.com" required value={email} onChange={e => setEmail(e.target.value)} autoComplete="email" className="h-12 rounded-xl" />

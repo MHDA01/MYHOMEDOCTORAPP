@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { ChevronDown, Pencil, Trash2 } from 'lucide-react';
 import type { FamilyProfile } from '@/lib/types';
-import { calcularEdad, nombrePropio, SEGURIDAD_SOCIAL } from '@/lib/familia';
+import { calcularEdad, nombrePropio, normalizarSexo, SEGURIDAD_SOCIAL } from '@/lib/familia';
 import { cn } from '@/lib/utils';
 import { SimboloFamiliograma } from './simbolo-familiograma';
 
@@ -39,10 +39,11 @@ export function TarjetaIntegrante({
   const nombre = nombrePropio(`${persona.firstName} ${persona.lastName}`.trim()) || 'Sin nombre';
   // La edad de quien ya falleció no se calcula: sería la que tendría hoy, no la que tuvo.
   const edad = fallecido ? undefined : calcularEdad(persona.dateOfBirth) ?? persona.age;
-  const anioNacimiento = /^\d{4}/.exec(persona.dateOfBirth)?.[0];
+  const anioNacimiento = /^\d{4}/.exec(persona.dateOfBirth ?? '')?.[0];
 
   const resumen = [
-    SEXO[persona.sex],
+    // Sin sexo registrado no se escribe ninguno: la línea simplemente no lo dice.
+    persona.sex ? SEXO[persona.sex] : '',
     fallecido ? (anioNacimiento ? `nació en ${anioNacimiento}` : '') : edad !== undefined ? `${edad} años` : '',
   ]
     .filter(Boolean)
@@ -51,7 +52,8 @@ export function TarjetaIntegrante({
   const etiquetaSeguridad = SEGURIDAD_SOCIAL[persona.country ?? 'colombia']?.etiqueta ?? 'Seguridad social';
   const datos: [string, string][] = (
     [
-      ['Nació', fechaLegible(persona.dateOfBirth)],
+      // Sin fecha registrada, la fila no aparece: el filtro de abajo la quita.
+      ['Nació', fechaLegible(persona.dateOfBirth ?? '')],
       ['Peso', persona.weight ? `${persona.weight} kg` : ''],
       [etiquetaSeguridad, [persona.insuranceProvider, persona.insuranceProviderName].filter(Boolean).join(' · ')],
     ] as [string, string][]
@@ -77,7 +79,9 @@ export function TarjetaIntegrante({
       aria-label={`${nombre}, ${titular ? 'titular' : persona.relationship}`}
     >
       <header className="flex items-start gap-3">
-        <SimboloFamiliograma sexo={persona.sex} edad={edad} fallecido={fallecido} titular={titular} />
+        {/* Sin sexo registrado, el familiograma dibuja el símbolo neutro: es su
+            convención para "no se sabe", no un valor que se le atribuya. */}
+        <SimboloFamiliograma sexo={normalizarSexo(persona.sex)} edad={edad} fallecido={fallecido} titular={titular} />
         <div className="min-w-0 flex-1">
           <h3 className="break-words text-[15px] font-bold leading-snug text-brand-900">{nombre}</h3>
           <p className="text-xs font-semibold text-primary">{titular ? 'Tú' : persona.relationship}</p>

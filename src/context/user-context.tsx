@@ -37,12 +37,21 @@ async function getCollection<T>(userId: string, collectionName: string): Promise
 
 
 // Convierte un valor de fecha almacenado en Firestore (Timestamp, Date o string) a Date
-function toDate(value: Timestamp | Date | string | null | undefined): Date {
-    if (!value) return new Date();
+/**
+ * Una fecha de nacimiento que no se puede leer **no es hoy**.
+ *
+ * Hasta el 8-nov-2026 esta función devolvía `new Date()` cuando el valor
+ * faltaba o no se podía interpretar. Como la usa la fecha de nacimiento, eso
+ * convertía cualquier hueco en una edad de cero, en silencio y sin que ninguna
+ * pantalla se rompiera. Ahora devuelve `undefined` y quien la use decide qué
+ * enseñar; lo que no hace nadie es suponer.
+ */
+function toDate(value: Timestamp | Date | string | null | undefined): Date | undefined {
+    if (!value) return undefined;
     if (value instanceof Timestamp) return value.toDate();
     if (value instanceof Date) return value;
     const parsed = new Date(value as string);
-    return isNaN(parsed.getTime()) ? new Date() : parsed;
+    return isNaN(parsed.getTime()) ? undefined : parsed;
 }
 
 async function getUserDocument(userId: string): Promise<UserDocument | null> {
@@ -113,13 +122,13 @@ interface UserContextType {
 
 export const UserContext = createContext<UserContextType | undefined>(undefined);
 
+// Sin sexo ni fecha de nacimiento: un invitado no ha contestado nada, y eso es
+// distinto de haber contestado "otro" y haber nacido hoy.
 const initialAnonymousPersonalInfo: PersonalInfo = {
   firstName: 'Invitado',
   lastName: '',
-  sex: 'other',
-  dateOfBirth: new Date(),
-  country: 'chile',
-  insuranceProvider: 'Fonasa',
+  country: 'colombia',
+  insuranceProvider: '',
 };
 
 const initialAnonymousHealthInfo: HealthInfo = {
@@ -178,11 +187,13 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
               setHealthInfo(userDoc.healthInfo);
           } else {
               const isAnon = user.isAnonymous;
+              // Cuenta sin documento: se crea el documento para que el resto de
+              // la app funcione, pero SIN sexo ni fecha de nacimiento. Aquí no
+              // hay a quién preguntarle, y escribirlos inventados es peor que
+              // dejarlos vacíos: quedarían como dato de la persona para siempre.
               const defaultPersonalInfo: PersonalInfo = isAnon ? initialAnonymousPersonalInfo : {
                   firstName: user.displayName?.split(' ')[0] || 'Nuevo',
                   lastName: user.displayName?.split(' ').slice(1).join(' ') || 'Usuario',
-                  sex: 'other',
-                  dateOfBirth: new Date(),
                   country: 'colombia',
                   insuranceProvider: '',
                   insuranceProviderName: ''
@@ -202,7 +213,11 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
               getCollection<Medication>(user.uid, 'medications'),
           ]);
 
-          setAppointments(appointmentsData.map(a => ({...a, date: toDate(a.date) })));
+          // Una cita sin fecha legible es un registro corrupto, no un dato
+          // clínico de la persona: aquí el respaldo es solo para poder
+          // pintarla, y se deja igual que antes del 8-nov. Lo que no admite
+          // respaldo es la fecha de nacimiento, que es de donde sale la edad.
+          setAppointments(appointmentsData.map(a => ({ ...a, date: toDate(a.date) ?? new Date() })));
           setMedications(medicationsData);
 
         } catch (error) {

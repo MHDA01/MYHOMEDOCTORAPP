@@ -30,7 +30,8 @@ type Formulario = {
   firstName: string;
   lastName: string;
   relationship: string;
-  sex: 'male' | 'female' | 'other';
+  /** Vacío mientras nadie lo haya elegido: el sexo no se supone. */
+  sex: 'male' | 'female' | 'other' | '';
   dateOfBirth: string;
   weight: string;
   country: string;
@@ -49,7 +50,7 @@ const VACIO: Formulario = {
   firstName: '',
   lastName: '',
   relationship: '',
-  sex: 'female',
+  sex: '',
   dateOfBirth: '',
   weight: '',
   country: 'colombia',
@@ -69,8 +70,9 @@ function desdePersona(p: FamilyProfile): Formulario {
     firstName: p.firstName || '',
     lastName: p.lastName || '',
     relationship: p.esTitular ? 'Titular' : p.relationship || '',
-    sex: p.sex,
-    dateOfBirth: /^\d{4}-\d{2}-\d{2}$/.test(p.dateOfBirth) ? p.dateOfBirth : '',
+    // Una ficha vieja sin sexo registrado abre el selector en "Selecciona…".
+    sex: p.sex ?? '',
+    dateOfBirth: p.dateOfBirth && /^\d{4}-\d{2}-\d{2}$/.test(p.dateOfBirth) ? p.dateOfBirth : '',
     weight: p.weight ? String(p.weight) : '',
     country: p.country || 'colombia',
     insuranceProvider: p.insuranceProvider || '',
@@ -125,8 +127,11 @@ export function FormularioIntegrante({
   const hoy = new Date().toISOString().slice(0, 10);
 
   const guardar = async () => {
-    if (!f.firstName.trim() || !f.lastName.trim() || !f.dateOfBirth || (!titular && !f.relationship)) {
-      setError('Completa nombres, apellidos, fecha de nacimiento' + (titular ? '.' : ' y parentesco.'));
+    // El sexo entra aquí desde el 8-nov-2026: antes el formulario traía "Mujer"
+    // preseleccionado, así que una ficha guardada sin tocar ese campo quedaba
+    // con un sexo que nadie contestó.
+    if (!f.firstName.trim() || !f.lastName.trim() || !f.dateOfBirth || !f.sex || (!titular && !f.relationship)) {
+      setError('Completa nombres, apellidos, fecha de nacimiento, sexo' + (titular ? '.' : ' y parentesco.'));
       return;
     }
     setError(null);
@@ -211,6 +216,7 @@ export function FormularioIntegrante({
           <div className="grid grid-cols-2 gap-3">
             <Campo etiqueta="Sexo">
               <select className={CLASE_SELECT} value={f.sex} onChange={(e) => poner('sex', e.target.value as Formulario['sex'])}>
+                <option value="">Selecciona…</option>
                 <option value="female">Mujer</option>
                 <option value="male">Hombre</option>
                 <option value="other">Otro</option>

@@ -98,8 +98,17 @@ export type HealthInfo = {
 export type PersonalInfo = {
   firstName: string;
   lastName: string;
-  sex: 'male' | 'female' | 'other';
-  dateOfBirth: Date;
+  /**
+   * Opcionales a propósito, desde el 8-nov-2026: son los dos datos con los que
+   * se estratifica toda la orientación —la edad sola descarta condiciones y el
+   * sexo no se deduce de un nombre— y por eso **no se inventan**. Si no están,
+   * no están, y quien los necesite lo dice en vez de suponer.
+   *
+   * Antes eran obligatorios, así que todo camino que no los tuviera escribía
+   * `other` y la fecha del día: un sexo que nadie dio y una edad de cero.
+   */
+  sex?: 'male' | 'female' | 'other';
+  dateOfBirth?: Date;
   country: 'chile' | 'argentina' | 'colombia';
   insuranceProvider: string;
   insuranceProviderName?: string;
@@ -112,8 +121,9 @@ export type FamilyProfile = {
   userId: string;
   firstName: string;
   lastName: string;
-  sex: 'male' | 'female' | 'other';
-  dateOfBirth: string;
+  /** Opcionales por la misma razón que en `PersonalInfo`: no se inventan. */
+  sex?: 'male' | 'female' | 'other';
+  dateOfBirth?: string;
   age?: number;
   weight?: number;
   country?: 'chile' | 'argentina' | 'colombia';

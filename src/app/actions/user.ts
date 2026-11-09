@@ -8,12 +8,19 @@ import { validateHealthInfo, formatZodErrors, type UpdateHealthInfoInput } from 
 import { checkRateLimit } from '@/lib/rate-limit';
 import { z } from 'zod';
 
-function normalizeDateValue(value: any): string {
-  if (!value) return new Date().toISOString();
+/**
+ * Una fecha que no se puede leer no es hoy: es `undefined`.
+ *
+ * Hasta el 8-nov-2026 devolvía la fecha del día cuando el valor faltaba, y como
+ * la única que pasa por aquí es la de nacimiento, eso convertía un hueco en una
+ * edad de cero sin que nada avisara.
+ */
+function normalizeDateValue(value: any): string | undefined {
+  if (!value) return undefined;
   if (typeof value?.toDate === 'function') return value.toDate().toISOString();
   if (value instanceof Date) return value.toISOString();
   const parsed = new Date(value);
-  return isNaN(parsed.getTime()) ? new Date().toISOString() : parsed.toISOString();
+  return isNaN(parsed.getTime()) ? undefined : parsed.toISOString();
 }
 
 /**
@@ -34,7 +41,8 @@ export async function getSecureUserDocument(idToken: string) {
     const personalInfo = {
       firstName: rawPersonalInfo.firstName || 'Nuevo',
       lastName: rawPersonalInfo.lastName || 'Usuario',
-      sex: rawPersonalInfo.sex || 'other',
+      // Sin `|| 'other'`: un sexo que nadie contestó se queda sin contestar.
+      sex: rawPersonalInfo.sex || undefined,
       dateOfBirth: normalizeDateValue(rawPersonalInfo.dateOfBirth),
       country: rawPersonalInfo.country || 'colombia',
       insuranceProvider: rawPersonalInfo.insuranceProvider || '',
