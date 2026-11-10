@@ -11,6 +11,7 @@
 import { decryptField } from '@/lib/crypto';
 import { descifrarLista, descifrarSaludTitular } from '@/lib/salud-cifrada';
 import { calcularEdad, normalizarFechaNacimiento, normalizarSexo } from '@/lib/familia';
+import type { PerfilExistente } from '@/lib/ficha';
 
 /** Id que usa la app cuando el titular no tiene documento propio en Integrantes. */
 export const ID_TITULAR = 'titular';
@@ -104,4 +105,77 @@ export function pacienteDeTitular(cuenta: any, hoy: Date = new Date()): Paciente
 /** True si ese documento de Integrantes es en realidad el titular (dato antiguo). */
 export function esTitularGuardado(data: any): boolean {
   return Boolean(data?.esTitular) || data?.relationship === 'Titular';
+}
+
+// ─────────────────────────────────────────────────────────────
+// La misma lectura, en la forma que espera la ficha del grafo
+// ─────────────────────────────────────────────────────────────
+//
+// `PacienteDeConsulta` es una vista aplanada para que el médico la lea: las
+// alergias ya son una lista de cadenas y los antecedentes vienen con su
+// etiqueta pegada ("Patológicos: asma"). Para levantar la ficha
+// (`fichaDesdePerfil`) hace falta lo contrario: los campos crudos, cada uno por
+// su lado, sin etiquetas ni mezclas.
+//
+// Las dos salidas viven aquí para que el **descifrado esté escrito una sola
+// vez**. Si mañana cambia cómo se guardan las alergias, cambia en un sitio y
+// las dos vistas lo heredan.
+
+/** El texto de un campo del historial, descifrado y sin etiqueta. */
+function textoHistorial(fuente: any, campo: (typeof CAMPOS_HISTORIAL)[number]): string | undefined {
+  const cifrado = fuente?.[`encrypted_${campo}`];
+  const texto = typeof cifrado === 'string' && cifrado ? decryptField(cifrado) : fuente?.[campo] || '';
+  return texto.trim() || undefined;
+}
+
+function historialCrudo(fuente: any) {
+  return {
+    pathologicalHistory: textoHistorial(fuente, 'pathologicalHistory'),
+    surgicalHistory: textoHistorial(fuente, 'surgicalHistory'),
+    gynecologicalHistory: textoHistorial(fuente, 'gynecologicalHistory'),
+    familyHistory: textoHistorial(fuente, 'familyHistory'),
+  };
+}
+
+/** El sexo como lo guarda el perfil, no como se lee: la ficha quiere el valor crudo. */
+function sexoCrudo(valor: unknown): 'male' | 'female' | 'other' | undefined {
+  const normal = normalizarSexo(valor);
+  return normal === 'male' || normal === 'female' || normal === 'other' ? normal : undefined;
+}
+
+/**
+ * El perfil de un integrante en la forma que pide `fichaDesdePerfil`.
+ *
+ * `creadoEl` importa y no es un adorno: `fichaDesdePerfil` lo usa para detectar
+ * la fecha de nacimiento que el formulario de registro inventa (la del día en
+ * que se creó la cuenta). Sin él, un adulto entraría a la ficha con edad cero y
+ * las alarmas pediátricas se dispararían con todo el mundo.
+ */
+export function perfilDeIntegrante(id: string, integrante: any, historial: any): PerfilExistente {
+  return {
+    id,
+    sex: sexoCrudo(integrante?.sex),
+    dateOfBirth: fechaGuardada(integrante?.dateOfBirth) || undefined,
+    creadoEl: fechaGuardada(integrante?.createdAt) || undefined,
+    weight: typeof integrante?.weight === 'number' ? integrante.weight : undefined,
+    allergies: lista(integrante, 'encryptedAllergies', 'allergies'),
+    medications: lista(integrante, 'encryptedMedications', 'medications'),
+    ...historialCrudo(historial),
+  };
+}
+
+/** Lo mismo para el titular, cuya salud vive en el documento de la cuenta. */
+export function perfilDeTitular(id: string, cuenta: any): PerfilExistente {
+  const personal = cuenta?.personalInfo || {};
+  const salud = descifrarSaludTitular(cuenta);
+  return {
+    id,
+    sex: sexoCrudo(personal.sex),
+    dateOfBirth: fechaGuardada(personal.dateOfBirth) || undefined,
+    creadoEl: fechaGuardada(cuenta?.createdAt) || undefined,
+    weight: typeof (salud as any)?.weight === 'number' ? (salud as any).weight : undefined,
+    allergies: Array.isArray(salud.allergies) ? salud.allergies : [],
+    medications: Array.isArray(salud.medications) ? salud.medications : [],
+    ...historialCrudo(salud),
+  };
 }

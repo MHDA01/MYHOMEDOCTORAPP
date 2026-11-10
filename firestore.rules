@@ -118,6 +118,20 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // Ficha clínica por integrante: antecedentes tipados, con su estado, su
+    // fecha y la frase de la que salió cada uno. Vive aquí y no bajo
+    // Cuentas_Tutor/Integrantes porque ahí hay un comodín RECURSIVO que le da
+    // escritura al dueño, y en `{path=**}` no se puede excluir nada —como sí
+    // se excluye `tokens` del comodín de un solo tramo—.
+    //
+    // Que el navegador no escriba es el punto: la ficha la arma el servidor a
+    // partir del extractor, y cada hallazgo pasa por `registrar()`, que exige
+    // la cita literal de lo que la persona dijo. Escribirla desde el cliente
+    // sería saltarse esa validación entera.
+    match /fichas_clinicas/{tutorId}/{resto=**} {
+      allow read, write: if false;
+    }
+
     // Quién abrió la consulta de qué paciente y cuándo. Solo escribe el
     // servidor y no lo lee nadie desde la app: un registro de accesos que el
     // propio panel pudiera editar no serviría de nada.

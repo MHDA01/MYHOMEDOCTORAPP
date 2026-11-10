@@ -42,6 +42,29 @@ export function respuestaGemini(texto: string): Response {
   });
 }
 
+/**
+ * Lo que devuelve el endpoint NATIVO, que no tiene la forma del compatible:
+ * candidatos con partes, y el uso en `usageMetadata` —donde los tokens de
+ * razonamiento van en su propio campo.
+ */
+export function respuestaGeminiNativa(
+  texto: string,
+  uso?: { entrada?: number; salida?: number; cacheados?: number; pensados?: number }
+): Response {
+  return new Response(
+    JSON.stringify({
+      candidates: [{ content: { parts: [{ text: texto }] }, finishReason: 'STOP' }],
+      usageMetadata: {
+        promptTokenCount: uso?.entrada ?? 0,
+        candidatesTokenCount: uso?.salida ?? 0,
+        cachedContentTokenCount: uso?.cacheados ?? 0,
+        thoughtsTokenCount: uso?.pensados ?? 0,
+      },
+    }),
+    { status: 200, headers: { 'Content-Type': 'application/json' } }
+  );
+}
+
 export type LlamadaGemini = { url: string; cuerpo: any };
 
 /**

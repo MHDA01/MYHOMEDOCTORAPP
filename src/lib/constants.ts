@@ -46,6 +46,20 @@ export const SUBCOLECCION_TRANSACTIONS = 'transactions';
 export const COLECCION_MODALIDAD = 'acceso_usuarios';
 
 // ─────────────────────────────────────────────────────────
+// Ficha clínica por integrante (la raíz del grafo)
+// ─────────────────────────────────────────────────────────
+// Fuera de Cuentas_Tutor por la misma razón que la modalidad, y con más
+// motivo: bajo `Integrantes/{id}` hay un comodín RECURSIVO (`{path=**}`) que
+// le da escritura al dueño sobre todo lo que cuelgue de ahí, y en un comodín
+// recursivo no se puede excluir una subcolección como sí se hace con `tokens`.
+// La ficha son antecedentes tipados que solo escribe el servidor después de
+// validarlos: si el navegador pudiera escribirla, se saltaría `registrar()` y
+// con él la regla de que todo hallazgo traiga la frase de la que salió.
+// Se borra con la cuenta desde `datos-de-la-cuenta.ts`, como la modalidad.
+export const COLECCION_FICHAS = 'fichas_clinicas';
+export const SUBCOLECCION_FICHAS_INTEGRANTES = 'integrantes';
+
+// ─────────────────────────────────────────────────────────
 // Growth Agent (herramienta interna, solo fundador)
 // ─────────────────────────────────────────────────────────
 export const COLECCION_GROWTH_DRAFTS = 'growth_drafts';

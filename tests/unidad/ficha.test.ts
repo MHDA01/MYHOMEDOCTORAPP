@@ -22,9 +22,11 @@ import {
   hallazgosDeLaFicha,
   hayQuePreguntar,
   huecosDeLaFicha,
+  incorporarHallazgos,
   registrarReferido,
   validar,
 } from '@/lib/ficha';
+import { registrar } from '@/lib/hallazgos';
 
 const HOY = '2026-11-08';
 
@@ -392,5 +394,82 @@ describe('Fechas: texto AAAA-MM-DD, nunca ISO con hora', () => {
     expect(edadEnMeses('2026-08-09', '2026-11-08')).toBe(2);
     expect(edadEnMeses(undefined, '2026-11-08')).toBeNull();
     expect(edadEnMeses('2027-01-01', '2026-11-08')).toBeNull();
+  });
+});
+
+describe('Qué de una consulta entra a la ficha', () => {
+  const HOY = '2026-11-09';
+
+  const hallazgo = (extra: Record<string, unknown> = {}) => {
+    const registro = registrar({
+      id: 'peso',
+      estado: 'positivo',
+      valor: 72,
+      procedencia: 'relato',
+      frase: 'peso 72 kilos',
+      fecha: HOY,
+      temporalidad: 'antecedente',
+      ...extra,
+    } as any);
+    if (!registro.ok) throw new Error(registro.motivo);
+    return registro.hallazgo;
+  };
+
+  it('un antecedente con campo en la ficha se guarda, y como referido', () => {
+    const { ficha, guardados } = incorporarHallazgos(fichaVacia('ana'), [hallazgo()]);
+
+    expect(guardados).toEqual(['peso']);
+    expect(ficha.campos.peso.referido).toMatchObject({ estado: 'positivo', valor: 72, informante: 'paciente' });
+    // Lo que contó la persona no se asciende a caracterizado por un médico.
+    expect(ficha.campos.peso.validado).toBeUndefined();
+  });
+
+  it('lo de HOY no entra: es del episodio, no de la historia de la persona', () => {
+    // Si entrara, la próxima consulta arrancaría con el dolor de la anterior
+    // como si siguiera ahí.
+    const { guardados, omitidos } = incorporarHallazgos(fichaVacia('ana'), [
+      hallazgo({ temporalidad: 'actual' }),
+    ]);
+    expect(guardados).toEqual([]);
+    expect(omitidos[0].motivo).toContain('episodio de hoy');
+  });
+
+  it('un hallazgo que no es antecedente de nadie se queda fuera', () => {
+    const localizacion = registrar({
+      id: 'localizacion',
+      estado: 'positivo',
+      valor: 'pecho',
+      procedencia: 'relato',
+      frase: 'me duele el pecho',
+      fecha: HOY,
+      temporalidad: 'antecedente',
+    });
+    if (!localizacion.ok) throw new Error(localizacion.motivo);
+
+    const { guardados, omitidos } = incorporarHallazgos(fichaVacia('ana'), [localizacion.hallazgo]);
+    expect(guardados).toEqual([]);
+    expect(omitidos[0].motivo).toContain('no tiene campo en la ficha');
+  });
+
+  it('lo que caracterizó un médico no lo pisa un relato', () => {
+    const conMedico: Ficha = {
+      integranteId: 'ana',
+      campos: {
+        peso: {
+          validado: {
+            estado: 'positivo',
+            valor: 80,
+            fecha: '2026-10-01',
+            informante: 'medico',
+            medico: { nombre: 'A. Ruiz', registroProfesional: '123' },
+          },
+        },
+      },
+    };
+
+    const { ficha, guardados, omitidos } = incorporarHallazgos(conMedico, [hallazgo()]);
+    expect(guardados).toEqual([]);
+    expect(omitidos[0].motivo).toContain('ya lo caracterizó un médico');
+    expect(ficha.campos.peso.validado?.valor).toBe(80);
   });
 });

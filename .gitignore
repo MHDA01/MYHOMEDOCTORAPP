@@ -48,11 +48,15 @@ firestore-debug.log
 # Cifras de uso, precios y estrategia comercial. Lo técnico y lo legal va en CLAUDE.md.
 ESTADO.md
 PLAN-90-DIAS.md
+CONTINUAR-5-NOV.md
+CONSOLIDAR-9-NOV.md
+HALLAZGOS-CRITICOS.md
 SESSION_SUMMARY.json
 MYHOMEDOCTORAPP_DESCRIPTION.json
 comparativa-mhda-mundo.html
 estrategia-comercial-mhda.html
 precio-b2c-mhda.html
+familias-fundadoras-mhda.html
 tablero-agentes.html
 muestra-informe-orientacion.pdf
 .claude/settings.local.json

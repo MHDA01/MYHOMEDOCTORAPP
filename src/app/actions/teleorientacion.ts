@@ -22,17 +22,47 @@ const MAX_TOKENS = 4096;
 const TEMPERATURE = 0.4;
 
 /**
- * La teleorientación es el único punto donde el modelo hace triage clínico, así
- * que aquí sí se le deja razonar antes de responder (-1 = presupuesto dinámico,
- * lo decide el modelo). El resto de los usos —consejo diario, agente de
- * contenido, agente de ventas— siguen con el razonamiento apagado.
+ * La teleorientación es el único punto donde el modelo decide a qué nivel de
+ * atención encaminar, así que aquí sí se le deja razonar antes de responder
+ * (-1 = presupuesto dinámico, lo decide el modelo). El resto de los usos
+ * —consejo diario, agente de contenido— siguen con el razonamiento apagado.
  *
  * Por eso MAX_TOKENS sube de 2048 a 4096: el razonamiento se descuenta del mismo
  * presupuesto que la respuesta. Medido en un turno real, el modelo gastó ~890
  * tokens pensando y ~670 respondiendo; con 2048 cabía, pero un caso clínico
  * largo dejaría la respuesta sin aire. Solo se factura lo que realmente se usa.
+ *
+ * **Por qué es una variable de entorno y no una constante (9-nov-2026).** Esos
+ * ~890 tokens se cobran como salida, que es el lado caro (seis veces la
+ * entrada): son del orden de COP 205 por orientación, la partida más grande que
+ * hay. Apagarlos abarataría mucho, pero es un cambio de comportamiento clínico y
+ * no se decide desde una hoja de cálculo: se decide corriendo
+ * `npm run evaluar:hilda` con el razonamiento apagado y comprobando si los 48/48
+ * urgentes derivados se sostienen con 0 escapados.
+ *
+ * El valor por defecto es el de siempre, así que **nada cambia hasta que alguien
+ * lo cambie a propósito**. Poner `TELEORIENTACION_THINKING_BUDGET=0` permite
+ * correr esa medición sin tocar el código ni desplegar. La decisión, con la
+ * evidencia del evaluador delante, es del médico responsable.
  */
-const THINKING_BUDGET = -1;
+const THINKING_BUDGET = Number.isFinite(Number(process.env.TELEORIENTACION_THINKING_BUDGET))
+  ? Number(process.env.TELEORIENTACION_THINKING_BUDGET)
+  : -1;
+
+/**
+ * El saludo no razona, y esto sí se puede afirmar sin evaluador.
+ *
+ * El turno del saludo recibe una instrucción cerrada —"saluda, preséntate y
+ * explica qué es la teleorientación"— y no tiene delante ni un síntoma ni un
+ * antecedente: no hay nada que decidir. Dejarle el presupuesto dinámico le
+ * costaba al turno unos ~890 tokens de razonamiento al precio de salida, que es
+ * el más caro, para redactar un saludo.
+ *
+ * Son dos cosas a la vez: menos costo en el primero de los turnos de cada
+ * consulta, y menos espera justo donde más se nota, porque el razonamiento
+ * ocurre ANTES del primer token visible y el paciente acaba de abrir el chat.
+ */
+const THINKING_BUDGET_SALUDO = 0;
 
 /**
  * System prompt de Hilda.
@@ -282,7 +312,23 @@ orientarlo con pasos claros y un tono empático y tranquilizador — nunca alarm
 /* ------------------------------------------------------------------ */
 import { getAdminAuth, getAdminDb, getAdminStorage } from '@/lib/firebase-admin';
 import { encryptField, decryptField } from '@/lib/crypto';
-import { COLECCION_TUTOR, SUBCOLECCION_CONVERSACIONES } from '@/lib/constants';
+import {
+  COLECCION_TUTOR,
+  DOC_HISTORIAL,
+  SUBCOLECCION_CONVERSACIONES,
+  SUBCOLECCION_HISTORIAL,
+  SUBCOLECCION_INTEGRANTES,
+} from '@/lib/constants';
+import { fechaDeHoy, fichaDesdePerfil, incorporarHallazgos, type Ficha } from '@/lib/ficha';
+import { fichaParaElModelo } from '@/lib/ficha-para-el-modelo';
+import { guardarFicha, leerFicha } from '@/lib/ficha-guardada';
+import { extraerHallazgos, type Extraccion } from '@/lib/extractor';
+import {
+  esTitularGuardado,
+  ID_TITULAR,
+  perfilDeIntegrante,
+  perfilDeTitular,
+} from '@/lib/paciente-de-consulta';
 import { Timestamp, FieldValue } from 'firebase-admin/firestore';
 import { getUserTokenState } from '@/lib/token-system';
 import {
@@ -606,7 +652,120 @@ async function historialParaLaIA(uid: string, convId: string): Promise<GeminiCon
   return contenidos.reverse();
 }
 
-function instruccionDeSistema(paciente: PatientStructuredContext): string {
+/**
+ * El contexto del paciente, como primer turno de la conversación.
+ *
+ * **Por qué no va en `systemInstruction`, que es donde estaba (9-nov-2026).**
+ * El prompt de sistema se cachea (`src/lib/gemini-cache.ts`) para no pagar sus
+ * ~4.000 tokens en cada turno, y un caché solo sirve si lo que guarda es
+ * idéntico siempre. Mezclar ahí el nombre, la edad y las alergias de cada
+ * persona haría un caché distinto por paciente: se pagaría el almacenamiento de
+ * todos y no se ahorraría en ninguno.
+ *
+ * Así que se separan: en `systemInstruction` queda lo que no cambia nunca —y se
+ * cachea—, y lo del paciente pasa a ser el primer turno de `contents`, que es
+ * justo la parte que sí cambia. El modelo recibe el mismo texto; lo que cambia
+ * es en qué campo viaja.
+ */
+/**
+ * La ficha de la persona por la que se consulta, leída del servidor.
+ *
+ * **Por qué no viene del teléfono.** `PatientStructuredContext` lo arma el
+ * navegador y llega aplanado: nombre, edad, alergias y medicamentos, sin fecha
+ * de nacimiento, sin peso y sin los antecedentes del historial. La ficha se lee
+ * aquí por la misma razón por la que `historialParaLaIA` lee los mensajes de
+ * Firestore y no del teléfono: son antecedentes clínicos, y quien los arma no
+ * puede ser el cliente.
+ *
+ * Devuelve `null` cuando no se puede leer, y entonces la consulta sigue
+ * exactamente como antes. Un fallo leyendo la ficha no puede dejar sin
+ * orientación a quien está preguntando.
+ */
+async function fichaDeLaConsulta(uid: string, convId: string): Promise<Ficha | null> {
+  try {
+    const conversacion = await conversacionRef(uid, convId).get();
+    const memberId = conversacion.get('memberId');
+    if (typeof memberId !== 'string' || !memberId) return null;
+
+    const cuentaRef = getAdminDb().collection(COLECCION_TUTOR).doc(uid);
+    const hoy = fechaDeHoy();
+
+    const delTitular = async (): Promise<Ficha | null> => {
+      const cuenta = await cuentaRef.get();
+      return cuenta.exists ? fichaDesdePerfil(perfilDeTitular(memberId, cuenta.data()), hoy) : null;
+    };
+
+    if (memberId === ID_TITULAR) return delTitular();
+
+    const integranteRef = cuentaRef.collection(SUBCOLECCION_INTEGRANTES).doc(memberId);
+    const [integrante, historial] = await Promise.all([
+      integranteRef.get(),
+      integranteRef.collection(SUBCOLECCION_HISTORIAL).doc(DOC_HISTORIAL).get(),
+    ]);
+
+    // El integrante se borró, o es un documento antiguo del titular dentro de
+    // Integrantes, que no trae su salud. Los dos casos los resuelve la cuenta.
+    if (!integrante.exists || esTitularGuardado(integrante.data())) return delTitular();
+
+    const delPerfil = fichaDesdePerfil(
+      perfilDeIntegrante(memberId, integrante.data(), historial.exists ? historial.data() : null),
+      hoy
+    );
+
+    // El perfil es la base y lo guardado va encima. En ese orden por dos
+    // razones: si la persona corrige sus alergias en la app, el cambio entra; y
+    // lo que Hilda aprendió en consultas anteriores no se pierde al recargar el
+    // perfil, que es justo lo que hace que la ficha sirva de algo.
+    const guardada = await leerFicha(uid, memberId);
+    if (!guardada) return delPerfil;
+    return { integranteId: memberId, campos: { ...delPerfil.campos, ...guardada.campos } };
+  } catch (error) {
+    console.error('[Dra. Hilda] Error leyendo la ficha de la consulta:', error);
+    return null;
+  }
+}
+
+/** Lo que dijo la PERSONA, para el extractor. Los turnos de Hilda no entran. */
+function loQueDijoLaPersona(contenidos: readonly GeminiContent[]): string[] {
+  return contenidos
+    .filter((c) => c.role === 'user')
+    .map((c) =>
+      c.parts
+        .map((p) => ('text' in p ? p.text : ''))
+        .join(' ')
+        .trim()
+    )
+    .filter(Boolean);
+}
+
+/**
+ * Guarda en la ficha lo que la consulta dejó saber de la persona.
+ *
+ * Nunca lanza y nunca bloquea la respuesta: si esto falla, la orientación ya
+ * salió y lo único que se pierde es el aprendizaje de este turno. Un extractor
+ * caído deja la ficha sin enriquecer, que es un problema de mañana; tumbar la
+ * consulta es un problema de ahora.
+ */
+async function guardarLoAprendido(
+  uid: string,
+  ficha: Ficha | null,
+  extraccion: Extraccion | null
+): Promise<void> {
+  if (!ficha || !extraccion?.aceptados.length) return;
+  try {
+    const { ficha: nueva, guardados, omitidos } = incorporarHallazgos(ficha, extraccion.aceptados);
+    if (!guardados.length) return;
+    await guardarFicha(uid, nueva);
+    console.log(
+      `[Dra. Hilda] Ficha: ${guardados.length} antecedente(s) guardado(s) (${guardados.join(', ')})` +
+        (omitidos.length ? `; ${omitidos.length} fuera de la ficha` : '')
+    );
+  } catch (error) {
+    console.error('[Dra. Hilda] Error guardando la ficha:', error);
+  }
+}
+
+function contextoDelPaciente(paciente: PatientStructuredContext, ficha?: Ficha | null): GeminiContent {
   const limpiar = (valor: unknown, maximo: number) => String(valor ?? '').replace(/\s+/g, ' ').trim().slice(0, maximo);
   const lista = (valores?: string[]) =>
     (Array.isArray(valores) ? valores : []).map((v) => limpiar(v, 100)).filter(Boolean).slice(0, 30).join(', ');
@@ -619,12 +778,10 @@ function instruccionDeSistema(paciente: PatientStructuredContext): string {
     lista(paciente?.medications) ? `Medicamentos: ${lista(paciente?.medications)}` : null,
   ].filter(Boolean).join('\n');
 
-  // El prompt de sistema y el contexto del paciente van juntos en systemInstruction,
-  // que es donde Gemini espera lo que no es un turno de diálogo.
-  return `${SYSTEM_PROMPT}
-
-Contexto del paciente actual:
-${datos}`;
+  // La ficha va detrás de los datos básicos y solo si tiene algo que decir:
+  // un encabezado vacío se paga igual que uno lleno. Ver `fichaParaElModelo`.
+  const bloques = [`Contexto del paciente actual:\n${datos}`, fichaParaElModelo(ficha)].filter(Boolean);
+  return { role: 'user', parts: [{ text: bloques.join('\n\n') }] };
 }
 
 /**
@@ -632,11 +789,17 @@ ${datos}`;
  *
  * Importa por una razón concreta: el prompt de sistema son ~4.000 tokens que
  * viajan idénticos en cada turno y son lo más caro de la consulta. Gemini los
- * cobra al 10 % si su caché implícito reconoce el prefijo repetido, pero eso no
- * se enciende con código ni se puede dar por hecho — menos aún desde que se
- * habla por el endpoint compatible con OpenAI. `cacheados` en 0 turno tras
- * turno significa que el descuento no está ocurriendo y que el costo por
- * orientación del análisis de precio está subestimado.
+ * cobra al 10 % si su caché implícito reconoce el prefijo repetido.
+ *
+ * Desde el 6-nov-2026 la llamada va por el endpoint nativo precisamente para
+ * que ese caché llegue a activarse (por el compatible con OpenAI daba 0 % en
+ * nueve turnos seguidos). Pero el caché implícito es **oportunista**: pega a
+ * veces. Por eso este número sigue habiendo que mirarlo, y por eso el paso
+ * siguiente es el caché **explícito** (`cachedContents`), que lo vuelve
+ * determinista en vez de dejarlo a suerte.
+ *
+ * `razonamiento` importa para la factura tanto como para la espera: se cobra al
+ * precio de salida, seis veces el de entrada.
  *
  * No lleva la palabra "Error": la alerta de Cloud Run filtra por ese texto y
  * esto es información, no una incidencia.
@@ -645,7 +808,8 @@ function registrarUso(uso?: GeminiUso): void {
   if (!uso) return;
   const porcentaje = uso.entrada > 0 ? Math.round((uso.cacheados / uso.entrada) * 100) : 0;
   console.log(
-    `[Dra. Hilda] Uso: entrada ${uso.entrada}, cacheados ${uso.cacheados} (${porcentaje} %), salida ${uso.salida}`
+    `[Dra. Hilda] Uso: entrada ${uso.entrada}, cacheados ${uso.cacheados} (${porcentaje} %), ` +
+      `salida ${uso.salida} (razonamiento ${uso.razonamiento})`
   );
 }
 
@@ -666,17 +830,31 @@ function registrarTiempos(etiqueta: string, tramos: Array<[string, number]>, ext
   console.log(`[Dra. Hilda] Tiempos ${etiqueta}: ${linea}${extra ? ` (${extra})` : ''}`);
 }
 
-async function preguntarALaIA(sistema: string, contenidos: GeminiContent[]): Promise<GeminiResult> {
+async function preguntarALaIA(
+  paciente: PatientStructuredContext,
+  contenidos: GeminiContent[],
+  ficha: Ficha | null,
+  thinkingBudget: number = THINKING_BUDGET
+): Promise<GeminiResult> {
   if (!process.env.GEMINI_API_KEY) {
     console.error('[Dra. Hilda] GEMINI_API_KEY no configurada');
   }
   const resultado = await generateWithGemini({
-    system: sistema,
-    contents: contenidos,
+    // Solo lo que no cambia nunca: es lo que se cachea. Lo del paciente va de
+    // primer turno. Ver `contextoDelPaciente`.
+    system: SYSTEM_PROMPT,
+    contents: [contextoDelPaciente(paciente, ficha), ...contenidos],
     model: MODEL_ID,
     maxTokens: MAX_TOKENS,
     temperature: TEMPERATURE,
-    thinkingBudget: THINKING_BUDGET,
+    thinkingBudget,
+    // Por el endpoint nativo. Es el único de los dos donde el prompt de
+    // sistema —~4.000 tokens idénticos en cada turno— llega a cachearse, y el
+    // único que dice cuánto pensó el modelo. Ver la cabecera de `lib/gemini.ts`.
+    nativo: true,
+    // Caché explícito del prompt: deja de depender de que el implícito tenga a
+    // bien activarse. Si no se puede crear, la llamada sigue igual que antes.
+    cacheSistema: true,
     timeoutMs: 60_000,
     reintentos: 1,
   });
@@ -730,8 +908,7 @@ export async function enviarMensajeConsulta(
   // cuánto es el modelo. Ver `registrarTiempos`.
   const tInicio = Date.now();
   let tSesion = tInicio;
-  let tGuardado = tInicio;
-  let tPermisos = tInicio;
+  let tParalelo = tInicio;
   let tHistorial = tInicio;
 
   try {
@@ -751,31 +928,71 @@ export async function enviarMensajeConsulta(
     }
     tSesion = Date.now();
 
-    // Como antes, la pregunta queda guardada aunque luego la frene el límite por hora.
-    try {
-      await persistConversationMessage(uid, convId, { role: 'user', content: texto, imageUrls });
-    } catch (error) {
-      console.error('[Dra. Hilda] Error guardando el mensaje del paciente:', error);
+    // Guardar la pregunta y comprobar los permisos no dependen entre sí, y
+    // antes iban en fila. Medido el 6-nov-2026: 826 ms y 1.052 ms de los
+    // 2.540 ms que se gastaban antes de que el modelo viera una sola palabra.
+    // Ahora corren a la vez y el turno paga solo el más lento de los dos.
+    //
+    // El orden de las DECISIONES no cambia, y es la razón de usar
+    // `allSettled`: primero manda el fallo de guardado y después el bloqueo,
+    // igual que cuando iban en fila. Y la pregunta queda guardada aunque luego
+    // la frene el límite por hora, que era el comportamiento buscado.
+    //
+    // Dos cosas que NO se paralelizan, a propósito:
+    //  - las dos lecturas de dentro de `puedeConsultar`: el límite por hora es
+    //    una transacción que ESCRIBE, así que lanzarla a la vez que la de
+    //    tokens le gastaría un turno del cupo a quien no tiene con qué
+    //    consultar;
+    //  - el historial: se lee de Firestore y tiene que incluir la pregunta que
+    //    acaba de guardarse. Adelantarlo dejaría al modelo sin el último
+    //    mensaje del paciente, que es justo el que importa.
+    const [guardado, permisos] = await Promise.allSettled([
+      persistConversationMessage(uid, convId, { role: 'user', content: texto, imageUrls }),
+      puedeConsultar(uid),
+    ]);
+
+    if (guardado.status === 'rejected') {
+      console.error('[Dra. Hilda] Error guardando el mensaje del paciente:', guardado.reason);
       return fallo(conAvisoDeUrgencias('Ocurrió un error inesperado. Intenta de nuevo.'));
     }
-    tGuardado = Date.now();
+    // Un fallo inesperado de los permisos sigue cayendo en el catch de afuera.
+    if (permisos.status === 'rejected') throw permisos.reason;
+    if (permisos.value) return fallo(permisos.value);
+    tParalelo = Date.now();
 
-    const bloqueo = await puedeConsultar(uid);
-    if (bloqueo) return fallo(bloqueo);
-    tPermisos = Date.now();
-
-    const contenidos = await historialParaLaIA(uid, convId);
+    // Las dos lecturas son de Firestore y no dependen entre sí, así que el
+    // turno paga solo la más lenta. La ficha no puede añadir espera: son
+    // antecedentes que ya estaban guardados, no un cálculo.
+    const [contenidos, ficha] = await Promise.all([
+      historialParaLaIA(uid, convId),
+      fichaDeLaConsulta(uid, convId),
+    ]);
     tHistorial = Date.now();
 
-    const resultado = await preguntarALaIA(instruccionDeSistema(paciente), contenidos);
+    // El extractor corre A LA VEZ que la respuesta, no después: así el turno
+    // paga la más lenta de las dos llamadas y no la suma. Es la diferencia
+    // entre que enriquecer la ficha sea gratis en espera o que duplique el
+    // tiempo que el paciente mira la pantalla.
+    //
+    // La ficha que se usa HOY es la que se leyó arriba; lo que se extraiga
+    // entra para la próxima consulta. Un turno de retraso es el precio de no
+    // hacer esperar a nadie, y es un precio que vale la pena.
+    //
+    // Sin ficha no se extrae: no habría dónde guardar lo aprendido, y una
+    // llamada al modelo cuyo resultado no se puede escribir es dinero tirado.
+    const [resultado, extraccion] = await Promise.all([
+      preguntarALaIA(paciente, contenidos, ficha),
+      ficha ? extraerHallazgos(loQueDijoLaPersona(contenidos), fechaDeHoy()) : null,
+    ]);
     const tIA = Date.now();
     registrarTiempos(
       'del turno',
       [
         ['sesión', tSesion - tInicio],
-        ['guardar pregunta', tGuardado - tSesion],
-        ['permisos', tPermisos - tGuardado],
-        ['historial', tHistorial - tPermisos],
+        // Un solo tramo porque ahora corren a la vez: el número es el del más
+        // lento de los dos, no la suma.
+        ['guardar+permisos', tParalelo - tSesion],
+        ['historial', tHistorial - tParalelo],
         ['IA', tIA - tHistorial],
         ['total', tIA - tInicio],
       ],
@@ -789,6 +1006,8 @@ export async function enviarMensajeConsulta(
       // El paciente igual recibe la respuesta; queda registro para revisar.
       console.error('[Dra. Hilda] Error guardando la respuesta de la IA:', error);
     }
+
+    await guardarLoAprendido(uid, ficha, extraccion);
 
     return { success: true, message: resultado.text };
   } catch (error: any) {
@@ -829,9 +1048,14 @@ export async function saludarEnConsulta(
         ? `¡${periodo}, ${nombre}! Saluda brevemente y pregúntale en qué puedes orientarle hoy.`
         : `¡${periodo}! Saluda brevemente y pregúntale en qué puedes orientarle hoy.`;
 
-    const resultado = await preguntarALaIA(instruccionDeSistema(paciente), [
-      { role: 'user', parts: [{ text: instruccion }] },
-    ]);
+    // Sin razonamiento: es un saludo, no hay nada que decidir. Ver
+    // `THINKING_BUDGET_SALUDO`.
+    const resultado = await preguntarALaIA(
+      paciente,
+      [{ role: 'user', parts: [{ text: instruccion }] }],
+      await fichaDeLaConsulta(uid, convId),
+      THINKING_BUDGET_SALUDO
+    );
     if (!resultado.ok) return fallo(errorDeLaIA(resultado));
 
     await persistConversationMessage(uid, convId, { role: 'assistant', content: resultado.text });

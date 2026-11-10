@@ -247,6 +247,83 @@ export function estaValidado(ficha: Ficha, id: string): boolean {
 }
 
 // ─────────────────────────────────────────────────────────────
+// De los hallazgos de una consulta a la ficha
+// ─────────────────────────────────────────────────────────────
+
+/** El campo de la ficha que corresponde a un hallazgo, si alguno. */
+const CAMPO_POR_HALLAZGO = new Map(
+  CAMPOS_FICHA.filter((c) => c.hallazgo).map((c) => [c.hallazgo as string, c])
+);
+
+export interface Incorporacion {
+  ficha: Ficha;
+  /** Los que entraron, por id de campo. */
+  guardados: string[];
+  /** Los que no, con el motivo. Se registran: es como se ve qué se está perdiendo. */
+  omitidos: Array<{ id: string; motivo: string }>;
+}
+
+/**
+ * Mete en la ficha los hallazgos de una consulta que son **antecedentes**.
+ *
+ * Dos filtros, y los dos son de diseño, no de comodidad:
+ *
+ * 1. **Solo lo que es antecedente.** "Me duele el pecho ahora" es del episodio
+ *    de hoy, no de la historia de la persona. La ficha es la raíz, lo estable;
+ *    meter ahí lo de hoy la convertiría en un diario y haría que la próxima
+ *    consulta arrancara con el dolor de la anterior como si siguiera.
+ * 2. **Solo lo que tiene campo en la ficha.** La localización o la intensidad
+ *    de un dolor no son antecedentes de nadie: pertenecen al episodio (§11),
+ *    que todavía no existe. Hasta que exista, se quedan fuera y se dice.
+ *
+ * Lo que entra, entra como **referido**: lo contó la persona, no lo caracterizó
+ * un médico. La capa validada no se toca nunca desde aquí.
+ */
+export function incorporarHallazgos(
+  ficha: Ficha,
+  hallazgos: readonly HallazgoRegistrado[]
+): Incorporacion {
+  let actual = ficha;
+  const guardados: string[] = [];
+  const omitidos: Array<{ id: string; motivo: string }> = [];
+
+  for (const h of hallazgos) {
+    if (h.temporalidad !== 'antecedente') {
+      omitidos.push({ id: h.id, motivo: 'es del episodio de hoy, no un antecedente' });
+      continue;
+    }
+    const campo = CAMPO_POR_HALLAZGO.get(h.id);
+    if (!campo) {
+      omitidos.push({ id: h.id, motivo: 'no tiene campo en la ficha' });
+      continue;
+    }
+    // Un campo que ya caracterizó un médico no lo pisa un relato.
+    if (actual.campos[campo.id]?.validado) {
+      omitidos.push({ id: h.id, motivo: 'ya lo caracterizó un médico' });
+      continue;
+    }
+
+    const capa: CapaFicha = {
+      estado: h.estado,
+      fecha: h.fecha,
+      informante: 'paciente',
+      ...(h.valor !== undefined ? { valor: h.valor } : {}),
+      ...(h.frase ? { detalle: h.frase } : {}),
+      ...(h.razon ? { razon: h.razon } : {}),
+    };
+    const escrito = registrarReferido(actual, campo.id, capa);
+    if (escrito.ok) {
+      actual = escrito.ficha;
+      guardados.push(campo.id);
+    } else {
+      omitidos.push({ id: h.id, motivo: escrito.motivo });
+    }
+  }
+
+  return { ficha: actual, guardados, omitidos };
+}
+
+// ─────────────────────────────────────────────────────────────
 // Escribir la ficha
 // ─────────────────────────────────────────────────────────────
 

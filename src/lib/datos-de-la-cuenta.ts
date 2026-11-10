@@ -13,7 +13,7 @@
  */
 import { getAdminDb, getAdminStorage } from '@/lib/firebase-admin';
 import { decryptField } from '@/lib/crypto';
-import { COLECCION_TUTOR } from '@/lib/constants';
+import { COLECCION_FICHAS, COLECCION_TUTOR } from '@/lib/constants';
 import { olvidarModalidad } from '@/lib/modalidad-acceso';
 
 /** Carpetas de Storage que llevan el uid de la cuenta en el primer tramo. */
@@ -218,6 +218,10 @@ export async function borrarDatosDeLaCuenta(uid: string): Promise<void> {
   await db.recursiveDelete(db.collection(COLECCION_TUTOR).doc(uid));
   await olvidarModalidad(uid);
   await db.collection(COLECCION_LIMITES).doc(uid).delete();
+  // Las fichas clínicas viven fuera de Cuentas_Tutor (ver `ficha-guardada.ts`),
+  // así que el borrado en cascada de arriba no las alcanza. Son antecedentes de
+  // salud: si esto se olvida, quedan datos sensibles de una cuenta borrada.
+  await db.recursiveDelete(db.collection(COLECCION_FICHAS).doc(uid));
 
   for (const nombre of COLECCIONES_ANTIGUAS) {
     const viejos = await db.collection(nombre).where('userId', '==', uid).get();
