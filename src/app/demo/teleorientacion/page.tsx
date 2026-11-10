@@ -70,7 +70,7 @@ export default function DemoTeleorientacionPage() {
 
             <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
               <ul className="space-y-2 text-sm text-slate-700">
-                <li>✓ Acceso a especialistas médicos</li>
+                <li>✓ Informe de tu orientación en PDF</li>
                 <li>✓ Respuestas en tiempo real</li>
                 <li>✓ Historial de consultas guardado</li>
               </ul>

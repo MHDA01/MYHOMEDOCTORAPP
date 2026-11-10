@@ -202,7 +202,7 @@ export function WompyPaymentModal({
                 <ul className="space-y-1 text-foreground/80">
                   <li className="flex items-center gap-2">
                     <span className="font-bold text-primary">✓</span>
-                    Acceso a especialistas médicos
+                    Informe de tu orientación en PDF
                   </li>
                   <li className="flex items-center gap-2">
                     <span className="font-bold text-primary">✓</span>
