@@ -1,5 +1,7 @@
 import Link from 'next/link';
 
+import { NOMBRE_DEL_PLAN, PRECIO_MENSUAL_TEXTO } from '@/config/precio';
+
 export default function DemoTeleorientacionPage() {
   return (
     <main className="min-h-screen bg-slate-50 px-4 py-10 text-slate-900">
@@ -54,10 +56,10 @@ export default function DemoTeleorientacionPage() {
             </div>
 
             <div className="rounded-2xl border border-indigo-200 bg-indigo-50 p-4">
-              <p className="text-sm font-semibold text-indigo-900">Plan mensual</p>
+              <p className="text-sm font-semibold text-indigo-900">{NOMBRE_DEL_PLAN}</p>
               <div className="mt-3 flex items-end justify-between">
                 <div>
-                  <p className="text-3xl font-bold text-indigo-700">$19.900</p>
+                  <p className="text-3xl font-bold text-indigo-700">{PRECIO_MENSUAL_TEXTO}</p>
                   <p className="text-sm text-indigo-700">COP por 30 días</p>
                 </div>
                 <span className="rounded-full bg-white px-3 py-1 text-sm font-semibold text-indigo-700">

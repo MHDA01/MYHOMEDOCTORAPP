@@ -34,7 +34,12 @@ const db = admin.firestore();
 const WOMPY_PRIVATE_KEY = process.env.WOMPY_PRIVATE_KEY || process.env.WOMPY_API_KEY;
 const WOMPY_EVENTS_SECRET = process.env.WOMPY_EVENTS_SECRET;
 const WOMPY_REDIRECT_URL = process.env.WOMPY_REDIRECT_URL || process.env.WOMPY_SUCCESS_URL || 'https://myhomedoctorapp.com/dashboard/teleorientacion';
-export const CONSULTATION_COST_COP = parseInt(process.env.CONSULTATION_COST_COP || "24500");
+// Lo que se cobra al mes por el plan Familias Fundadoras. Tiene que valer lo
+// mismo que PRECIO_MENSUAL_COP en src/config/precio.ts, que es lo que la
+// ventana de pago le muestra a la persona: hasta el 10-nov-2026 la pantalla
+// decía 19.900 y aquí se cobraban 24.500. Si mueves la variable de entorno,
+// mueve también ese archivo.
+export const CONSULTATION_COST_COP = parseInt(process.env.CONSULTATION_COST_COP || "24900");
 export const PAID_TOKENS_PER_MONTH = parseInt(process.env.PAID_TOKENS_PER_MONTH || "210");
 
 const wompyRequest = wompiRequest;
@@ -83,8 +88,8 @@ export const initializeWompyPayment = functions
       // Crear Payment Link en Wompi (API real: POST /v1/payment_links)
       // Nota: Wompi espera el monto en centavos (COP no tiene decimales, por eso x100)
       const wompyPayload = {
-        name: "Plan Teleorientación Mensual",
-        description: "Plan Teleorientación Mensual (7 consultas/día)",
+        name: "Plan Familias Fundadoras",
+        description: "Plan Familias Fundadoras · mensual (7 consultas/día)",
         single_use: true,
         collect_shipping: false,
         currency: "COP",

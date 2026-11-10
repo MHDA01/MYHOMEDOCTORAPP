@@ -5,6 +5,9 @@ import { AlertCircle, CheckCircle2, Loader2, X } from "lucide-react";
 import { httpsCallable } from "firebase/functions";
 import { functions } from "@/lib/firebase";
 import { fetchWompiConsent, tokenizeCard, type WompiMerchantConsent } from "@/lib/wompi-client";
+// El precio no se escribe a mano aquí: tiene que ser el mismo que cobra la
+// función de Wompi. Ver src/config/precio.ts.
+import { NOMBRE_DEL_PLAN, PRECIO_MENSUAL_TEXTO } from "@/config/precio";
 
 interface WompyPaymentModalProps {
   isOpen: boolean;
@@ -165,7 +168,7 @@ export function WompyPaymentModal({
             <div className="space-y-6">
               {/* Plan Info */}
               <div className="rounded-2xl bg-sky-50 p-4">
-                <h3 className="font-bold text-brand-900">Plan Mensual</h3>
+                <h3 className="font-bold text-brand-900">{NOMBRE_DEL_PLAN}</h3>
                 <div className="mt-3 space-y-2 text-sm text-foreground/80">
                   <div className="flex justify-between">
                     <span>Consultas por día:</span>
@@ -186,7 +189,7 @@ export function WompyPaymentModal({
               <div className="rounded-2xl border-2 border-primary/30 bg-primary/5 p-4">
                 <p className="text-center text-sm text-muted-foreground">Valor total</p>
                 <p className="text-center text-3xl font-extrabold text-brand-900">
-                  $19.900<span className="text-lg"> COP</span>
+                  {PRECIO_MENSUAL_TEXTO}<span className="text-lg"> COP</span>
                 </p>
                 <p className="mt-2 text-center text-xs text-muted-foreground">
                   Hasta 7 consultas por día · 210 tokens/mes
@@ -229,7 +232,7 @@ export function WompyPaymentModal({
                   <span className="text-sm text-foreground/80">
                     <span className="font-semibold text-brand-900">Activar renovación automática mensual</span>
                     <br />
-                    Se te cobrará <strong>$19.900 COP cada 30 días</strong> de forma automática hasta que canceles.
+                    Se te cobrará <strong>{PRECIO_MENSUAL_TEXTO} COP cada 30 días</strong> de forma automática hasta que canceles.
                     Puedes cancelar en cualquier momento desde &quot;Mi cuenta&quot;, sin ningún costo.
                   </span>
                 </label>

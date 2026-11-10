@@ -119,7 +119,7 @@ async function chargeSubscription(uid, userEmail, paymentSourceId, reference) {
         .collection("Cuentas_Tutor")
         .doc(uid)
         .collection("transactions")
-        .add(Object.assign({ wompy_id: transaction.id, amount: wompy_1.CONSULTATION_COST_COP, status: firestoreStatus, type: "recurring", reference, description: "Renovación automática - Plan Teleorientación Mensual", createdAt: admin.firestore.FieldValue.serverTimestamp() }, (firestoreStatus !== "pending" && { completedAt: admin.firestore.FieldValue.serverTimestamp() })));
+        .add(Object.assign({ wompy_id: transaction.id, amount: wompy_1.CONSULTATION_COST_COP, status: firestoreStatus, type: "recurring", reference, description: "Renovación automática - Plan Familias Fundadoras", createdAt: admin.firestore.FieldValue.serverTimestamp() }, (firestoreStatus !== "pending" && { completedAt: admin.firestore.FieldValue.serverTimestamp() })));
     return { result: status, wompyId: transaction.id };
 }
 // ─────────────────────────────────────────────────────────────────────────────
@@ -264,7 +264,7 @@ exports.sendRenewalReminders = functions
             if (!userEmail)
                 continue;
             await (0, email_1.sendEmail)(userEmail, "Tu renovación de Teleorientación se procesará en 3 días", `<p>Hola,</p>
-           <p>Te confirmamos que en 3 días se procesará el cobro automático de tu plan mensual de Teleorientación por <strong>$${wompy_1.CONSULTATION_COST_COP.toLocaleString("es-CO")} COP</strong>.</p>
+           <p>Te confirmamos que en 3 días se procesará el cobro automático de tu Plan Familias Fundadoras por <strong>$${wompy_1.CONSULTATION_COST_COP.toLocaleString("es-CO")} COP</strong>.</p>
            <p>Si no deseas continuar, puedes cancelar la renovación automática en cualquier momento desde tu cuenta en MyHomeDoctorApp, sección "Mi cuenta", sin ningún costo.</p>
            <p>Gracias por confiar en nosotros.</p>`);
         }

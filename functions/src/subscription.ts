@@ -107,7 +107,7 @@ async function chargeSubscription(
       status: firestoreStatus,
       type: "recurring",
       reference,
-      description: "Renovación automática - Plan Teleorientación Mensual",
+      description: "Renovación automática - Plan Familias Fundadoras",
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
       ...(firestoreStatus !== "pending" && { completedAt: admin.firestore.FieldValue.serverTimestamp() }),
     });
@@ -315,7 +315,7 @@ export const sendRenewalReminders = functions
           userEmail,
           "Tu renovación de Teleorientación se procesará en 3 días",
           `<p>Hola,</p>
-           <p>Te confirmamos que en 3 días se procesará el cobro automático de tu plan mensual de Teleorientación por <strong>$${CONSULTATION_COST_COP.toLocaleString("es-CO")} COP</strong>.</p>
+           <p>Te confirmamos que en 3 días se procesará el cobro automático de tu Plan Familias Fundadoras por <strong>$${CONSULTATION_COST_COP.toLocaleString("es-CO")} COP</strong>.</p>
            <p>Si no deseas continuar, puedes cancelar la renovación automática en cualquier momento desde tu cuenta en MyHomeDoctorApp, sección "Mi cuenta", sin ningún costo.</p>
            <p>Gracias por confiar en nosotros.</p>`
         );
