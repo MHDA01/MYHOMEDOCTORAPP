@@ -7,7 +7,8 @@
  * 2. Cloud Function crea el link en Wompi y guarda en Firestore (pending)
  * 3. Cliente redirige al usuario a payment_url de Wompi
  * 4. Webhook de Wompi → Firestore actualiza estado (success/failed)
- * 5. Cliente verifica estado y añade 210 tokens al usuario
+ * 5. Cliente verifica estado y añade al usuario las consultas del mes
+ *    (PAID_TOKENS_PER_MONTH)
  *
  * Nota: las variables de entorno conservan el prefijo WOMPY_ (heredado),
  * pero el proveedor real es Wompi (Bancolombia): api en production.wompi.co.
@@ -72,7 +73,12 @@ const WOMPY_REDIRECT_URL = process.env.WOMPY_REDIRECT_URL || process.env.WOMPY_S
 // decía 19.900 y aquí se cobraban 24.500. Si mueves la variable de entorno,
 // mueve también ese archivo.
 exports.CONSULTATION_COST_COP = parseInt(process.env.CONSULTATION_COST_COP || "24900");
-exports.PAID_TOKENS_PER_MONTH = parseInt(process.env.PAID_TOKENS_PER_MONTH || "210");
+// Consultas que trae el plan al mes, para todo el núcleo familiar: el saldo es
+// de la cuenta del titular y lo comparten los integrantes. Decisión del
+// 10-nov-2026: 100 al mes (unas 20 por integrante en una familia de cinco), en
+// vez de las 210 de antes. Tiene que valer lo mismo que CONSULTAS_POR_MES en
+// src/config/precio.ts, que es lo que la ventana de pago promete.
+exports.PAID_TOKENS_PER_MONTH = parseInt(process.env.PAID_TOKENS_PER_MONTH || "100");
 const wompyRequest = wompi_client_1.wompiRequest;
 // ─────────────────────────────────────────────────────────────────────────────
 /**
@@ -108,7 +114,7 @@ exports.initializeWompyPayment = functions
         // Nota: Wompi espera el monto en centavos (COP no tiene decimales, por eso x100)
         const wompyPayload = {
             name: "Plan Familias Fundadoras",
-            description: "Plan Familias Fundadoras · mensual (7 consultas/día)",
+            description: `Plan Familias Fundadoras · mensual (hasta ${exports.PAID_TOKENS_PER_MONTH} consultas al mes para el núcleo familiar)`,
             single_use: true,
             collect_shipping: false,
             currency: "COP",

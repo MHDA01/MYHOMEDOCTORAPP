@@ -7,7 +7,7 @@ import { functions } from "@/lib/firebase";
 import { fetchWompiConsent, tokenizeCard, type WompiMerchantConsent } from "@/lib/wompi-client";
 // El precio no se escribe a mano aquí: tiene que ser el mismo que cobra la
 // función de Wompi. Ver src/config/precio.ts.
-import { NOMBRE_DEL_PLAN, PRECIO_MENSUAL_TEXTO } from "@/config/precio";
+import { CONSULTAS_POR_MES, NOMBRE_DEL_PLAN, PRECIO_MENSUAL_TEXTO } from "@/config/precio";
 
 interface WompyPaymentModalProps {
   isOpen: boolean;
@@ -171,8 +171,8 @@ export function WompyPaymentModal({
                 <h3 className="font-bold text-brand-900">{NOMBRE_DEL_PLAN}</h3>
                 <div className="mt-3 space-y-2 text-sm text-foreground/80">
                   <div className="flex justify-between">
-                    <span>Consultas por día:</span>
-                    <span className="font-semibold">Hasta 7</span>
+                    <span>Consultas al mes:</span>
+                    <span className="font-semibold">Hasta {CONSULTAS_POR_MES}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Duración:</span>
@@ -192,7 +192,7 @@ export function WompyPaymentModal({
                   {PRECIO_MENSUAL_TEXTO}<span className="text-lg"> COP</span>
                 </p>
                 <p className="mt-2 text-center text-xs text-muted-foreground">
-                  Hasta 7 consultas por día · 210 tokens/mes
+                  Hasta {CONSULTAS_POR_MES} consultas al mes, para toda la familia
                 </p>
               </div>
 

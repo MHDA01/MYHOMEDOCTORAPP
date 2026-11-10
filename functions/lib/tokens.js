@@ -6,7 +6,8 @@
  * - Token = 1 consulta completa de teleorientación
  * - Usuarios reciben 6 tokens gratis (2/día × 3 días)
  * - Renovación automática diaria (primeros 3 días)
- * - Después: pago por Wompy → 210 tokens (7 consultas/día × 30 días)
+ * - Después: pago por Wompy → las consultas del mes (PAID_TOKENS_PER_MONTH,
+ *   hoy 100 para todo el núcleo familiar)
  */
 var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;

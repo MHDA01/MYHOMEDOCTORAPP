@@ -43,7 +43,7 @@ Datos del negocio (usar exactamente estas cifras y hechos, no inventar otros):
 - Producto: myhomedoctorapp — orientación en salud familiar con IA (Hilda, un personaje creado con IA), PWA.
 - Cumple Resolución 1644 de 2026 (telesalud; la teleorientación no requiere habilitación) y Ley 1581 de 2012 (datos sensibles) en Colombia.
 - No diagnostica ni prescribe — orienta, educa y encamina al nivel de atención adecuado.
-- Plan Familias Fundadoras: 24.900 COP/mes (7 tokens diarios por 30 días), precio garantizado por 6-12 meses.
+- Plan Familias Fundadoras: 24.900 COP/mes, precio garantizado por 6-12 meses. Incluye hasta 100 consultas al mes para todo el núcleo familiar (unas 20 por integrante en una familia de cinco); el cupo es de la familia, no de cada persona.
 - No existe otro precio: no menciones ni insinúes descuentos, precios anteriores ni tarifas distintas.
 - Canales principales del fundador: WhatsApp (contactos cálidos) e Instagram (crecimiento orgánico lento).
 - Programa de embajadores: comisión sobre el primer mes de cada referido que se suscribe (modelo de pago por resultado, no adelantado).
