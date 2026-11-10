@@ -1,6 +1,32 @@
+# El techo de cuántas personas pueden estar consultando A LA VEZ es
+# `maxInstances` × `concurrency`. Con 4 × 80 eran 320: el turno 321 lo encola
+# Cloud Run y, si la cola no se vacía, lo rechaza. Con 20 × 80 son 1.600, que
+# cubre las 1.000 personas del lanzamiento con margen.
+#
+# Subirlo no cuesta nada mientras nadie consulte: `minInstances: 0` significa
+# que no hay ninguna instancia despierta: se encienden cuando llega tráfico y se
+# apagan solas. Lo que sí cuesta es Gemini, dos llamadas por turno, y el camino
+# del paciente todavía no tiene límite por IP (`limite-peticiones.ts` solo lo usa
+# `/api/salud`). Así que esto levanta el techo de personas, no el de un bucle.
+#
+# Dos cosas medidas el 10-nov-2026 (`npm run medir:carga`) que conviene tener
+# aquí antes de tocar estos números otra vez:
+#
+#  - Con 80 turnos a la vez en UNA instancia nada falla, pero lo nuestro
+#    —guardado cifrado, permisos, historial, ficha— ya añade ~1,5 s sobre la
+#    espera del modelo, y eso fue en un portátil con más CPU que este
+#    contenedor. Si hace falta recortar esa espera, el camino es bajar
+#    `concurrency` y no subir `maxInstances`.
+#  - A 320 en una sola instancia el proceso se ahoga y el pico de memoria llegó
+#    a 414 MiB, pegado a estos 512. Por eso la respuesta a más carga es más
+#    instancias, no más concurrencia por instancia.
+#
+# Y `maxInstances` también multiplica el límite por IP de `/api/salud`, porque
+# cada instancia lleva su cuenta en memoria: el límite real es el configurado
+# por el número de instancias despiertas.
 runConfig:
   minInstances: 0
-  maxInstances: 4
+  maxInstances: 20
   concurrency: 80
   cpu: 1
   memoryMiB: 512
