@@ -100,7 +100,13 @@ const { getSecureMessages, saludarEnConsulta } = await import('@/app/actions/tel
 
 // --- el clasificador --------------------------------------------------------
 // Vive aparte y con pruebas porque su error se confunde con un error clinico.
-import { clasificarDerivacion } from './clasificar-derivacion';
+//
+// Se carga con `await import` y no con un `import` normal porque el paquete no
+// declara `"type": "module"`: Node carga el `.ts` como CommonJS y un import
+// estatico falla con "does not provide an export named", aun poniendo la
+// extension. En dinamico la interoperabilidad funciona. Con `.ts` sigue
+// entrando en `npm run typecheck`, que es lo que importa de este archivo.
+const { clasificarDerivacion } = await import('./clasificar-derivacion.ts');
 
 // --- los casos --------------------------------------------------------------
 interface Caso {
