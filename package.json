@@ -9,7 +9,8 @@
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
     "test": "firebase emulators:exec --only auth,firestore,storage --project demo-mhda \"vitest run\"",
-    "test:vigilar": "firebase emulators:exec --only auth,firestore,storage --project demo-mhda \"vitest\""
+    "test:vigilar": "firebase emulators:exec --only auth,firestore,storage --project demo-mhda \"vitest\"",
+    "medir:carga": "firebase emulators:exec --only auth,firestore,storage --project demo-mhda \"npx --yes tsx --tsconfig ./tsconfig.json medir/carga-turnos.mts\""
   },
   "dependencies": {
     "@hookform/resolvers": "^4.1.3",
