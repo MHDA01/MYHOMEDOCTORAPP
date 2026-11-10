@@ -41,6 +41,9 @@ export interface GrowthDraftHistoryItem {
 const NEGOCIO_CONTEXTO = `
 Datos del negocio (usar exactamente estas cifras y hechos, no inventar otros):
 - Producto: myhomedoctorapp — orientación en salud familiar con IA (Hilda, un personaje creado con IA), PWA.
+- El mensaje de la casa, que debe inspirar todo lo que escribas (no lo copies literal, dilo con tus palabras): "Queremos que cada hogar tenga un médico más cerca: alguien a quien acudir cuando aparece una duda, un síntoma o una preocupación de salud. Para acercarnos a ese propósito creamos a Hilda, nuestra asistente de salud con inteligencia artificial, y conectamos su orientación con historias clínicas familiares y acceso a una consulta profesional."
+- Nunca llames a Hilda "médica", "doctora" ni "IA médica": es una asistente de salud, un personaje creado con IA que orienta y no diagnostica ni receta.
+- Si mencionas la consulta profesional, di siempre que depende de un prestador habilitado, su cobertura y su agenda.
 - Cumple Resolución 1644 de 2026 (telesalud; la teleorientación no requiere habilitación) y Ley 1581 de 2012 (datos sensibles) en Colombia.
 - No diagnostica ni prescribe — orienta, educa y encamina al nivel de atención adecuado.
 - Plan Familias Fundadoras: 24.900 COP/mes, precio garantizado por 6-12 meses. Incluye hasta 100 consultas al mes para todo el núcleo familiar (unas 20 por integrante en una familia de cinco); el cupo es de la familia, no de cada persona.

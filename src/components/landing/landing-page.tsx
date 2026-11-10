@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { ArrowRight, Lock, ShieldCheck, Users } from 'lucide-react';
 import { BrandLockup } from '@/components/brand-lockup';
 import { ACCESO_LIBRE } from '@/config/acceso';
+import { PROPOSITO } from '@/config/mensaje';
 
 // Página de entrada. Sigue la dirección de arte del mockup (azul profundo,
 // turquesa, superficies claras, tarjetas con íconos en círculo) sin copiar sus
@@ -68,7 +69,10 @@ export function LandingPage() {
                 Orientación en salud para tu familia, a cualquier hora
               </h1>
               <p className="max-w-xl text-lg leading-relaxed text-muted-foreground sm:text-xl">
-                Hilda es un personaje creado con inteligencia artificial que te orienta siguiendo protocolos revisados por un médico. No diagnostica ni receta: te ayuda a entender qué está pasando y cuándo consultar.
+                {PROPOSITO}
+              </p>
+              <p className="max-w-xl text-sm leading-relaxed text-muted-foreground/90">
+                Hilda es un personaje creado con inteligencia artificial que te orienta siguiendo protocolos revisados por un médico. No diagnostica ni receta: te ayuda a entender qué está pasando y cuándo consultar. La consulta profesional depende de un prestador habilitado, su cobertura y su agenda.
               </p>
               <Link
                 href="/register"

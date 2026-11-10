@@ -4,6 +4,7 @@ import './globals.css';
 import { Toaster } from "@/components/ui/toaster"
 import { AppUpdateManager } from "@/components/app-update-manager"
 import { OrigenVisita } from "@/components/origen-visita"
+import { PROPOSITO_CORTO } from "@/config/mensaje"
 
 export default function RootLayout({
   children,
@@ -15,7 +16,13 @@ export default function RootLayout({
     <html lang="es" suppressHydrationWarning>
       <head>
         <title>MiDoctorDeCasaApp</title>
-        <meta name="description" content="Tu asistente personal de gestión de salud." />
+        {/* El mensaje de la casa, de src/config/mensaje.ts: una sola fuente para
+            la portada, los metadatos, el manifiesto y el material comercial. */}
+        <meta name="description" content={PROPOSITO_CORTO} />
+        <meta property="og:title" content="My Home Doctor App" />
+        <meta property="og:description" content={PROPOSITO_CORTO} />
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content="https://www.myhomedoctorapp.com" />
         <link rel="canonical" href="https://www.myhomedoctorapp.com" />
         <link rel="manifest" href="/manifest.webmanifest" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />

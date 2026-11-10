@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { BrandLockup } from '@/components/brand-lockup';
 import { ACCESO_LIBRE } from '@/config/acceso';
+import { PROPOSITO, SALVEDAD } from '@/config/mensaje';
 
 /**
  * Marco de las pantallas de ingreso y registro, con la identidad de la página de
@@ -22,7 +23,10 @@ export function PantallaAcceso({ children }: { children: React.ReactNode }) {
             Orientación en salud para tu familia, a cualquier hora
           </h1>
           <p className="max-w-md text-lg leading-relaxed text-muted-foreground">
-            Hilda es un personaje creado con inteligencia artificial que te orienta siguiendo protocolos revisados por un médico. No diagnostica ni receta: te ayuda a entender qué está pasando y cuándo consultar.
+            {PROPOSITO}
+          </p>
+          <p className="max-w-md text-sm leading-relaxed text-muted-foreground/90">
+            {SALVEDAD}
           </p>
           {ACCESO_LIBRE && <p className="text-sm font-semibold text-teal-700">Gratis durante el lanzamiento · Sin tarjeta</p>}
         </aside>
