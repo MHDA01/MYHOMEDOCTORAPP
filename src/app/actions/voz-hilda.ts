@@ -22,7 +22,8 @@
 
 import { JWT } from 'google-auth-library';
 import { getAdminAuth } from '@/lib/firebase-admin';
-import { FRASES_FIJAS } from '@/lib/voz';
+import { FRASES_FIJAS, tieneVozDeServidor } from '@/lib/voz';
+import { getUserTokenState } from '@/lib/token-system';
 
 /**
  * Erinome en la familia Chirp 3 HD, acento latinoamericano. Es la voz guardada
@@ -98,11 +99,33 @@ function obtenerCredencial(): JWT {
 export async function sintetizarVozHilda(idToken: string, texto: string): Promise<VozResultado> {
   if (!idToken) return { ok: false, error: 'Sesión inválida.' };
 
+  let uid: string;
   try {
-    await getAdminAuth().verifyIdToken(idToken);
+    ({ uid } = await getAdminAuth().verifyIdToken(idToken));
   } catch {
     // Sin ruido en los registros: una sesión vencida no es una incidencia.
     return { ok: false, error: 'Sesión inválida o expirada.' };
+  }
+
+  // La voz del personaje es del plan de pago (ver `tieneVozDeServidor`). Quien
+  // no la tiene no se queda sin oír a Hilda: `useVozHilda` cae al sintetizador
+  // del aparato, que es gratis. Por eso esto devuelve un fallo normal y no un
+  // error ruidoso — es una respuesta esperada, no una incidencia.
+  //
+  // Se comprueba ANTES del caché de frases fijas a propósito: si el saludo
+  // sonara con la voz del personaje y el resto con la del aparato, Hilda
+  // cambiaría de voz a mitad de sesión.
+  try {
+    const estado = await getUserTokenState(uid);
+    if (!tieneVozDeServidor(estado)) {
+      return { ok: false, error: 'La voz del personaje es del plan de pago.' };
+    }
+  } catch (error) {
+    // Si no se puede saber la modalidad, no se gasta: el respaldo del aparato
+    // deja a Hilda hablando igual. Queda el registro porque, a diferencia del
+    // caso de arriba, esto sí es una falla.
+    console.error('[Dra. Hilda] Error consultando la modalidad para la voz:', error);
+    return { ok: false, error: 'No se pudo verificar el plan.' };
   }
 
   const limpio = (texto ?? '').trim();

@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
   MAX_CARACTERES_POR_TROZO,
+  MAX_PRIMER_TROZO,
   elegirVoz,
   limpiarParaVoz,
   partirParaVoz,
+  tieneVozDeServidor,
   valeLaPenaEnviar,
 } from '@/lib/voz';
 
@@ -130,6 +132,25 @@ describe('Partir el texto para el sintetizador', () => {
   it('un texto vacío no genera trozos', () => {
     expect(partirParaVoz('   ')).toEqual([]);
   });
+
+  it('el primer trozo es más corto que los demás, porque es el único que se espera en silencio', () => {
+    const largo = Array.from({ length: 20 }, (_, i) => `Esta es la frase número ${i} de la respuesta.`).join(' ');
+    const trozos = partirParaVoz(largo);
+
+    expect(trozos[0].length).toBeLessThanOrEqual(MAX_PRIMER_TROZO);
+    // Los de después sí usan el tope grande: se sintetizan mientras Hilda habla.
+    expect(trozos.slice(1).every((t) => t.length <= MAX_CARACTERES_POR_TROZO)).toBe(true);
+    expect(trozos.some((t) => t.length > MAX_PRIMER_TROZO)).toBe(true);
+    expect(trozos.join(' ').replace(/\s+/g, ' ')).toBe(largo.replace(/\s+/g, ' '));
+  });
+
+  it('una primera frase larguísima también se corta al tope corto, sin perder palabras', () => {
+    const frase = `${'palabra '.repeat(80)}final.`;
+    const trozos = partirParaVoz(frase);
+
+    expect(trozos[0].length).toBeLessThanOrEqual(MAX_PRIMER_TROZO);
+    expect(trozos.join(' ').split(/\s+/).filter(Boolean)).toEqual(frase.split(/\s+/).filter(Boolean));
+  });
 });
 
 describe('Cuándo vale la pena mandar lo que se oyó', () => {
@@ -142,5 +163,34 @@ describe('Cuándo vale la pena mandar lo que se oyó', () => {
   it('una respuesta corta de verdad sí se manda', () => {
     expect(valeLaPenaEnviar('sí')).toBe(true);
     expect(valeLaPenaEnviar('me duele la cabeza')).toBe(true);
+  });
+});
+
+describe('Quién recibe la voz del personaje', () => {
+  const estado = (extra: Record<string, unknown> = {}) =>
+    ({ accesoLibre: false, gratisDePorVida: false, tokens: { paid: 0 }, ...extra }) as Parameters<
+      typeof tieneVozDeServidor
+    >[0];
+
+  it('el plan gratuito usa el sintetizador del aparato, no la voz de pago', () => {
+    expect(tieneVozDeServidor(estado())).toBe(false);
+  });
+
+  it('una cuenta que pagó sí recibe la voz del personaje', () => {
+    expect(tieneVozDeServidor(estado({ tokens: { paid: 210 } }))).toBe(true);
+  });
+
+  it('a quien se le prometió gratis de por vida se le cumple también la voz', () => {
+    expect(tieneVozDeServidor(estado({ gratisDePorVida: true }))).toBe(true);
+  });
+
+  it('mientras el acceso libre esté encendido nadie pierde la voz', () => {
+    // Si esto fallara, desplegar el cambio apagaría la voz para TODOS en
+    // producción, que no es lo que se decidió.
+    expect(tieneVozDeServidor(estado({ accesoLibre: true }))).toBe(true);
+  });
+
+  it('una cuenta sin conteo de tokens no rompe la regla', () => {
+    expect(tieneVozDeServidor(estado({ tokens: undefined }))).toBe(false);
   });
 });

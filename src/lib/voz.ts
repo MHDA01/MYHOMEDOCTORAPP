@@ -135,11 +135,31 @@ export function limpiarParaVoz(texto: string): string {
 export const MAX_CARACTERES_POR_TROZO = 220;
 
 /**
+ * Tope del PRIMER trozo, más bajo a propósito.
+ *
+ * Es el único que el paciente espera en silencio: los demás se sintetizan
+ * mientras Hilda ya está hablando. Y la síntesis cuesta un fijo más un tanto
+ * por carácter —medido el 6-nov-2026 contra Chirp 3 HD: ~800 ms fijos y ~6 ms
+ * por carácter—, así que un primer trozo de 220 caracteres tardaba ~2,1 s y
+ * uno de 90 tarda ~1,3 s. Es el arreglo más barato de todo el turno hablado.
+ *
+ * No baja más porque un trozo demasiado corto parte la entonación de la
+ * primera frase, que es la que le dice al paciente que lo oyeron.
+ */
+export const MAX_PRIMER_TROZO = 90;
+
+/**
  * Parte el texto en trozos que el motor pueda decir de corrido, cortando por
  * frases para que la entonación no se rompa a mitad de una idea. Si una frase
  * sola pasa del tope, se corta por palabras.
+ *
+ * El primer trozo lleva su propio tope, más bajo. Ver `MAX_PRIMER_TROZO`.
  */
-export function partirParaVoz(texto: string, max = MAX_CARACTERES_POR_TROZO): string[] {
+export function partirParaVoz(
+  texto: string,
+  max = MAX_CARACTERES_POR_TROZO,
+  maxPrimero = MAX_PRIMER_TROZO
+): string[] {
   const limpio = texto.trim();
   if (!limpio) return [];
 
@@ -150,25 +170,32 @@ export function partirParaVoz(texto: string, max = MAX_CARACTERES_POR_TROZO): st
   const trozos: string[] = [];
   let actual = '';
 
+  /**
+   * El tope vigente: el del primer trozo mientras no se haya empujado ninguno.
+   * `min` por si quien llama pasa un `max` más bajo que el del primero.
+   */
+  const tope = () => (trozos.length === 0 ? Math.min(maxPrimero, max) : max);
+
   const empujar = () => {
     if (actual.trim()) trozos.push(actual.trim());
     actual = '';
   };
 
   for (const frase of frases) {
-    if (frase.length > max) {
+    if (frase.length > tope()) {
       empujar();
       let resto = frase.trim();
-      while (resto.length > max) {
-        const corte = resto.lastIndexOf(' ', max);
-        const en = corte > max / 2 ? corte : max;
+      while (resto.length > tope()) {
+        const limite = tope();
+        const corte = resto.lastIndexOf(' ', limite);
+        const en = corte > limite / 2 ? corte : limite;
         trozos.push(resto.slice(0, en).trim());
         resto = resto.slice(en).trim();
       }
       actual = resto;
       continue;
     }
-    if ((actual + frase).length > max) empujar();
+    if ((actual + frase).length > tope()) empujar();
     actual += frase;
   }
   empujar();
@@ -206,4 +233,55 @@ export const FRASES_FIJAS: ReadonlySet<string> = new Set([SALUDO_MODO_VOZ]);
 /** Un texto demasiado corto suele ser ruido, no una consulta. */
 export function valeLaPenaEnviar(texto: string): boolean {
   return texto.trim().replace(/\s+/g, ' ').length >= 2;
+}
+
+// ─────────────────────────────────────────────────────────────
+// Quién tiene la voz del personaje
+// ─────────────────────────────────────────────────────────────
+
+/**
+ * Lo que hace falta saber de una cuenta para decidir si le corresponde la voz
+ * de servidor. Es un subconjunto de lo que devuelve `getUserTokenState`, escrito
+ * aparte para que esta regla se pueda probar sin Firebase.
+ */
+export interface EstadoParaVoz {
+  /** Etapa gratuita encendida para todos (`src/config/acceso.ts`). */
+  accesoLibre: boolean;
+  /** La promesa a quienes se registraron antes de encender el cobro. */
+  gratisDePorVida: boolean;
+  /** Tokens comprados. Mayor que cero es una cuenta que paga. */
+  tokens: { paid: number };
+}
+
+/**
+ * Decide si una cuenta recibe la voz del personaje (Erinome, por Google Cloud
+ * Text-to-Speech, que se cobra por carácter) o el sintetizador del propio
+ * aparato, que es gratis.
+ *
+ * Decisión de Alexander (9-nov-2026): **las orientaciones del plan gratuito van
+ * sin la voz de pago.** Es la única partida del plan gratuito que se cobra por
+ * carácter y, con el tope de tres orientaciones al mes, era lo que más costaba
+ * de un usuario que no deja ingreso.
+ *
+ * Lo que NO pasa, y es la razón por la que esto se puede hacer sin romper nada:
+ * el modo conversación **no se queda mudo**. `useVozHilda` tiene dos motores en
+ * orden —la voz del servidor y, si falla o no corresponde, el sintetizador del
+ * aparato—, así que quien está en el plan gratuito sigue oyendo a Hilda y
+ * sigue pudiendo hablarle. Lo que no recibe es la voz del personaje. La promesa
+ * de accesibilidad para quien no lee bien queda intacta; lo que pasa a ser del
+ * plan de pago es la calidad de la voz, que es exactamente donde debe estar la
+ * diferencia entre un plan y otro.
+ *
+ * Tres casos la conservan:
+ *  - `accesoLibre`: hoy nadie paga porque el cobro está apagado. Sin esto, la
+ *    voz se apagaría para todo el mundo en producción el día que esto se
+ *    despliegue, que no es lo que se decidió.
+ *  - `gratisDePorVida`: a quien se le prometió todo gratis se le cumple todo,
+ *    y la voz es parte de "todo".
+ *  - Tokens comprados: es una cuenta que paga.
+ */
+export function tieneVozDeServidor(estado: EstadoParaVoz): boolean {
+  if (estado.accesoLibre) return true;
+  if (estado.gratisDePorVida) return true;
+  return (estado.tokens?.paid ?? 0) > 0;
 }
