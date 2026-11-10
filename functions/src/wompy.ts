@@ -40,7 +40,7 @@ const WOMPY_REDIRECT_URL = process.env.WOMPY_REDIRECT_URL || process.env.WOMPY_S
 // ventana de pago le muestra a la persona: hasta el 10-nov-2026 la pantalla
 // decía 19.900 y aquí se cobraban 24.500. Si mueves la variable de entorno,
 // mueve también ese archivo.
-export const CONSULTATION_COST_COP = parseInt(process.env.CONSULTATION_COST_COP || "24900");
+export const CONSULTATION_COST_COP = parseInt(process.env.CONSULTATION_COST_COP || "34900");
 // Consultas que trae el plan al mes, para todo el núcleo familiar: el saldo es
 // de la cuenta del titular y lo comparten los integrantes. Decisión del
 // 10-nov-2026: 100 al mes (unas 20 por integrante en una familia de cinco), en

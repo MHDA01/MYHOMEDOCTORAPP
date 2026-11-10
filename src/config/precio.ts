@@ -14,7 +14,7 @@
  */
 
 /** Lo que se le cobra al mes, en pesos. */
-export const PRECIO_MENSUAL_COP = 24_900;
+export const PRECIO_MENSUAL_COP = 34_900;
 
 /** El mismo precio ya escrito para mostrarlo: `$24.900`. */
 export const PRECIO_MENSUAL_TEXTO = `$${PRECIO_MENSUAL_COP.toLocaleString('es-CO')}`;
@@ -35,3 +35,13 @@ export const NOMBRE_DEL_PLAN = 'Plan Familias Fundadoras';
  * `functions/src/wompy.ts`, que es el saldo que se abona de verdad al pagar.
  */
 export const CONSULTAS_POR_MES = 100;
+
+/**
+ * Integrantes que cubre la membresía: el titular y hasta cuatro más.
+ *
+ * **Esto es una promesa comercial, no un límite del código.** Hoy el
+ * familiograma deja agregar integrantes sin tope, así que la cifra sirve para
+ * lo que se muestra y se vende, no para impedir el sexto. Si alguna vez hay que
+ * hacerla valer, el sitio es el registro de integrantes, no esta constante.
+ */
+export const INTEGRANTES_INCLUIDOS = 5;

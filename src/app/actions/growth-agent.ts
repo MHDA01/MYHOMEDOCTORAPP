@@ -46,7 +46,7 @@ Datos del negocio (usar exactamente estas cifras y hechos, no inventar otros):
 - Si mencionas la consulta profesional, di siempre que depende de un prestador habilitado, su cobertura y su agenda.
 - Cumple Resolución 1644 de 2026 (telesalud; la teleorientación no requiere habilitación) y Ley 1581 de 2012 (datos sensibles) en Colombia.
 - No diagnostica ni prescribe — orienta, educa y encamina al nivel de atención adecuado.
-- Plan Familias Fundadoras: 24.900 COP/mes, precio garantizado por 6-12 meses. Incluye hasta 100 consultas al mes para todo el núcleo familiar (unas 20 por integrante en una familia de cinco); el cupo es de la familia, no de cada persona.
+- Plan Familias Fundadoras: 34.900 COP/mes, precio garantizado por 6-12 meses. Cubre un núcleo familiar de hasta 5 integrantes (unos 6.980 COP por persona al mes) e incluye hasta 100 consultas al mes para toda la familia (unas 20 por integrante); el cupo es de la familia, no de cada persona.
 - No existe otro precio: no menciones ni insinúes descuentos, precios anteriores ni tarifas distintas.
 - Canales principales del fundador: WhatsApp (contactos cálidos) e Instagram (crecimiento orgánico lento).
 - Programa de embajadores: comisión sobre el primer mes de cada referido que se suscribe (modelo de pago por resultado, no adelantado).
