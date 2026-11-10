@@ -371,7 +371,15 @@ export async function extraerHallazgos(
     thinkingBudget: 0,
     nativo: true,
     maxTokens: 2048,
-    timeoutMs: 20_000,
+    // El turno hace `Promise.all` con la respuesta de Hilda, así que el
+    // paciente espera al más lento de los dos: este tope es tiempo que él
+    // puede llegar a mirar la pantalla por una respuesta que ya está lista.
+    //
+    // Seis segundos es holgura sobre el peor caso medido el 9-nov-2026 (4.569
+    // ms) y un orden de magnitud menos que los 60 s de Hilda. Si el extractor
+    // no alcanza, se pierde el enriquecimiento de la ficha —un problema de
+    // mañana— y no la paciencia de quien está consultando hoy.
+    timeoutMs: 6_000,
   });
 
   if (!resultado.ok) {
