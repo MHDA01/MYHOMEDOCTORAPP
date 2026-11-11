@@ -317,7 +317,7 @@ export function FormularioIntegrante({
               </Campo>
 
               {ofreceEps && (
-                <Campo etiqueta="¿Cuál EPS?" ayuda="Es la que aparece en el carné. Sirve para saber a dónde acudir en una urgencia.">
+                <Campo etiqueta="¿Cuál EPS?" ayuda="Es la que aparece en el carné. Queda en la ficha de salud y en el informe.">
                   <select
                     className={CLASE_SELECT}
                     value={f.epsId}
@@ -341,7 +341,7 @@ export function FormularioIntegrante({
               )}
 
               {esColombia && (
-                <Campo etiqueta="Municipio donde vive" ayuda="Opcional. Con esto la pantalla de urgencias puede mostrar lo de su ciudad.">
+                <Campo etiqueta="Municipio donde vive" ayuda="Opcional. Queda en la ficha de salud.">
                   <select className={CLASE_SELECT} value={f.municipioId} onChange={(e) => poner('municipioId', e.target.value)}>
                     <option value="">Sin registrar</option>
                     {municipiosOrdenados().map((m) => (

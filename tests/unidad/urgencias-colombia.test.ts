@@ -12,11 +12,13 @@
  * Las reglas que se fijan aquí:
  *
  *  1. Ni el 131, ni el SAMU, ni los cuatro prestadores chilenos vuelven a `src/`.
- *  2. El 123 no depende de nada: ni de la EPS, ni de la ciudad, ni de que algo
- *     esté verificado.
- *  3. Ningún teléfono de un tercero se muestra sin fuente, sin fecha y sin la
- *     aprobación del fundador.
- *  4. Una EPS escrita a mano no se casa por parecido: o coincide, o queda "otra".
+ *  2. La pantalla ofrece el 123 y **ningún otro teléfono**. El directorio por EPS
+ *     que se construyó ese mismo día se retiró por decisión de Alexander: no hay
+ *     fuente oficial de con qué prestador atiende cada EPS, y en una urgencia la
+ *     EPS no es la puerta (Ley 1751 de 2015, arts. 10 b) y 14). Esta prueba es lo
+ *     que impide que vuelva a entrar un teléfono de tercero sin decidirlo.
+ *  3. Una EPS escrita a mano no se casa por parecido: o coincide, o queda "otra".
+ *     La EPS sigue viviendo en la ficha, que es donde sirve.
  */
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
@@ -35,17 +37,7 @@ import {
   pideEps,
 } from '../../src/lib/eps-colombia';
 import { MUNICIPIOS_COLOMBIA, MUNICIPIO_OTRO, municipioPorId, municipiosOrdenados } from '../../src/lib/municipios-colombia';
-import {
-  APROBADO_POR_EL_FUNDADOR,
-  DIAS_DE_VIGENCIA,
-  LINEAS_POR_EPS,
-  LINEA_EMERGENCIAS,
-  SEDES_DE_URGENCIAS,
-  fuenteVigente,
-  hoyEnBogota,
-  urgenciasPara,
-  type Fuente,
-} from '../../src/lib/directorio-urgencias';
+import { LINEA_EMERGENCIAS } from '../../src/lib/urgencias-colombia';
 
 const RAIZ = join(__dirname, '..', '..');
 const SRC = join(RAIZ, 'src');
@@ -105,7 +97,24 @@ describe('Nada de Chile en la app colombiana', () => {
 
   it('la pantalla de urgencias ofrece el 123', () => {
     const pantalla = archivos.find((a) => a.ruta.endsWith('components/dashboard/urgencias-page.tsx'))!;
-    expect(pantalla.texto).toContain('123');
+    expect(LINEA_EMERGENCIAS).toBe('123');
+    expect(pantalla.texto, 'el número vive en urgencias-colombia.ts, no escrito a mano').toContain(
+      'LINEA_EMERGENCIAS'
+    );
+  });
+
+  it('la pantalla no marca ningún otro número que el 123', () => {
+    // La regla que importa: un solo `tel:` en esta pantalla, y sale de la
+    // constante. Si alguien vuelve a meter un teléfono de EPS, de prestador o de
+    // una línea de coyuntura, esta prueba lo caza.
+    const pantalla = archivos.find((a) => a.ruta.endsWith('components/dashboard/urgencias-page.tsx'))!;
+    const marcados = pantalla.texto.match(/tel:[^`'"\s]*/g) ?? [];
+    expect(marcados).toEqual(['tel:${LINEA_EMERGENCIAS}']);
+  });
+
+  it('no queda directorio por EPS: se retiró a propósito', () => {
+    const directorio = archivos.filter((a) => /directorio-urgencias/.test(a.ruta));
+    expect(directorio.map((a) => a.ruta), 'si vuelve, que sea por una decisión y no por inercia').toEqual([]);
   });
 });
 
@@ -208,89 +217,5 @@ describe('Los municipios', () => {
     expect(municipioPorId('bogota')?.departamento).toBe('Bogotá D.C.');
     expect(municipioPorId(MUNICIPIO_OTRO)).toBeNull();
     expect(municipioPorId(undefined)).toBeNull();
-  });
-});
-
-describe('El directorio de urgencias', () => {
-  const HOY = '2026-11-11';
-
-  it('el 123 es el 123', () => {
-    expect(LINEA_EMERGENCIAS).toBe('123');
-  });
-
-  it('el 123 se devuelve siempre, incluso sin EPS, sin ciudad y sin nada verificado', () => {
-    expect(urgenciasPara({}, HOY).lineaEmergencias).toBe('123');
-    expect(urgenciasPara({ epsId: 'sura', municipioId: 'medellin' }, HOY).lineaEmergencias).toBe('123');
-    expect(urgenciasPara({ epsId: 'la-que-no-existe' }, HOY).lineaEmergencias).toBe('123');
-  });
-
-  it('mientras el fundador no apruebe, no sale ni un teléfono de tercero', () => {
-    // Esta prueba es el interruptor. El día que `APROBADO_POR_EL_FUNDADOR` pase a
-    // `true`, deja de aplicar la primera rama y empiezan a valer las de abajo.
-    const resultado = urgenciasPara({ epsId: 'sura', municipioId: 'medellin' }, HOY);
-    if (!APROBADO_POR_EL_FUNDADOR) {
-      expect(resultado.motivo).toBe('sin_aprobar');
-      expect(resultado.telefonos).toEqual([]);
-      expect(resultado.sedes).toEqual([]);
-      expect(resultado.paginaOficial).toBeNull();
-    } else {
-      expect(resultado.telefonos.length).toBeGreaterThan(0);
-    }
-  });
-
-  it('cada línea y cada sede trae fuente, fecha y responsable', () => {
-    const conFuente = [...LINEAS_POR_EPS, ...SEDES_DE_URGENCIAS];
-    for (const fila of conFuente) {
-      expect(fila.fuente.url, JSON.stringify(fila)).toMatch(/^https?:\/\//);
-      expect(fila.fuente.verificado).toMatch(/^\d{4}-\d{2}-\d{2}$/);
-      expect(fila.fuente.por.length).toBeGreaterThan(0);
-    }
-  });
-
-  it('cada línea apunta a una EPS que existe en la lista', () => {
-    for (const linea of LINEAS_POR_EPS) {
-      expect(epsPorId(linea.epsId), linea.epsId).not.toBeNull();
-    }
-    for (const sede of SEDES_DE_URGENCIAS) {
-      expect(epsPorId(sede.epsId), sede.epsId).not.toBeNull();
-      expect(municipioPorId(sede.municipioId), sede.municipioId).not.toBeNull();
-    }
-  });
-
-  it('una fuente caduca a los seis meses', () => {
-    const fuente: Fuente = { url: 'https://ejemplo.co', verificado: '2026-01-01', por: 'prueba' };
-    expect(fuenteVigente(fuente, '2026-01-01')).toBe(true);
-    expect(fuenteVigente(fuente, '2026-06-01')).toBe(true); // 151 días
-    expect(fuenteVigente(fuente, '2026-12-01')).toBe(false); // 334 días
-    expect(DIAS_DE_VIGENCIA).toBe(180);
-  });
-
-  it('una fecha ilegible o del futuro no vale: ante la duda, la pantalla calla', () => {
-    expect(fuenteVigente({ url: 'https://x.co', verificado: 'ayer', por: 'p' }, '2026-11-11')).toBe(false);
-    expect(fuenteVigente({ url: 'https://x.co', verificado: '2027-01-01', por: 'p' }, '2026-11-11')).toBe(false);
-  });
-
-  it('sin EPS en la ficha se dice que falta, no se muestra un hueco', () => {
-    const resultado = urgenciasPara({}, HOY);
-    expect(resultado.motivo).not.toBeNull();
-    expect(resultado.eps).toBeNull();
-  });
-
-  it('la EPS escrita a mano se devuelve tal cual cuando no está en la lista', () => {
-    const resultado = urgenciasPara({ epsDeclarada: '  Coomeva  ' }, HOY);
-    expect(resultado.epsDeclarada).toBe('Coomeva');
-    expect(resultado.eps).toBeNull();
-  });
-
-  it('con la EPS de la lista, el nombre sale de la lista y no del texto libre', () => {
-    const resultado = urgenciasPara({ epsId: 'sura', epsDeclarada: 'sura eps s.a.' }, HOY);
-    expect(resultado.eps).toBe('EPS Sura');
-    expect(resultado.epsDeclarada).toBeNull();
-  });
-
-  it('hoyEnBogota da una fecha sin hora y en la zona de Bogotá', () => {
-    expect(hoyEnBogota(new Date('2026-11-11T20:00:00.000Z'))).toBe('2026-11-11');
-    // 02:00 UTC es todavía el día anterior en Bogotá (UTC-5).
-    expect(hoyEnBogota(new Date('2026-11-11T02:00:00.000Z'))).toBe('2026-11-10');
   });
 });
