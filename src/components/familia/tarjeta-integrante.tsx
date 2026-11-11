@@ -4,6 +4,8 @@ import { useState } from 'react';
 import { ChevronDown, Pencil, Trash2 } from 'lucide-react';
 import type { FamilyProfile } from '@/lib/types';
 import { calcularEdad, nombrePropio, normalizarSexo, SEGURIDAD_SOCIAL } from '@/lib/familia';
+import { nombreDeAseguradora } from '@/lib/eps-colombia';
+import { municipioPorId } from '@/lib/municipios-colombia';
 import { cn } from '@/lib/utils';
 import { SimboloFamiliograma } from './simbolo-familiograma';
 
@@ -50,12 +52,14 @@ export function TarjetaIntegrante({
     .join(' · ');
 
   const etiquetaSeguridad = SEGURIDAD_SOCIAL[persona.country ?? 'colombia']?.etiqueta ?? 'Seguridad social';
+  const nombreEps = nombreDeAseguradora(persona);
   const datos: [string, string][] = (
     [
       // Sin fecha registrada, la fila no aparece: el filtro de abajo la quita.
       ['Nació', fechaLegible(persona.dateOfBirth ?? '')],
       ['Peso', persona.weight ? `${persona.weight} kg` : ''],
-      [etiquetaSeguridad, [persona.insuranceProvider, persona.insuranceProviderName].filter(Boolean).join(' · ')],
+      [etiquetaSeguridad, [persona.insuranceProvider, nombreEps === persona.insuranceProvider ? '' : nombreEps].filter(Boolean).join(' · ')],
+      ['Municipio', municipioPorId(persona.municipioId)?.nombre ?? ''],
     ] as [string, string][]
   ).filter(([, valor]) => valor);
 

@@ -31,6 +31,7 @@ import {
 import { conAvisoDeUrgencias } from '@/lib/textos-chat';
 import { getSecureFamilyMembers } from '@/app/actions/family';
 import { calcularEdad } from '@/lib/familia';
+import { nombreDeAseguradora } from '@/lib/eps-colombia';
 import { AvisoFamiliaBienvenida, AvisoFamiliaSelector } from '@/components/familia/aviso-familia';
 import { checkTokenAvailability } from '@/app/actions/tokens';
 import { storage, functions } from '@/lib/firebase';
@@ -1027,7 +1028,8 @@ export function TeleorientacionChatPage() {
         nombre: memberName || `${selectedMember.firstName}`.trim(),
         edad: memberAge,
         sexo: memberSex,
-        aseguradora: selectedMember.insuranceProviderName || selectedMember.insuranceProvider,
+        // La EPS de la lista cerrada manda sobre el texto escrito a mano.
+        aseguradora: nombreDeAseguradora(selectedMember) || undefined,
         alergias: [...(selectedMember.allergies ?? []), ...(healthInfo?.allergies ?? [])].filter(Boolean),
         medicamentos: selectedMember.medications ?? [],
       },

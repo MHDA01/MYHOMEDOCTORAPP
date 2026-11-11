@@ -110,8 +110,18 @@ export type PersonalInfo = {
   sex?: 'male' | 'female' | 'other';
   dateOfBirth?: Date;
   country: 'chile' | 'argentina' | 'colombia';
+  /** El régimen: 'EPS contributiva', 'EPS subsidiada', 'Medicina prepagada'… */
   insuranceProvider: string;
+  /**
+   * El nombre escrito a mano. Desde el 11-nov-2026 solo se usa cuando la EPS no
+   * está en la lista (`epsId === 'otra'`) o cuando es medicina prepagada, que no
+   * es una EPS. Las fichas viejas lo traen siempre: ver `buscarEps`.
+   */
   insuranceProviderName?: string;
+  /** EPS de la lista cerrada (`src/lib/eps-colombia.ts`), o 'otra'. */
+  epsId?: string;
+  /** Municipio de la lista (`src/lib/municipios-colombia.ts`), o 'otro'. */
+  municipioId?: string;
 }
 
 // Campos almacenados en Cuentas_Tutor/{uid}/Integrantes/{profileId}
@@ -129,6 +139,10 @@ export type FamilyProfile = {
   country?: 'chile' | 'argentina' | 'colombia';
   insuranceProvider?: string;
   insuranceProviderName?: string;
+  /** EPS de la lista cerrada, o 'otra'. Ver `PersonalInfo`. */
+  epsId?: string;
+  /** Municipio de la lista, o 'otro'. Lo usa la pantalla de urgencias. */
+  municipioId?: string;
   relationship: string;
   esTitular?: boolean;
   // Resumen médico (arrays cortos, útiles en tarjeta)

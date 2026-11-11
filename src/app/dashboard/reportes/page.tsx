@@ -136,6 +136,7 @@ export default function ReportesPage() {
           dateOfBirth: aFecha(persona.dateOfBirth),
           insuranceProvider: persona.insuranceProvider || '',
           insuranceProviderName: persona.insuranceProviderName || '',
+          epsId: persona.epsId || '',
         },
         healthInfo: {
           allergies: persona.allergies || [],

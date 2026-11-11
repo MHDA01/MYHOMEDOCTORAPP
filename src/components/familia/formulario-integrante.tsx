@@ -6,6 +6,8 @@ import { auth } from '@/lib/firebase';
 import { saveFamilyMember, saveTitularProfile } from '@/app/actions/family';
 import type { FamilyProfile } from '@/lib/types';
 import { listaDesdeTexto, PARENTESCOS, SEGURIDAD_SOCIAL } from '@/lib/familia';
+import { buscarEps, epsDelRegimen, EPS_OTRA, pideEps } from '@/lib/eps-colombia';
+import { municipiosOrdenados, MUNICIPIO_OTRO } from '@/lib/municipios-colombia';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -37,6 +39,10 @@ type Formulario = {
   country: string;
   insuranceProvider: string;
   insuranceProviderName: string;
+  /** EPS de la lista cerrada, o 'otra'. Solo Colombia. */
+  epsId: string;
+  /** Municipio donde vive, para la pantalla de urgencias. Solo Colombia. */
+  municipioId: string;
   deceased: boolean;
   allergies: string;
   medications: string;
@@ -56,6 +62,8 @@ const VACIO: Formulario = {
   country: 'colombia',
   insuranceProvider: '',
   insuranceProviderName: '',
+  epsId: '',
+  municipioId: '',
   deceased: false,
   allergies: '',
   medications: '',
@@ -77,6 +85,11 @@ function desdePersona(p: FamilyProfile): Formulario {
     country: p.country || 'colombia',
     insuranceProvider: p.insuranceProvider || '',
     insuranceProviderName: p.insuranceProviderName || '',
+    // Migración suave de las fichas viejas, que traen la EPS escrita a mano: se
+    // intenta casar ese texto con la lista y, si no casa, queda como "Otra" con
+    // el nombre que la persona escribió. Nunca se elige una EPS por parecido.
+    epsId: p.epsId || (p.insuranceProviderName ? buscarEps(p.insuranceProviderName)?.id ?? EPS_OTRA : ''),
+    municipioId: p.municipioId || '',
     deceased: Boolean(p.deceased),
     allergies: (p.allergies || []).join(', '),
     medications: (p.medications || []).join(', '),
@@ -90,7 +103,15 @@ function desdePersona(p: FamilyProfile): Formulario {
 /** ¿Hay algo guardado en los campos que van en "Más datos"? */
 function tieneMasDatos(p: FamilyProfile): boolean {
   return Boolean(
-    p.weight || p.insuranceProvider || p.deceased || p.pathologicalHistory || p.surgicalHistory || p.gynecologicalHistory || p.familyHistory
+    p.weight ||
+      p.insuranceProvider ||
+      p.epsId ||
+      p.municipioId ||
+      p.deceased ||
+      p.pathologicalHistory ||
+      p.surgicalHistory ||
+      p.gynecologicalHistory ||
+      p.familyHistory
   );
 }
 
@@ -126,6 +147,15 @@ export function FormularioIntegrante({
   const seguridad = SEGURIDAD_SOCIAL[f.country] ?? SEGURIDAD_SOCIAL.colombia;
   const hoy = new Date().toISOString().slice(0, 10);
 
+  // La lista cerrada de EPS y de municipios es colombiana. En Chile y Argentina
+  // el campo sigue siendo el de antes: no hay lista que ofrecer y no se finge una.
+  const esColombia = f.country === 'colombia';
+  const ofreceEps = esColombia && pideEps(f.insuranceProvider);
+  const epsPosibles = ofreceEps ? epsDelRegimen(f.insuranceProvider) : [];
+  const pideNombreAMano = ofreceEps
+    ? f.epsId === EPS_OTRA
+    : seguridad.pideNombre.includes(f.insuranceProvider);
+
   const guardar = async () => {
     // El sexo entra aquí desde el 8-nov-2026: antes el formulario traía "Mujer"
     // preseleccionado, así que una ficha guardada sin tocar ese campo quedaba
@@ -147,7 +177,12 @@ export function FormularioIntegrante({
         dateOfBirth: f.dateOfBirth,
         ...(f.weight ? { weight: Number(f.weight) } : {}),
         insuranceProvider: f.insuranceProvider,
-        insuranceProviderName: seguridad.pideNombre.includes(f.insuranceProvider) ? f.insuranceProviderName.trim() : '',
+        // El nombre escrito a mano solo viaja cuando hace falta: si la EPS salió
+        // de la lista, el nombre lo da la lista y guardar las dos cosas abre la
+        // puerta a que no digan lo mismo.
+        insuranceProviderName: pideNombreAMano ? f.insuranceProviderName.trim() : '',
+        epsId: ofreceEps ? f.epsId : '',
+        municipioId: esColombia ? f.municipioId : '',
         allergies: listaDesdeTexto(f.allergies),
         medications: listaDesdeTexto(f.medications),
         pathologicalHistory: f.pathologicalHistory.trim(),
@@ -267,7 +302,11 @@ export function FormularioIntegrante({
               </div>
 
               <Campo etiqueta={seguridad.etiqueta}>
-                <select className={CLASE_SELECT} value={f.insuranceProvider} onChange={(e) => poner('insuranceProvider', e.target.value)}>
+                <select
+                  className={CLASE_SELECT}
+                  value={f.insuranceProvider}
+                  onChange={(e) => setF((p) => ({ ...p, insuranceProvider: e.target.value, epsId: '', insuranceProviderName: '' }))}
+                >
                   <option value="">Sin registrar</option>
                   {seguridad.opciones.map((o) => (
                     <option key={o} value={o}>
@@ -276,9 +315,43 @@ export function FormularioIntegrante({
                   ))}
                 </select>
               </Campo>
-              {seguridad.pideNombre.includes(f.insuranceProvider) && (
+
+              {ofreceEps && (
+                <Campo etiqueta="¿Cuál EPS?" ayuda="Es la que aparece en el carné. Sirve para saber a dónde acudir en una urgencia.">
+                  <select
+                    className={CLASE_SELECT}
+                    value={f.epsId}
+                    onChange={(e) => setF((p) => ({ ...p, epsId: e.target.value, insuranceProviderName: '' }))}
+                  >
+                    <option value="">Sin registrar</option>
+                    {epsPosibles.map((e) => (
+                      <option key={e.id} value={e.id}>
+                        {e.nombre}
+                      </option>
+                    ))}
+                    <option value={EPS_OTRA}>Otra (no está en la lista)</option>
+                  </select>
+                </Campo>
+              )}
+
+              {pideNombreAMano && (
                 <Campo etiqueta="¿Cuál?">
                   <Input value={f.insuranceProviderName} onChange={(e) => poner('insuranceProviderName', e.target.value)} maxLength={200} />
+                </Campo>
+              )}
+
+              {esColombia && (
+                <Campo etiqueta="Municipio donde vive" ayuda="Opcional. Con esto la pantalla de urgencias puede mostrar lo de su ciudad.">
+                  <select className={CLASE_SELECT} value={f.municipioId} onChange={(e) => poner('municipioId', e.target.value)}>
+                    <option value="">Sin registrar</option>
+                    {municipiosOrdenados().map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.nombre}
+                        {m.departamento !== m.nombre ? ` — ${m.departamento}` : ''}
+                      </option>
+                    ))}
+                    <option value={MUNICIPIO_OTRO}>Otro municipio</option>
+                  </select>
                 </Campo>
               )}
 

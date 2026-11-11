@@ -5,6 +5,30 @@
 
 import { z } from 'zod';
 import { normalizarFechaNacimiento, normalizarSexo } from '@/lib/familia';
+import { EPS_COLOMBIA, EPS_OTRA } from '@/lib/eps-colombia';
+import { MUNICIPIOS_COLOMBIA, MUNICIPIO_OTRO } from '@/lib/municipios-colombia';
+
+/**
+ * La EPS y el municipio se guardan como identificador de una lista cerrada, no
+ * como texto libre, y el servidor lo comprueba: un id que no está en la lista no
+ * entra. Así el directorio de urgencias puede casar la ficha con sus datos en vez
+ * de comparar cadenas escritas a mano. '' es válido y significa "sin registrar",
+ * que no es lo mismo que un valor inventado.
+ */
+const EpsIdSchema = z
+  .string()
+  .max(60)
+  .refine((v) => v === '' || v === EPS_OTRA || EPS_COLOMBIA.some((e) => e.id === v), 'EPS desconocida')
+  .optional();
+
+const MunicipioIdSchema = z
+  .string()
+  .max(60)
+  .refine(
+    (v) => v === '' || v === MUNICIPIO_OTRO || MUNICIPIOS_COLOMBIA.some((m) => m.id === v),
+    'Municipio desconocido'
+  )
+  .optional();
 
 /**
  * Schema para datos de alergias
@@ -85,6 +109,8 @@ export const FamilyMemberPersonalInfoSchema = z.object({
   country: z.string().max(100).optional(),
   insuranceProvider: z.string().max(50).optional(),
   insuranceProviderName: z.string().max(200).optional(),
+  epsId: EpsIdSchema,
+  municipioId: MunicipioIdSchema,
   relationship: z.string().trim().max(100).optional(),
   esTitular: z.boolean().default(false),
   /** Para el familiograma: la persona ya falleció (se dibuja tachada). */
@@ -121,6 +147,8 @@ export const SaveTitularProfileInputSchema = z.object({
   country: z.enum(['chile', 'argentina', 'colombia']).optional(),
   insuranceProvider: z.string().max(50).optional(),
   insuranceProviderName: z.string().max(200).optional(),
+  epsId: EpsIdSchema,
+  municipioId: MunicipioIdSchema,
   allergies: ListaCortaSchema.optional(),
   medications: ListaCortaSchema.optional(),
   pathologicalHistory: z.string().max(2000).optional(),
@@ -155,6 +183,8 @@ export const UserPersonalInfoSchema = z.object({
   country: z.string().max(100).optional(),
   insuranceProvider: z.string().max(50).optional(),
   insuranceProviderName: z.string().max(200).optional(),
+  epsId: EpsIdSchema,
+  municipioId: MunicipioIdSchema,
 });
 
 export type UserPersonalInfo = z.infer<typeof UserPersonalInfoSchema>;

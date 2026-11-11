@@ -2,6 +2,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { format, differenceInYears, isValid } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { nombreDeAseguradora } from './eps-colombia';
 
 /**
  * Informe de salud en PDF: copia lo que la persona registró, sin resumir ni
@@ -23,6 +24,7 @@ export type DatosInformeSalud = {
     dateOfBirth?: Date;
     insuranceProvider?: string;
     insuranceProviderName?: string;
+    epsId?: string;
   };
   healthInfo: {
     allergies?: string[];
@@ -77,7 +79,11 @@ export function construirInformeSalud(datos: DatosInformeSalud, generadoEl: Date
   doc.setFontSize(11);
   doc.setFont('helvetica', 'normal');
 
-  const aseguradora = `${personalInfo.insuranceProvider ?? ''}${personalInfo.insuranceProviderName ? ` - ${personalInfo.insuranceProviderName}` : ''}`;
+  // El régimen y la EPS, en ese orden y sin repetirse: desde el 11-nov-2026 la
+  // EPS puede venir de la lista cerrada (`epsId`) y no del texto escrito a mano.
+  const nombreEps = nombreDeAseguradora(personalInfo);
+  const regimen = personalInfo.insuranceProvider?.trim() ?? '';
+  const aseguradora = [regimen, nombreEps === regimen ? '' : nombreEps].filter(Boolean).join(' - ');
   autoTable(doc, {
     startY: y,
     body: [

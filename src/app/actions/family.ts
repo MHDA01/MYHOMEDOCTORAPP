@@ -100,6 +100,8 @@ async function leerFamilia(userId: string, conHistorial: boolean): Promise<Famil
       country: typeof data.country === 'string' ? (data.country as FamilyProfile['country']) : undefined,
       insuranceProvider: typeof data.insuranceProvider === 'string' ? data.insuranceProvider : undefined,
       insuranceProviderName: typeof data.insuranceProviderName === 'string' ? data.insuranceProviderName : undefined,
+      epsId: typeof data.epsId === 'string' ? data.epsId : undefined,
+      municipioId: typeof data.municipioId === 'string' ? data.municipioId : undefined,
       relationship: typeof data.relationship === 'string' && data.relationship ? data.relationship : 'Integrante',
       esTitular: false,
       deceased: Boolean(data.deceased),
@@ -137,6 +139,8 @@ async function leerFamilia(userId: string, conHistorial: boolean): Promise<Famil
     country: typeof personal.country === 'string' ? personal.country : undefined,
     insuranceProvider: personal.insuranceProvider || undefined,
     insuranceProviderName: personal.insuranceProviderName || undefined,
+    epsId: personal.epsId || undefined,
+    municipioId: personal.municipioId || undefined,
     relationship: 'Titular',
     esTitular: true,
     allergies: salud.allergies,
@@ -287,6 +291,8 @@ export async function saveTitularProfile(idToken: string, profileData: any) {
     if (datos.country) cambios['personalInfo.country'] = datos.country;
     if (datos.insuranceProvider !== undefined) cambios['personalInfo.insuranceProvider'] = datos.insuranceProvider;
     if (datos.insuranceProviderName !== undefined) cambios['personalInfo.insuranceProviderName'] = datos.insuranceProviderName;
+    if (datos.epsId !== undefined) cambios['personalInfo.epsId'] = datos.epsId;
+    if (datos.municipioId !== undefined) cambios['personalInfo.municipioId'] = datos.municipioId;
 
     // Los campos de salud que no llegaron no se tocan.
     for (const campo of CAMPOS_HISTORIAL.filter((c) => c !== 'familyHistory')) {
