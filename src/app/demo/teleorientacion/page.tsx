@@ -1,6 +1,6 @@
 import Link from 'next/link';
 
-import { NOMBRE_DEL_PLAN, PRECIO_MENSUAL_TEXTO } from '@/config/precio';
+import { NOMBRE_DEL_PLAN } from '@/config/precio';
 
 export default function DemoTeleorientacionPage() {
   return (
@@ -55,12 +55,19 @@ export default function DemoTeleorientacionPage() {
               <h2 className="text-xl font-bold">Pasarela Wompy</h2>
             </div>
 
+            {/*
+              Sin cifra, a propósito (11-nov-2026, decisión de Alexander). Esta
+              ruta NO está detrás del login —el matcher del middleware solo cubre
+              /dashboard, /login y /register—, así que lo que diga aquí es un
+              precio público. El plan está en revisión, y publicar una cifra que
+              va a cambiar es peor que no publicar ninguna. El precio vive en
+              src/config/precio.ts y se vuelve a enseñar aquí cuando se cierre.
+            */}
             <div className="rounded-2xl border border-indigo-200 bg-indigo-50 p-4">
               <p className="text-sm font-semibold text-indigo-900">{NOMBRE_DEL_PLAN}</p>
               <div className="mt-3 flex items-end justify-between">
                 <div>
-                  <p className="text-3xl font-bold text-indigo-700">{PRECIO_MENSUAL_TEXTO}</p>
-                  <p className="text-sm text-indigo-700">COP por 30 días</p>
+                  <p className="text-sm text-indigo-700">Gratis durante el lanzamiento</p>
                 </div>
                 <span className="rounded-full bg-white px-3 py-1 text-sm font-semibold text-indigo-700">
                   24/7
