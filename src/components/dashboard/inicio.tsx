@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useContext, useEffect, useState } from 'react';
-import { ArrowRight, FileText, MessageCircleHeart, UserRound, Users, type LucideIcon } from 'lucide-react';
+import { ArrowRight, FileText, MessageCircleHeart, Siren, UserRound, Users, type LucideIcon } from 'lucide-react';
 import { UserContext } from '@/context/user-context';
 import { auth } from '@/lib/firebase';
 import { getSecureFamilyMembers } from '@/app/actions/family';
@@ -11,6 +11,7 @@ import { SidebarTrigger } from '@/components/ui/sidebar';
 import { BrandLockup } from '@/components/brand-lockup';
 import DraHildaAvatar from '@/components/ui/avatar';
 import { ACCESO_LIBRE } from '@/config/acceso';
+import { LINEA_EMERGENCIAS } from '@/lib/urgencias-colombia';
 import { DailyTipCard } from './daily-tip-card';
 import { NotificationPermissionBanner } from './notification-permission-banner';
 
@@ -118,6 +119,33 @@ export function Inicio() {
               Hablar con Hilda
               <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
             </span>
+          </Link>
+
+          {/*
+            Urgencias, a lo ancho y antes de la rejilla (11-nov-2026, decisión de
+            Alexander). Va aparte y no como quinto acceso por dos razones: con
+            cinco, la rejilla de cuatro deja uno solo en una segunda fila, y sobre
+            todo porque esto no es un destino como "Mi cuenta" — es lo que alguien
+            busca con la mano temblando, así que se lee de un golpe.
+
+            Hasta hoy la pantalla de urgencias no estaba enlazada desde ninguna
+            parte: solo llegaba quien escribiera la URL. Por eso tuvo durante
+            meses el 131 de Chile sin que nadie lo notara.
+          */}
+          <Link
+            href="/dashboard/urgencias"
+            className="flex items-center gap-3 rounded-2xl border border-destructive/40 bg-destructive/5 px-4 py-3 shadow-soft transition-all hover:-translate-y-0.5 hover:shadow-card active:scale-[0.98]"
+          >
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-destructive/10 text-destructive">
+              <Siren className="h-[22px] w-[22px]" />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-[13px] font-bold leading-tight text-destructive sm:text-sm">Urgencias</span>
+              <span className="mt-0.5 block text-xs text-muted-foreground">
+                Si hay riesgo para la vida, llama al {LINEA_EMERGENCIAS}
+              </span>
+            </span>
+            <ArrowRight className="h-4 w-4 shrink-0 text-destructive" />
           </Link>
 
           {/* Accesos rápidos */}

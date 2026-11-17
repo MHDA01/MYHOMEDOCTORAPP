@@ -4,7 +4,7 @@
 // ============================================================
 'use client';
 
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useMemo } from 'react';
 import { Mic } from 'lucide-react';
 import ChatHeader from './ChatHeader';
 import ChatMessage from './ChatMessage';
@@ -15,6 +15,7 @@ import CierreOrientacion from './CierreOrientacion';
 import DraHildaAvatar from '@/components/ui/avatar';
 import type { ChatMessage as ChatMessageType } from '@/types/chat';
 import type { DatosInformeOrientacion } from '@/lib/informe-orientacion-pdf';
+import { alarmaEnLaConversacion } from '@/lib/senal-de-alarma';
 
 interface ChatInterfaceProps {
   messages: ChatMessageType[];
@@ -35,6 +36,12 @@ interface ChatInterfaceProps {
   informe?: DatosInformeOrientacion | null;
   /** Abre el modo conversación. Si no se pasa, el chat queda solo por escrito. */
   onHablar?: () => void;
+  /**
+   * El grafo disparó una alarma determinista en el servidor
+   * (`grafo-del-turno.ts`). Es una puerta MÁS para encender el botón de
+   * urgencias, no la única: se suma al detector de frases, nunca lo reemplaza.
+   */
+  alarmaDelGrafo?: boolean;
 }
 
 export default function ChatInterface({
@@ -52,8 +59,23 @@ export default function ChatInterface({
   disabled = false,
   informe = null,
   onHablar,
+  alarmaDelGrafo = false,
 }: ChatInterfaceProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Enciende el botón de urgencias de la cabecera cuando Hilda ya escaló en esta
+  // conversación. Se mira aquí porque es donde están los mensajes, y una vez
+  // encendido no se apaga: la misma regla de `nivelFinal()`, un nivel no baja.
+  //
+  // Dos puertas, y la segunda SUMA. El detector de frases mira lo que Hilda
+  // respondió; la alarma del grafo es determinista y viene del servidor. Que
+  // basten dos "o" es la misma asimetría de `senal-de-alarma.ts`: encenderlo de
+  // más cuesta un botón rojo que nadie usó, y no encenderlo deja el camino
+  // discreto justo cuando hace falta.
+  const alarmaActiva = useMemo(
+    () => alarmaDelGrafo || alarmaEnLaConversacion(messages),
+    [alarmaDelGrafo, messages]
+  );
 
   // Auto-scroll al último mensaje
   useEffect(() => {
@@ -70,6 +92,7 @@ export default function ChatInterface({
         onNewSession={onNewSession}
         onBuyTokens={onBuyTokens}
         tokensAvailable={tokensAvailable}
+        alarmaActiva={alarmaActiva}
       />
 
       <div className="min-h-0 flex-1 overflow-y-auto scroll-smooth">

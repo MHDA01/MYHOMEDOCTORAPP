@@ -181,7 +181,7 @@ Tu función es orientar, educar y apoyar al paciente sin reemplazar la consulta 
   o garganta), escala de inmediato a urgencias.
 - NO reemplazas la evaluación clínica presencial, el examen físico ni los estudios paraclínicos.
 - Ante signos de alarma o emergencia, responde SIEMPRE:
-    "⚠️ Esto requiere atención médica presencial urgente. Por favor acude a urgencias o llama a tu médico de inmediato."
+    "${FRASE_ESCALADA}"
 - Signos de alarma que SIEMPRE escalan a urgencias:
     • Dolor torácico, dificultad respiratoria severa, pérdida de consciencia.
     • Signos de ACV (FAST: Face, Arms, Speech, Time).
@@ -324,6 +324,15 @@ import { fichaParaElModelo } from '@/lib/ficha-para-el-modelo';
 import { guardarFicha, leerFicha } from '@/lib/ficha-guardada';
 import { extraerHallazgos, type Extraccion } from '@/lib/extractor';
 import {
+  guardarHallazgosDelEpisodio,
+  leerHallazgosDelEpisodio,
+} from '@/lib/hallazgos-del-episodio';
+import { correrElGrafo, resumenParaLog, type GrafoDelTurno } from '@/lib/grafo-del-turno';
+import type { HallazgoRegistrado } from '@/lib/hallazgos';
+// La frase de escalada vive aquí y la interpola la sección 3 del SYSTEM_PROMPT,
+// para que el detector del botón de urgencias no pueda separarse de ella.
+import { FRASE_ESCALADA } from '@/lib/senal-de-alarma';
+import {
   esTitularGuardado,
   ID_TITULAR,
   perfilDeIntegrante,
@@ -364,7 +373,19 @@ const MENSAJES_CON_FOTOS_EN_CONTEXTO = 2;
 const MAX_BYTES_IMAGENES_POR_PEDIDO = 15 * 1024 * 1024;
 const MAX_BYTES_IMAGEN = 10 * 1024 * 1024;
 
-type Resultado = { success: true; message: string } | { success: false; message: ''; error: string };
+type Resultado =
+  | {
+      success: true;
+      message: string;
+      /**
+       * El grafo disparó una alarma determinista en este turno. Enciende el
+       * botón de urgencias **además** del detector de frases, nunca en su
+       * lugar: ver `grafo-del-turno.ts`. Ausente quiere decir que no se disparó
+       * ninguna, no que no haya peligro.
+       */
+      alarmaDelGrafo?: boolean;
+    }
+  | { success: false; message: ''; error: string };
 
 function fallo(error: string): Resultado {
   return { success: false, message: '', error };
@@ -765,6 +786,33 @@ async function guardarLoAprendido(
   }
 }
 
+/**
+ * Guarda los hallazgos de hoy de esta consulta, que son los que la ficha
+ * descarta por no ser antecedentes.
+ *
+ * No escribe cuando no hay nada nuevo: un turno de cortesía —"gracias",
+ * "listo"— no deja hallazgos, y volver a escribir el mismo arreglo sería pagar
+ * una escritura de Firestore por turno sin cambiar un dato.
+ *
+ * Como `guardarLoAprendido`, nunca lanza: si esto falla, la orientación ya salió
+ * y lo que se pierde es la memoria del episodio.
+ */
+async function guardarElEpisodio(
+  uid: string,
+  convId: string,
+  previos: readonly HallazgoRegistrado[],
+  grafo: GrafoDelTurno
+): Promise<void> {
+  if (grafo.hallazgos.length === previos.length && grafo.hallazgos.every((h, i) => h === previos[i])) {
+    return;
+  }
+  try {
+    await guardarHallazgosDelEpisodio(uid, convId, grafo.hallazgos);
+  } catch (error) {
+    console.error('[Dra. Hilda] Error guardando los hallazgos del episodio:', error);
+  }
+}
+
 function contextoDelPaciente(paciente: PatientStructuredContext, ficha?: Ficha | null): GeminiContent {
   const limpiar = (valor: unknown, maximo: number) => String(valor ?? '').replace(/\s+/g, ' ').trim().slice(0, maximo);
   const lista = (valores?: string[]) =>
@@ -963,9 +1011,14 @@ export async function enviarMensajeConsulta(
     // Las dos lecturas son de Firestore y no dependen entre sí, así que el
     // turno paga solo la más lenta. La ficha no puede añadir espera: son
     // antecedentes que ya estaban guardados, no un cálculo.
-    const [contenidos, ficha] = await Promise.all([
+    // Tres lecturas de Firestore que no dependen entre sí: el turno paga la más
+    // lenta. Los hallazgos del episodio son lo que el grafo ya sabía de ESTA
+    // consulta, y sin ellos miraría cada turno como si la persona acabara de
+    // llegar.
+    const [contenidos, ficha, hallazgosPrevios] = await Promise.all([
       historialParaLaIA(uid, convId),
       fichaDeLaConsulta(uid, convId),
+      leerHallazgosDelEpisodio(uid, convId),
     ]);
     tHistorial = Date.now();
 
@@ -1007,9 +1060,33 @@ export async function enviarMensajeConsulta(
       console.error('[Dra. Hilda] Error guardando la respuesta de la IA:', error);
     }
 
-    await guardarLoAprendido(uid, ficha, extraccion);
+    // El grafo corre AQUÍ, en cada turno, y no cuesta nada: es código puro, sin
+    // modelo y sin red, así que no añade un milisegundo a lo que el paciente
+    // espera. Corre después de la respuesta porque hoy observa y escala; no
+    // decide lo que Hilda dice, que es conducta clínica y la aprueba Alexander
+    // árbol por árbol.
+    const grafo = correrElGrafo({
+      ficha,
+      previos: hallazgosPrevios,
+      nuevos: extraccion?.aceptados ?? [],
+      hoy: fechaDeHoy(),
+    });
+    console.log(resumenParaLog(grafo));
 
-    return { success: true, message: resultado.text };
+    // Las dos escrituras no dependen entre sí: la ficha se queda con los
+    // antecedentes y el episodio con lo de hoy, que es justo lo que la ficha
+    // descarta.
+    await Promise.all([
+      guardarLoAprendido(uid, ficha, extraccion),
+      guardarElEpisodio(uid, convId, hallazgosPrevios, grafo),
+    ]);
+
+    // La bandera solo viaja cuando se disparó algo. Ausente es "no se disparó
+    // ninguna alarma", no "no hay peligro", y así un turno normal devuelve
+    // exactamente lo que devolvía antes.
+    return grafo.alarma
+      ? { success: true, message: resultado.text, alarmaDelGrafo: true }
+      : { success: true, message: resultado.text };
   } catch (error: any) {
     console.error('[Dra. Hilda] Error inesperado:', error);
     return fallo(conAvisoDeUrgencias('Ocurrió un error inesperado. Intenta de nuevo.'));

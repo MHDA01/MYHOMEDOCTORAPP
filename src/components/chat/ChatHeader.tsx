@@ -4,8 +4,10 @@
 'use client';
 
 import Link from 'next/link';
-import { ChevronLeft, Coins, History, MessageSquarePlus, MoreHorizontal } from 'lucide-react';
+import { ChevronLeft, Coins, History, MessageSquarePlus, MoreHorizontal, Siren } from 'lucide-react';
 import DraHildaAvatar from '@/components/ui/avatar';
+import { LINEA_EMERGENCIAS } from '@/lib/urgencias-colombia';
+import { cn } from '@/lib/utils';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -23,6 +25,12 @@ interface ChatHeaderProps {
   onBuyTokens?: () => void;
   /** Consultas disponibles (gratis + premium); null mientras carga. */
   tokensAvailable?: number | null;
+  /**
+   * Hilda ya escaló en esta conversación. Enciende el botón de urgencias: no lo
+   * crea. El botón está siempre, porque uno que solo aparece con la alarma es un
+   * botón ausente cuando la detección falla. Ver `src/lib/senal-de-alarma.ts`.
+   */
+  alarmaActiva?: boolean;
 }
 
 export default function ChatHeader({
@@ -33,6 +41,7 @@ export default function ChatHeader({
   onNewSession,
   onBuyTokens,
   tokensAvailable = null,
+  alarmaActiva = false,
 }: ChatHeaderProps) {
   const detalle = [memberName ? `Consulta de ${memberName}` : null, memberAge ? `${memberAge} años` : null, memberSex || null]
     .filter(Boolean)
@@ -64,6 +73,31 @@ export default function ChatHeader({
           </p>
         </div>
       </div>
+
+      {/*
+        Urgencias. Está siempre —callado, gris— y la alarma lo enciende; no
+        aparece con ella. Lleva a la pantalla de urgencias y NO marca directo
+        ni cuando está encendido: un toque accidental en una cabecera llamaría
+        a la línea de emergencias, y el 123 queda a un toque de ahí.
+      */}
+      <Link
+        href="/dashboard/urgencias"
+        aria-live="polite"
+        aria-label={
+          alarmaActiva
+            ? `Hilda recomienda atención urgente. Ver qué hacer y llamar al ${LINEA_EMERGENCIAS}`
+            : `Urgencias y línea ${LINEA_EMERGENCIAS}`
+        }
+        className={cn(
+          'flex h-9 shrink-0 items-center gap-1.5 rounded-full border px-2.5 text-xs font-bold transition-colors',
+          alarmaActiva
+            ? 'animate-pulse border-destructive bg-destructive text-destructive-foreground motion-reduce:animate-none'
+            : 'border-border bg-white text-muted-foreground hover:border-destructive/50 hover:text-destructive'
+        )}
+      >
+        <Siren className="h-4 w-4 shrink-0" />
+        {alarmaActiva && <span>Llamar al {LINEA_EMERGENCIAS}</span>}
+      </Link>
 
       {onBuyTokens && (
         <button
