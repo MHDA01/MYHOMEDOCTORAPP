@@ -495,6 +495,11 @@ export function TeleorientacionChatPage() {
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [conversationCompleted, setConversationCompleted] = useState(false);
   const [chatDisabledReason, setChatDisabledReason] = useState<string | null>(null);
+  // La alarma determinista del grafo, que llega con la respuesta del servidor.
+  // Una vez encendida no se apaga dentro de la conversación: un nivel no baja.
+  // Al recargar la página se pierde, y por eso NO es la única puerta del botón
+  // de urgencias —el detector de frases mira los mensajes, que sí se recargan—.
+  const [alarmaDelGrafo, setAlarmaDelGrafo] = useState(false);
   const initialGreetingTriggeredRef = useRef<Record<string, boolean>>({});
 
   /* ---- Cargar integrantes ---- */
@@ -694,6 +699,9 @@ export function TeleorientacionChatPage() {
   useEffect(() => {
     setConversationCompleted(false);
     setChatDisabledReason(null);
+    // Otra consulta es otro episodio: el grafo guarda sus hallazgos por
+    // conversación y la alarma de la anterior no es de esta.
+    setAlarmaDelGrafo(false);
   }, [selectedConv?.id]);
 
   const consumeToken = useCallback(async (convId: string) => {
@@ -926,6 +934,9 @@ export function TeleorientacionChatPage() {
             timestamp: new Date(),
           };
           setMessages((prev) => [...prev, assistantMsg]);
+          // Solo enciende; nunca apaga. Si el grafo no disparó en este turno,
+          // eso no desmiente lo que ya disparó en uno anterior.
+          if (result.alarmaDelGrafo) setAlarmaDelGrafo(true);
           // Lo que se devuelve es lo que el modo conversación dice en voz alta.
           let loQueSeDice = result.message;
 
@@ -1090,6 +1101,7 @@ export function TeleorientacionChatPage() {
             disabled={Boolean(chatDisabledReason)}
             informe={informeOrientacion}
             onHablar={() => setModoVozAbierto(true)}
+            alarmaDelGrafo={alarmaDelGrafo}
           />
         ) : (
           <div className="flex h-full min-h-0 flex-col">
