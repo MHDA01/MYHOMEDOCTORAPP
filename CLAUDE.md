@@ -38,8 +38,21 @@ pendiente.
   una decisión manual.
 - Quienes se registraron durante la etapa gratis **quedan gratis de por vida**. No romper eso al
   apagar el interruptor.
-- Salud mental queda fuera de los motivos de consulta de Hilda. La ideación suicida sigue como
-  alarma universal.
+- Salud mental **sí es motivo de consulta** (decidido el 28-oct-2026; antes quedaba fuera). Hilda
+  la admite, tamiza la seguridad —ideación, plan, medios, autolesión previa—, y **encamina siempre
+  a una persona**: ninguna rama termina en un consejo suyo. No explora el episodio a fondo ni
+  aplica escalas de depresión o ansiedad: eso es ejercicio clínico en el área con menos margen. La
+  ideación suicida sigue como alarma universal.
+- La red de apoyo **se pide en el registro** y se guarda en la ficha de cada integrante; se ofrece
+  a un toque, **siempre iniciado por la persona**. La app nunca marca sola: avisarle a un tercero revela que alguien
+  está en crisis, y ese contacto no siempre es seguro. Cada contacto declara si puede ser
+  llamado en una crisis.
+- **Un antecedente negado baja la sospecha, nunca apaga una alarma** (28-oct-2026). Los activadores
+  pueden exigir antecedentes; las alarmas no exigen nada: se disparan con los hallazgos de hoy. La
+  gente subnotifica —gastritis, colon irritable, obesidad—, y un "yo no tengo nada" no puede
+  desactivar una señal de peligro. Al revés también: una alergia referida no es un hecho clínico.
+  Hilda la caracteriza, no la reclasifica, y nunca autoriza un suministro; para su propia conducta
+  la trata como real.
 - Toda orientación termina en algo que la persona se lleva (hoy, el informe en PDF de
   `src/lib/informe-orientacion-pdf.ts`): es una regla de producto, no una función opcional.
 - El informe transcribe la consulta **literal, sin resumir**. Un resumen generado sería texto
@@ -57,7 +70,13 @@ pendiente.
 - Los logs de Cloud Functions y Next no traen severity: buscar por texto, no por `ERROR`.
 - Dos `next dev` sobre la misma carpeta dan EPERM en `.next/cache`. Para pruebas con sesión usa
   `127.0.0.1:<puerto>`, no `localhost` (la cookie `__session` se comparte entre puertos).
-- `urgencias-page.tsx` tiene datos de Chile (SAMU 131): no enlazarla sin corregir.
+- ~~`urgencias-page.tsx` tiene datos de Chile (SAMU 131): no enlazarla sin corregir.~~ **Corregido y
+  desplegado el 18-nov-2026.** La pantalla quedó con el 123 y la entrada a una orientación, sin
+  teléfonos de terceros, y ya está enlazada desde Inicio y desde la cabecera del chat. El motivo de
+  que baste el 123 está en `src/lib/urgencias-colombia.ts`: en una urgencia la EPS no es la puerta
+  (Ley 1751 de 2015, arts. 10 b) y 14). `tests/unidad/urgencias-colombia.test.ts` falla si el 131,
+  el SAMU o los cuatro prestadores chilenos vuelven a `src/`, o si esa pantalla marca algún número
+  que no sea el 123.
 - `inventario.py` no reconoce el formato de la GPC de neumonía 2014: no subirla hasta adaptar el
   extractor.
 - El redactor de protocolos varía mucho entre corridas: la revisión del médico es indispensable.
