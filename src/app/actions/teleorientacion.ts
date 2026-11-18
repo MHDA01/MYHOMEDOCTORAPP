@@ -328,6 +328,7 @@ import {
   leerHallazgosDelEpisodio,
 } from '@/lib/hallazgos-del-episodio';
 import { correrElGrafo, resumenParaLog, type GrafoDelTurno } from '@/lib/grafo-del-turno';
+import { leerBasePublicada } from '@/lib/base-de-reglas-guardada';
 import type { HallazgoRegistrado } from '@/lib/hallazgos';
 // La frase de escalada vive aquí y la interpola la sección 3 del SYSTEM_PROMPT,
 // para que el detector del botón de urgencias no pueda separarse de ella.
@@ -1008,17 +1009,18 @@ export async function enviarMensajeConsulta(
     if (permisos.value) return fallo(permisos.value);
     tParalelo = Date.now();
 
-    // Las dos lecturas son de Firestore y no dependen entre sí, así que el
-    // turno paga solo la más lenta. La ficha no puede añadir espera: son
-    // antecedentes que ya estaban guardados, no un cálculo.
-    // Tres lecturas de Firestore que no dependen entre sí: el turno paga la más
-    // lenta. Los hallazgos del episodio son lo que el grafo ya sabía de ESTA
-    // consulta, y sin ellos miraría cada turno como si la persona acabara de
-    // llegar.
-    const [contenidos, ficha, hallazgosPrevios] = await Promise.all([
+    // Cuatro lecturas de Firestore que no dependen entre sí: el turno paga la
+    // más lenta y no la suma. La ficha no puede añadir espera: son antecedentes
+    // que ya estaban guardados, no un cálculo. Los hallazgos del episodio son lo
+    // que el grafo ya sabía de ESTA consulta, y sin ellos miraría cada turno
+    // como si la persona acabara de llegar. La base de reglas viene de
+    // `reglas_del_grafo/publicada` y casi siempre la sirve su caché de un
+    // minuto, así que de hecho no es una lectura por turno.
+    const [contenidos, ficha, hallazgosPrevios, base] = await Promise.all([
       historialParaLaIA(uid, convId),
       fichaDeLaConsulta(uid, convId),
       leerHallazgosDelEpisodio(uid, convId),
+      leerBasePublicada(),
     ]);
     tHistorial = Date.now();
 
@@ -1070,6 +1072,7 @@ export async function enviarMensajeConsulta(
       previos: hallazgosPrevios,
       nuevos: extraccion?.aceptados ?? [],
       hoy: fechaDeHoy(),
+      base,
     });
     console.log(resumenParaLog(grafo));
 

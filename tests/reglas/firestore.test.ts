@@ -32,6 +32,7 @@ beforeEach(async () => {
     await setDoc(doc(db, 'Cuentas_Tutor/ana/tokens/config'), { free: 6, paid: 0 });
     await setDoc(doc(db, 'Cuentas_Tutor/ana/transactions/t1'), { status: 'pending' });
     await setDoc(doc(db, 'acceso_usuarios/ana'), { modalidad: 'gratis_ilimitado' });
+    await setDoc(doc(db, 'reglas_del_grafo/publicada'), { base: { alarmas: [] } });
   });
 });
 
@@ -129,5 +130,21 @@ describe('Saldo y pagos (hallazgo C1 de la auditoría, cerrado en el paso 5)', (
     const db = entorno.authenticatedContext('ana').firestore();
     await assertFails(getDoc(doc(db, 'acceso_usuarios/ana')));
     await assertFails(setDoc(doc(db, 'acceso_usuarios/ana'), { modalidad: 'gratis_ilimitado' }));
+  });
+});
+
+describe('La base de reglas del grafo no la alcanza el navegador', () => {
+  // Negada por los dos lados. La escritura es obvia: son las reglas con las que
+  // la app escala a urgencias. La LECTURA importa igual: con los umbrales a la
+  // vista, cualquiera puede contestar para el otro lado.
+  it('ni con sesión ni sin ella se lee o se escribe', async () => {
+    for (const contexto of [entorno.authenticatedContext('ana'), entorno.unauthenticatedContext()]) {
+      const db = contexto.firestore();
+      await assertFails(getDoc(doc(db, 'reglas_del_grafo/publicada')));
+      await assertFails(setDoc(doc(db, 'reglas_del_grafo/publicada'), { base: { alarmas: [] } }));
+      await assertFails(updateDoc(doc(db, 'reglas_del_grafo/publicada'), { base: { alarmas: [] } }));
+      await assertFails(deleteDoc(doc(db, 'reglas_del_grafo/publicada')));
+      await assertFails(addDoc(collection(db, 'reglas_del_grafo'), { base: {} }));
+    }
   });
 });

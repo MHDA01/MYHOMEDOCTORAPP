@@ -139,6 +139,19 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // La base de reglas del grafo, publicada. No es dato de ningún paciente:
+    // es contenido clínico aprobado por el médico responsable, y es lo que
+    // decide a quién se encamina a urgencias.
+    //
+    // Negado por los dos lados, y el de LECTURA importa tanto como el otro:
+    // publicada en claro, cualquiera podría leerse los umbrales con los que la
+    // app escala y, sabiéndolos, contestar para el otro lado. Quien la escribe
+    // es el servidor con el Admin SDK, después de pasar el analizador de
+    // `reglas-desde-firestore.ts` y `revisarBase()`.
+    match /reglas_del_grafo/{docId} {
+      allow read, write: if false;
+    }
+
     match /users/{userId} {
       allow read, write: if false;
       match /{document=**} {

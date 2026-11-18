@@ -66,6 +66,24 @@ export const SUBCOLECCION_FICHAS_INTEGRANTES = 'integrantes';
 export const SUBCOLECCION_EPISODIOS = 'episodios';
 
 // ─────────────────────────────────────────────────────────
+// La base de reglas del grafo, publicada
+// ─────────────────────────────────────────────────────────
+// Un solo documento con la base entera, y no un documento por regla, aunque la
+// unidad de APROBACIÓN sea el activador. La razón es que las reglas se
+// referencian entre sí —una susceptibilidad eleva un activador, un activador
+// pide una escala, una rama de un árbol apunta a un nodo— y `revisarBase()`
+// comprueba justamente eso. Con un documento por regla, aprobar una
+// susceptibilidad que nombra un activador todavía no aprobado dejaría la base
+// publicada sin pasar el revisor, y con ella se caerían también las alarmas que
+// ya estaban funcionando. Publicar es un acto sobre la base completa.
+//
+// Colección propia, fuera de Cuentas_Tutor y fuera de fichas_clinicas: no es un
+// dato de ningún paciente, es contenido clínico aprobado. Solo lo lee y lo
+// escribe el servidor; las reglas de Firestore niegan todo al navegador.
+export const COLECCION_REGLAS = 'reglas_del_grafo';
+export const DOC_REGLAS_PUBLICADA = 'publicada';
+
+// ─────────────────────────────────────────────────────────
 // Growth Agent (herramienta interna, solo fundador)
 // ─────────────────────────────────────────────────────────
 export const COLECCION_GROWTH_DRAFTS = 'growth_drafts';

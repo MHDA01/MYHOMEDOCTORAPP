@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { AlertTriangle, BookOpen, ExternalLink, FilePlus2, Loader2, Plus, ShieldCheck, Sparkles } from 'lucide-react';
+import { AlertTriangle, BookOpen, ExternalLink, FilePlus2, Loader2, Network, Plus, ShieldCheck, Sparkles } from 'lucide-react';
 import { auth } from '@/lib/firebase';
 import {
   crearMotivoAdmin,
@@ -154,6 +154,29 @@ export function ProtocolosAdminPanel({ acciones = accionesProtocolos }: { accion
           </div>
         </div>
       </section>
+
+      {/*
+        La otra mitad del trabajo de protocolos, y la que de verdad decide: un
+        protocolo revisado todavía no hace nada hasta que sus reglas están en la
+        base publicada. Va arriba y no al final porque es donde se ve si algo
+        está corriendo en producción, y porque desde ahí se apaga.
+      */}
+      <Link
+        href="/dashboard/admin/protocolos/base-de-reglas"
+        className="flex items-center gap-3 rounded-3xl border border-border/70 bg-white p-5 shadow-soft transition-colors hover:border-primary/60"
+      >
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-sky-100 text-primary">
+          <Network className="h-5 w-5" />
+        </span>
+        <span className="min-w-0 flex-1 text-sm">
+          <span className="block text-base font-bold text-brand-900">Base de reglas del grafo</span>
+          <span className="mt-0.5 block text-muted-foreground">
+            Qué está decidiendo hoy la Dra. Hilda sin pasar por el modelo, en palabras. Publicar y
+            retirar reglas aprobadas, sin desplegar la aplicación.
+          </span>
+        </span>
+        <ExternalLink className="h-4 w-4 shrink-0 text-muted-foreground" />
+      </Link>
 
       <section className="space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2">

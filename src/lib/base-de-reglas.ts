@@ -15,21 +15,36 @@
  *
  * Así que esto es la **toma de corriente**: el grafo ya está conectado al turno
  * de la consulta (`grafo-del-turno.ts`), corre en cada mensaje y no cuesta una
- * llamada al modelo. El día que el médico responsable apruebe el primer
- * activador en Administración → Protocolos, entra aquí y empieza a decidir sin
- * tocar el chat. Mientras tanto corre en vacío, y eso es a propósito: lo que no
- * está aprobado no se comporta.
+ * llamada al modelo. Mientras no haya nada aprobado corre en vacío, y eso es a
+ * propósito: lo que no está aprobado no se comporta.
+ *
+ * ── DÓNDE ENTRA DE VERDAD UNA REGLA APROBADA (18-nov-2026) ──
+ *
+ * **No aquí.** La base que usa la consulta se lee de Firestore, de
+ * `reglas_del_grafo/publicada`, con `leerBasePublicada()` en
+ * `base-de-reglas-guardada.ts`. Aprobar un activador es publicar un documento,
+ * no editar este archivo y volver a desplegar la aplicación: un despliegue de
+ * código por cada regla clínica haría que la frecuencia con la que el médico
+ * puede aprobar algo dependiera de la frecuencia con la que se despliega.
+ *
+ * Esta constante sigue siendo lo que corre **cuando no hay nada publicado, lo
+ * publicado no pasa las revisiones o Firestore falla**, y por eso se queda
+ * vacía: es el suelo al que se cae el grafo, y el suelo tiene que ser el estado
+ * que no decide nada.
  *
  * **Lo que NO hay que hacer aquí.** Llenar esta base a mano desde una guía. El
  * camino es la fábrica de protocolos de `protocolos/` y la aprobación por
  * activador, que es la unidad que el médico revisa en medio minuto. Un atajo
- * desde aquí deja el expediente de validación sin la firma que lo sostiene.
+ * desde aquí deja el expediente de validación sin la firma que lo sostiene —y,
+ * además, se saltaría las dos revisiones que sí le hace la publicación a lo que
+ * entra por datos.
  */
 
 import { type BaseDeReglas, BASE_VACIA } from '@/lib/grafo-reglas';
 
 /**
- * La base con la que corre la consulta de verdad.
+ * El suelo: la base con la que corre la consulta cuando no hay ninguna
+ * publicada.
  *
  * `BASE_VACIA` no es un marcador de posición: es una base bien formada con cero
  * reglas. El ejecutor la recorre sin quejarse y no dispara nada, que es la
