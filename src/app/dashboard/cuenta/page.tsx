@@ -1,7 +1,7 @@
 'use client';
 
 import { useContext, useEffect, useState } from 'react';
-import { doc, onSnapshot, Timestamp } from 'firebase/firestore';
+import { collection, doc, limit, onSnapshot, orderBy, query, Timestamp } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { db, functions } from '@/lib/firebase';
 import { UserContext } from '@/context/user-context';
@@ -9,6 +9,17 @@ import { EncabezadoPantalla } from '@/components/dashboard/encabezado-pantalla';
 import Link from 'next/link';
 import { AlertCircle, CheckCircle2, ChevronRight, FileDown, Gift, Loader2, ShieldCheck } from 'lucide-react';
 import { ACCESO_LIBRE } from '@/config/acceso';
+import { puedeCancelarRenovacion } from '@/lib/cancelar-renovacion';
+import { etiquetaDePago, pagoPendienteDemasiado, pesosCop } from '@/lib/pagos';
+
+type Pago = {
+  id: string;
+  amount: number;
+  status?: string;
+  description?: string;
+  reference?: string;
+  createdAt?: Timestamp | Date;
+};
 
 type TokenInfo = {
   free?: number;
@@ -42,6 +53,22 @@ export default function CuentaPage() {
   const [cancelling, setCancelling] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [cancelledJustNow, setCancelledJustNow] = useState(false);
+  const [pagos, setPagos] = useState<Pago[]>([]);
+
+  // Historial de pagos: las reglas dejan leerlo a su dueña y escribirlo solo al servidor.
+  useEffect(() => {
+    if (!userId) return;
+    const consulta = query(
+      collection(db, 'Cuentas_Tutor', userId, 'transactions'),
+      orderBy('createdAt', 'desc'),
+      limit(12)
+    );
+    return onSnapshot(
+      consulta,
+      (snap) => setPagos(snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Pago, 'id'>) }))),
+      () => setPagos([])
+    );
+  }, [userId]);
 
   useEffect(() => {
     if (!userId) {
@@ -78,6 +105,7 @@ export default function CuentaPage() {
 
   const nextBillingDate = toDate(tokenInfo?.nextBillingDate);
   const isActive = tokenInfo?.autoRenew && tokenInfo?.subscriptionStatus === 'active';
+  const puedeCancelar = puedeCancelarRenovacion(tokenInfo);
 
   return (
     <div className="mx-auto w-full max-w-3xl px-4 pb-8 md:px-8 md:pt-8">
@@ -164,7 +192,20 @@ export default function CuentaPage() {
                     </div>
                   )}
 
-                  {isActive && (
+                  {tokenInfo?.autoRenew && tokenInfo?.subscriptionStatus === 'payment_failed' && (
+                    <p className="text-sm text-muted-foreground">
+                      No pudimos cobrar tu renovación y la vamos a reintentar. Si prefieres no continuar,
+                      cancélala aquí y no se te cobrará más.
+                    </p>
+                  )}
+                  {tokenInfo?.autoRenew && tokenInfo?.subscriptionStatus === 'pending' && (
+                    <p className="text-sm text-muted-foreground">
+                      Estamos confirmando tu último pago con el banco. Puedes cancelar la renovación; si ese
+                      pago se aprueba, cubre este mes y no habrá más cobros.
+                    </p>
+                  )}
+
+                  {puedeCancelar && (
                     <button
                       type="button"
                       onClick={handleCancel}
@@ -183,6 +224,47 @@ export default function CuentaPage() {
                 </>
               )}
             </div>
+          </section>
+        )}
+
+        {/* Pagos: solo aparece si ya hubo alguno, así que en la etapa gratuita no se ve. */}
+        {pagos.length > 0 && (
+          <section className="rounded-3xl border border-border/70 bg-white p-5 shadow-soft sm:p-6" aria-labelledby="titulo-pagos">
+            <h2 id="titulo-pagos" className="text-lg font-bold text-brand-900">Tus pagos</h2>
+            <ul className="mt-4 divide-y divide-border/60">
+              {pagos.map((p) => {
+                const fecha = toDate(p.createdAt);
+                return (
+                  <li key={p.id} className="py-3 first:pt-0 last:pb-0">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-[15px] font-semibold text-brand-900">{p.description || 'Pago'}</p>
+                        <p className="mt-0.5 text-xs text-muted-foreground">
+                          {fecha
+                            ? fecha.toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric' })
+                            : 'Fecha sin registrar'}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-[15px] font-bold text-brand-900">{pesosCop(p.amount)}</p>
+                        <p className="mt-0.5 text-xs font-semibold text-muted-foreground">{etiquetaDePago(p.status)}</p>
+                      </div>
+                    </div>
+                    {p.reference && (
+                      <p className="mt-1.5 break-all text-[11px] text-muted-foreground">
+                        Referencia: <span className="select-all font-mono">{p.reference}</span>
+                      </p>
+                    )}
+                    {pagoPendienteDemasiado(p.status, fecha) && (
+                      <p className="mt-1.5 text-xs text-amber-800">
+                        Este pago lleva más de un día sin confirmarse. Si el banco ya lo descontó, comunícate con
+                        nosotros y dinos esta referencia.
+                      </p>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
           </section>
         )}
 
