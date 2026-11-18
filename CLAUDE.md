@@ -65,6 +65,14 @@ pendiente.
 ## Trampas técnicas
 
 - Desplegar **siempre** con `--project myhomedoctorapp` explícito (ResiMed ya pisó este host una vez).
+- **⚠️ UN PUSH A `master` PUBLICA EN PRODUCCIÓN.** Comprobado el 18-nov-2026: App Hosting construye
+  y lanza el rollout **solo**, sin que nadie lo pida. Dos pushes de ese día —ambos de documentación—
+  crearon `rollout-2026-11-18-002` y `-003` por su cuenta. Hasta el 11-nov la nota decía lo
+  contrario (`ABIU: Disabled`, "hay que crear el rollout a mano"); eso ya no vale. **No hay ningún
+  paso entre subir y publicar**, así que un cambio de una coma reconstruye y redespliega la app. Se
+  trabaja en rama y se empuja a `master` solo cuando se quiera publicar. El rollout a mano
+  (`npx firebase apphosting:rollouts:create studio --git-branch master --project myhomedoctorapp`)
+  sigue existiendo y sirve para relanzar sin un commit nuevo.
 - **No desplegar `firestore.indexes.json` completo sin revisar**: crea el índice `tokens` y activa el
   cobro mensual con riesgo de doble cobro.
 - Los logs de Cloud Functions y Next no traen severity: buscar por texto, no por `ERROR`.
