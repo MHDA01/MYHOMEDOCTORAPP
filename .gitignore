@@ -44,6 +44,20 @@ next-env.d.ts
 firebase-debug.log
 firestore-debug.log
 
+# Salidas de consola: logs de despliegue, de build y de tsc.
+# Ninguna es un entregable y el repositorio es PÚBLICO: un log de despliegue de
+# Firebase arrastra rutas, ids de proyecto, correos y a veces un token. El 18-nov
+# había 18 de estos sueltos en la carpeta, ninguno ignorado, a un `git add .` de
+# quedar publicados. `*.log` cubre los que vengan; los .txt van por nombre a
+# propósito, para no ignorar de paso un robots.txt o cualquier .txt que sí haga
+# falta subir algún día.
+*.log
+tscout*.txt
+deploy-output.txt
+deploy_output.txt
+firebase_logs.txt
+PR-descripcion.md
+
 # INTERNO - NUNCA SUBIR (el repositorio es público)
 # Cifras de uso, precios y estrategia comercial. Lo técnico y lo legal va en CLAUDE.md.
 ESTADO.md
@@ -60,6 +74,18 @@ familias-fundadoras-mhda.html
 tablero-agentes.html
 muestra-informe-orientacion.pdf
 .claude/settings.local.json
+
+# INTERNO - el expediente de validación del grafo. Decisión (b), 18-nov-2026.
+# El diseño del grafo de decisión y las respuestas del médico responsable del
+# 28-oct. No tienen secretos ni cifras comerciales, pero sí el criterio clínico
+# con su alcance declarado, y publicarlo en un repositorio público es una
+# decisión que no se ha tomado. ESTADO.md la planteó el 5-nov como (a)
+# commitearlos tal cual o (b) ignorarlos y respaldarlos fuera; esto es (b).
+# Respaldo del 18-nov en el OneDrive de Alexander, Charis\MHDA\expediente-grafo-2026-11-18,
+# con su LEEME. Mientras estas dos líneas estén aquí, git NO tiene copia: la de
+# fuera es la única, y si se decide (a) se quitan las líneas y se commitean.
+protocolos/grafo-de-decision.md
+protocolos/criterio-clinico.md
 
 # ⚠️ CREDENCIALES SENSIBLES - NUNCA SUBIR
 serviceAcountkey.json
