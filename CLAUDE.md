@@ -73,6 +73,8 @@ pendiente.
   trabaja en rama y se empuja a `master` solo cuando se quiera publicar. El rollout a mano
   (`npx firebase apphosting:rollouts:create studio --git-branch master --project myhomedoctorapp`)
   sigue existiendo y sirve para relanzar sin un commit nuevo.
+  **El automático se queda: decisión de Alexander del 18-nov-2026, no la reabras.** Lo que cambia no
+  es la configuración, es la disciplina: la rama es el borrador y `master` es el botón de publicar.
 - **No desplegar `firestore.indexes.json` completo sin revisar**: crea el índice `tokens` y activa el
   cobro mensual con riesgo de doble cobro.
 - Los logs de Cloud Functions y Next no traen severity: buscar por texto, no por `ERROR`.
