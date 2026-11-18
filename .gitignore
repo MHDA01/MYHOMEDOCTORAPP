@@ -96,3 +96,11 @@ public/firebase-config.js
 *.pem
 .firebase/
 node_modules
+
+# Los PDF de las fuentes clínicas. No son nuestros y no van a un repositorio público:
+# las guías NICE son material de terceros con licencia propia, y aquí hay once (3,2 MB).
+# La biblioteca de protocolos/ ya está diseñada para esto: manifest.json guarda el sha256
+# de cada fuente para comprobar que el PDF no cambió desde que se citó, y los inventarios
+# JSON —que sí se rastrean— guardan lo extraído. El PDF se descarga de su fuente oficial
+# cuando haga falta; el repositorio guarda la huella, no el documento.
+protocolos/fuentes/**/*.pdf
