@@ -58,6 +58,12 @@ export const COLECCION_MODALIDAD = 'acceso_usuarios';
 // Se borra con la cuenta desde `datos-de-la-cuenta.ts`, como la modalidad.
 export const COLECCION_FICHAS = 'fichas_clinicas';
 export const SUBCOLECCION_FICHAS_INTEGRANTES = 'integrantes';
+// Los hallazgos de HOY de una consulta. Cuelgan de `fichas_clinicas/{uid}` para
+// heredar su `allow read, write: if false` y su borrado con la cuenta, pero son
+// otra cosa que la ficha: la ficha es lo estable de la persona y esto es el
+// episodio. Mezclarlos convertiría la ficha en un diario y la próxima consulta
+// arrancaría con el dolor de la anterior como si siguiera.
+export const SUBCOLECCION_EPISODIOS = 'episodios';
 
 // ─────────────────────────────────────────────────────────
 // Growth Agent (herramienta interna, solo fundador)
