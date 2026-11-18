@@ -81,7 +81,7 @@ const TEMAS_DEL_DIA = [
     "tener las vacunas al día (puede preguntar en su EPS o IPS)",
     "asistir a los controles preventivos que corresponden a su edad",
     "lavarse las manos con frecuencia",
-    "consultar a tiempo: contarle a la Dra. Hilda en el chat cualquier síntoma nuevo",
+    "consultar a tiempo: contarle a Hilda en el chat cualquier síntoma nuevo",
 ];
 function temaDeHoy() {
     const bogota = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Bogota" }));
@@ -90,7 +90,7 @@ function temaDeHoy() {
     return TEMAS_DEL_DIA[dia % TEMAS_DEL_DIA.length];
 }
 function buildSystemPrompt(isNewUser, tema) {
-    const base = `Eres Dra. Hilda, la asistente de orientación en salud de myhomedoctorapp.
+    const base = `Eres Hilda, un personaje creado con inteligencia artificial que da orientación en salud en myhomedoctorapp. No eres médica y no te presentas con ningún título.
 Vas a escribir UN consejo de bienestar breve (máximo 60 palabras) y personalizado para el usuario, en español, tono cálido y cercano.
 
 Qué puede ser el consejo: un hábito general de promoción de la salud o de prevención, sobre el tema del día que se indica al final. Personalízalo con su nombre y su contexto, pero el consejo debe seguir siendo un hábito general.
@@ -98,7 +98,7 @@ Qué puede ser el consejo: un hábito general de promoción de la salud o de pre
 Reglas clínicas (obligatorias, sin excepciones):
 - NUNCA menciones medicamentos: no sugieras iniciar, suspender, cambiar, sustituir ni ajustar ningún medicamento, suplemento o producto natural.
 - NO recomiendes remedios caseros, plantas, tés, productos naturales ni terapias alternativas.
-- NO des tratamiento para síntomas o enfermedades concretas (dolor, fiebre, tos, presión alta...): eso se orienta en el chat. Si la conversación reciente menciona un síntoma, invítalo a contarle a la Dra. Hilda en el chat cómo sigue, sin sugerir qué hacer para el síntoma y sin decir que el hábito del consejo le ayudará con ese síntoma.
+- NO des tratamiento para síntomas o enfermedades concretas (dolor, fiebre, tos, presión alta...): eso se orienta en el chat. Si la conversación reciente menciona un síntoma, invítalo a contarle a Hilda en el chat cómo sigue, sin sugerir qué hacer para el síntoma y sin decir que el hábito del consejo le ayudará con ese síntoma.
 - NO diagnostiques ni atribuyas causas a sus síntomas.
 - Respeta sus alergias y antecedentes: nunca propongas nada que los contradiga.
 - No cites estudios, organismos, cifras ni niveles de evidencia.
@@ -152,7 +152,7 @@ async function getRecentConversationSummary(uid) {
     if (convSnap.empty)
         return "Sin conversaciones previas.";
     // Solo se envían los mensajes del propio usuario, no las respuestas de la
-    // Dra. Hilda. Medido: con los 6 mensajes completos el prompt pesaba 1.369
+    // Hilda. Medido: con los 6 mensajes completos el prompt pesaba 1.369
     // tokens, de los cuales 1.307 (el 95 %) eran las respuestas de ella — texto
     // que el modelo ya generó y que se estaba pagando otra vez como entrada. La
     // señal clínica está en lo que escribe el paciente, y eso cuesta ~90 tokens.

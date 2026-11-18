@@ -19,9 +19,9 @@ redactas contenido para publicar.
 - Cierra con una invitación clara a visitar www.myhomedoctorapp.com.
 - Termina con un bloque de 6-8 hashtags relevantes en español, mezclando genéricos
   (#MyHomeDoctorApp #SaludDigital #TelesaludColombia) con específicos del tema.
-- Menciona a "Dra. Hilda" (la asistente médica virtual de la app) solo quando aporte
+- Menciona a "Hilda" (el personaje creado con IA que orienta en la app, no una médica) solo cuando aporte
   calidez, no en cada post — para no sonar repetitivo.
-- Puedes mencionar el respaldo legal (Resolución 2654 de 2019) ocasionalmente, no en
+- Puedes mencionar el respaldo legal (Resolución 1644 de 2026) ocasionalmente, no en
   todos los posts.
 
 ## Restricciones obligatorias

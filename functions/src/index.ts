@@ -14,10 +14,6 @@ import {
   chargeMonthlySubscriptions,
 } from "./subscription";
 import { sendDailyHealthTips, generateDailyTipNow } from "./daily-health-tips";
-import { whatsappWebhook } from "./sales-agent/whatsapp-webhook";
-import { instagramWebhook } from "./sales-agent/instagram-webhook";
-import { leadWompiWebhook } from "./sales-agent/lead-payment-webhook";
-import { manualAgentReply, manualAgentConsole } from "./sales-agent/manual-console";
 import { generateWeeklyContentPlan, generateContentPlanNow } from "./content-agent";
 import { protocolosRedactarBorrador, protocolosVerificarBorrador } from "./protocolos";
 
@@ -41,13 +37,11 @@ export {
   // Consejos de salud diarios personalizados
   sendDailyHealthTips,
   generateDailyTipNow,
-  // Agente de ventas conversacional (WhatsApp + Instagram)
-  whatsappWebhook,
-  instagramWebhook,
-  leadWompiWebhook,
-  // Consola manual (mientras Meta sigue bloqueado)
-  manualAgentReply,
-  manualAgentConsole,
+  // El agente de ventas por WhatsApp e Instagram se eliminó el 20-oct-2026 por
+  // decisión del fundador: la app no se conecta a plataformas de terceros
+  // fuera de Firebase. Con él se fueron whatsappWebhook, instagramWebhook,
+  // leadWompiWebhook, manualAgentReply y manualAgentConsole. Estas funciones
+  // siguen existiendo en producción hasta que se despliegue `functions`.
   // Agente de contenido semanal (borradores por correo, no publica solo)
   generateWeeklyContentPlan,
   generateContentPlanNow,

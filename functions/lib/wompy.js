@@ -54,6 +54,8 @@ const crypto = __importStar(require("crypto"));
 const wompi_client_1 = require("./wompi-client");
 const acceso_1 = require("./acceso");
 const cobro_idempotente_1 = require("./cobro-idempotente");
+const estado_suscripcion_1 = require("./estado-suscripcion");
+const comprobante_1 = require("./comprobante");
 try {
     admin.initializeApp();
 }
@@ -186,7 +188,7 @@ function verifyWompiSignature(event) {
 exports.wompyWebhook = functions
     .region("us-central1")
     .https.onRequest(async (req, res) => {
-    var _a;
+    var _a, _b, _c, _d, _e;
     if (req.method !== "POST") {
         res.status(405).send("Método no permitido");
         return;
@@ -250,6 +252,9 @@ exports.wompyWebhook = functions
         const resultado = await db.runTransaction(async (t) => {
             const snap = await t.get(transactionDoc.ref);
             const estadoActual = snap.get("status");
+            // Se lee antes de escribir (una transacción de Firestore lo exige): hace falta
+            // saber si la persona canceló mientras el cobro estaba en confirmación.
+            const tokensActual = (await t.get(tokensRef)).data();
             // Ya se resolvió sincrónicamente (createPaymentSource /
             // chargeMonthlySubscriptions esperan la respuesta de Wompi) o por otra
             // entrega de este mismo evento.
@@ -264,12 +269,7 @@ exports.wompyWebhook = functions
                 const nextBillingDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
                 t.set(tokensRef, Object.assign({ paid: admin.firestore.FieldValue.increment(exports.PAID_TOKENS_PER_MONTH), planExpires: nextBillingDate, 
                     // El ciclo quedó resuelto: se libera el reclamo del cobro mensual.
-                    cobroEnCurso: admin.firestore.FieldValue.delete() }, (isRecurring && {
-                    autoRenew: true,
-                    subscriptionStatus: "active",
-                    nextBillingDate,
-                    failedChargeAttempts: 0,
-                })), { merge: true });
+                    cobroEnCurso: admin.firestore.FieldValue.delete() }, (0, estado_suscripcion_1.camposTrasCobroAprobado)(tokensActual, isRecurring, nextBillingDate)), { merge: true });
             }
             else if (isRecurring) {
                 t.set(tokensRef, { subscriptionStatus: "payment_failed", cobroEnCurso: admin.firestore.FieldValue.delete() }, { merge: true });
@@ -284,6 +284,20 @@ exports.wompyWebhook = functions
         console.log(`[WOMPY WEBHOOK] Transacción actualizada: ${transactionDoc.id} → ${resultado}`);
         if (resultado === "success") {
             console.log(`[WOMPY WEBHOOK] ✅ Tokens añadidos a ${uid}: +${exports.PAID_TOKENS_PER_MONTH}`);
+            // Comprobante del cobro que se resolvió aquí (los que se aprobaron al
+            // momento ya lo mandaron quien los cobró, y el control de idempotencia de
+            // arriba impide que este camino los repita).
+            const tx = transactionDoc.data();
+            const hoy = (await tokensRef.get()).data();
+            const proximo = (hoy === null || hoy === void 0 ? void 0 : hoy.autoRenew) === true ? hoy === null || hoy === void 0 ? void 0 : hoy.nextBillingDate : null;
+            await (0, comprobante_1.enviarComprobante)(db, uid, {
+                valorCop: Number((_b = tx === null || tx === void 0 ? void 0 : tx.amount) !== null && _b !== void 0 ? _b : exports.CONSULTATION_COST_COP),
+                referencia: String((_c = tx === null || tx === void 0 ? void 0 : tx.reference) !== null && _c !== void 0 ? _c : reference),
+                idWompi: (_d = tx === null || tx === void 0 ? void 0 : tx.wompy_id) !== null && _d !== void 0 ? _d : wompy_id,
+                concepto: String((_e = tx === null || tx === void 0 ? void 0 : tx.description) !== null && _e !== void 0 ? _e : "Plan Familias Fundadoras"),
+                consultas: exports.PAID_TOKENS_PER_MONTH,
+                proximoCobro: typeof (proximo === null || proximo === void 0 ? void 0 : proximo.toDate) === "function" ? proximo.toDate() : proximo ? new Date(proximo) : null,
+            });
         }
         else if (isRecurring) {
             console.log(`[WOMPY WEBHOOK] ❌ Cobro recurrente rechazado (confirmado por webhook) para ${uid}`);

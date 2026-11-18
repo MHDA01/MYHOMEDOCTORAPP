@@ -55,6 +55,8 @@ const admin = __importStar(require("firebase-admin"));
 const crypto = __importStar(require("crypto"));
 const wompi_client_1 = require("./wompi-client");
 const email_1 = require("./email");
+const correos_cobro_1 = require("./correos-cobro");
+const comprobante_1 = require("./comprobante");
 const wompy_1 = require("./wompy");
 const acceso_1 = require("./acceso");
 const cobro_idempotente_1 = require("./cobro-idempotente");
@@ -171,7 +173,8 @@ exports.createPaymentSource = functions
             throw new functions.https.HttpsError("already-exists", "Ya tienes la renovación automática activa.");
         }
         // 2. Cobrar el primer período inmediatamente (mismo comportamiento que el pago único)
-        const charge = await chargeSubscription(uid, userEmail, paymentSourceId, (0, cobro_idempotente_1.referenciaDeAlta)(uid, Date.now()));
+        const referenciaAlta = (0, cobro_idempotente_1.referenciaDeAlta)(uid, Date.now());
+        const charge = await chargeSubscription(uid, userEmail, paymentSourceId, referenciaAlta);
         const now = admin.firestore.Timestamp.now();
         const consentFields = {
             paymentSourceId,
@@ -183,6 +186,14 @@ exports.createPaymentSource = functions
             const nextBillingDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
             await tokensRef.set(Object.assign(Object.assign({}, consentFields), { autoRenew: true, subscriptionStatus: "active", nextBillingDate, paid: admin.firestore.FieldValue.increment(wompy_1.PAID_TOKENS_PER_MONTH), planExpires: nextBillingDate }), { merge: true });
             console.log(`[SUBSCRIPTION] Renovación automática activada para ${uid}`);
+            await (0, comprobante_1.enviarComprobante)(db, uid, {
+                valorCop: wompy_1.CONSULTATION_COST_COP,
+                referencia: referenciaAlta,
+                idWompi: charge.wompyId,
+                concepto: "Plan Familias Fundadoras, primer mes",
+                consultas: wompy_1.PAID_TOKENS_PER_MONTH,
+                proximoCobro: nextBillingDate,
+            });
             return { success: true, status: "active", wompy_id: charge.wompyId };
         }
         if (charge.result === "PENDING") {
@@ -211,17 +222,40 @@ exports.createPaymentSource = functions
 exports.cancelAutoRenewal = functions
     .region("us-central1")
     .https.onCall(async (data, context) => {
+    var _a, _b;
     if (!context.auth) {
         throw new functions.https.HttpsError("unauthenticated", "Usuario no autenticado");
     }
     const uid = context.auth.uid;
     try {
         const tokensRef = db.collection("Cuentas_Tutor").doc(uid).collection("tokens").doc("config");
+        // Se lee antes de cancelar para saber qué había (y si hay a quién avisar).
+        const previo = (await tokensRef.get()).data();
         await tokensRef.update({
             autoRenew: false,
             subscriptionStatus: "cancelled",
         });
         console.log(`[SUBSCRIPTION] Renovación automática cancelada para ${uid}`);
+        // Constancia por correo. Solo si la renovación estaba encendida: cancelar dos
+        // veces no manda dos correos. Un fallo del correo no deshace la cancelación
+        // (`sendEmail` no lanza), que ya quedó hecha.
+        if ((previo === null || previo === void 0 ? void 0 : previo.autoRenew) === true) {
+            try {
+                const userDoc = await db.collection("Cuentas_Tutor").doc(uid).get();
+                const userEmail = (_a = userDoc.data()) === null || _a === void 0 ? void 0 : _a.email;
+                if (userEmail) {
+                    const hasta = (_b = previo.planExpires) !== null && _b !== void 0 ? _b : previo.nextBillingDate;
+                    const correo = (0, correos_cobro_1.correoCancelacion)({
+                        accesoHasta: typeof (hasta === null || hasta === void 0 ? void 0 : hasta.toDate) === "function" ? hasta.toDate() : hasta ? new Date(hasta) : null,
+                        cobroEnConfirmacion: previo.subscriptionStatus === "pending" || Boolean(previo.cobroEnCurso),
+                    });
+                    await (0, email_1.sendEmail)(userEmail, correo.asunto, correo.html);
+                }
+            }
+            catch (errorCorreo) {
+                console.error("[SUBSCRIPTION] No se pudo enviar la constancia de cancelación:", errorCorreo);
+            }
+        }
         return { success: true };
     }
     catch (error) {
@@ -339,7 +373,8 @@ exports.chargeMonthlySubscriptions = functions
             const userData = userDoc.data();
             const userEmail = (userData === null || userData === void 0 ? void 0 : userData.email) || `user-${uid}@myhomedoctorapp.local`;
             try {
-                const charge = await chargeSubscription(uid, userEmail, paymentSourceId, (0, cobro_idempotente_1.referenciaDeCiclo)(uid, reclamo.ciclo, reclamo.intento));
+                const referenciaCobro = (0, cobro_idempotente_1.referenciaDeCiclo)(uid, reclamo.ciclo, reclamo.intento);
+                const charge = await chargeSubscription(uid, userEmail, paymentSourceId, referenciaCobro);
                 if (charge.result === "APPROVED") {
                     const nextBillingDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
                     await tokenDoc.ref.update({
@@ -351,11 +386,16 @@ exports.chargeMonthlySubscriptions = functions
                         cobroEnCurso: admin.firestore.FieldValue.delete(),
                     });
                     console.log(`[SUBSCRIPTION] ✅ Cobro recurrente exitoso para ${uid}`);
-                    if (userEmail) {
-                        await (0, email_1.sendEmail)(userEmail, "Renovación de Teleorientación confirmada", `<p>Hola,</p>
-                 <p>Tu renovación mensual por <strong>$${wompy_1.CONSULTATION_COST_COP.toLocaleString("es-CO")} COP</strong> fue aprobada. Se añadieron ${wompy_1.PAID_TOKENS_PER_MONTH} tokens a tu cuenta.</p>
-                 <p>Puedes cancelar la renovación automática en cualquier momento desde "Mi cuenta".</p>`);
-                    }
+                    // El comprobante reemplaza al correo de «renovación confirmada»: dice lo mismo
+                    // y además trae fecha, referencia y próximo cobro.
+                    await (0, comprobante_1.enviarComprobante)(db, uid, {
+                        valorCop: wompy_1.CONSULTATION_COST_COP,
+                        referencia: referenciaCobro,
+                        idWompi: charge.wompyId,
+                        concepto: "Plan Familias Fundadoras, renovación mensual",
+                        consultas: wompy_1.PAID_TOKENS_PER_MONTH,
+                        proximoCobro: nextBillingDate,
+                    });
                 }
                 else if (charge.result === "PENDING") {
                     // Todavía no se resuelve: el webhook lo confirmará (no consumimos
