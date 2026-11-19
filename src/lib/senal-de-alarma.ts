@@ -25,7 +25,7 @@
  * La frase de escalada, **en un solo lugar**. El prompt de Hilda la interpola
  * (`teleorientacion.ts`, sección 3) y el detector la busca, así que no pueden
  * separarse sin que una prueba lo note. Es texto clínico visible: cambiarla exige
- * aprobación del fundador.
+ * aprobación del fundador. El texto vigente lo aprobó Alexander el 18-nov-2026.
  */
 export const FRASE_ESCALADA =
   '⚠️ Esto requiere atención médica presencial urgente. Por favor acude a urgencias o llama a tu médico de inmediato.';

@@ -13,9 +13,12 @@ antes de hacerlo.
 ## La visión
 
 "Un médico y su consultorio en el bolsillo." El layout se puede mover; **el comportamiento no, sin
-aprobación de Alexander**. Todo texto clínico visible lo aprueba él: los de `src/lib/textos-chat.ts`
-ya están aprobados; la constante `AVISO_INFORME` de `src/lib/informe-orientacion-pdf.ts` está
-pendiente.
+aprobación de Alexander**. Todo texto clínico visible lo aprueba él. **Lo aprobado y su fecha
+vive en `tests/unidad/textos-aprobados.test.ts`**, que falla si alguno cambia: los de
+`src/lib/textos-chat.ts` y `AVISO_URGENCIAS` (14-sep-2026), y los 17 de la sesión del 18-nov-2026
+—urgencias, la ficha, el registro, Mis datos y `AVISO_INFORME`, que llevaba pendiente desde
+octubre—. Para cambiar uno: se le pregunta a él, y el código y esa lista se mueven en el mismo
+commit, con la fecha nueva.
 
 ## Marco legal
 

@@ -16,15 +16,20 @@ import { AVISO_URGENCIAS } from '@/lib/textos-chat';
  * Si algún día se quiere un resumen, es una decisión de producto aparte.
  *
  * Los textos fijos (títulos, aviso del pie) son texto clínico visible: cambiarlos
- * exige aprobación del fundador, como los de textos-chat.ts. Pendiente de su
- * visto bueno la frase AVISO_INFORME; AVISO_URGENCIAS ya está aprobado (14-sep-2026).
+ * exige aprobación del fundador, como los de textos-chat.ts. AVISO_INFORME quedó
+ * **aprobado el 18-nov-2026** —llevaba pendiente desde octubre, y en el pie de cada
+ * informe desde el 18-nov—; AVISO_URGENCIAS ya lo estaba (14-sep-2026).
  */
 
 const COLOR_ENCABEZADO: [number, number, number] = [11, 45, 91];
 const MARGEN = 16;
 const ANCHO_TEXTO = 178;
 
-/** Pendiente de aprobación del fundador. */
+/**
+ * Aprobado por Alexander el 18-nov-2026. Va al pie de CADA página de CADA informe,
+ * que es el documento que la persona le muestra a un médico: cambiar una palabra
+ * aquí exige una aprobación nueva.
+ */
 export const AVISO_INFORME =
   'Este documento es un informe de teleorientación en salud. No es un diagnóstico, ni una fórmula médica, ni una orden de exámenes, y no reemplaza la consulta con un profesional.';
 

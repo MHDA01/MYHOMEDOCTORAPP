@@ -79,6 +79,8 @@ export default function ChatHeader({
         aparece con ella. Lleva a la pantalla de urgencias y NO marca directo
         ni cuando está encendido: un toque accidental en una cabecera llamaría
         a la línea de emergencias, y el 123 queda a un toque de ahí.
+
+        El rótulo y las etiquetas de voz los aprobó Alexander el 18-nov-2026.
       */}
       <Link
         href="/dashboard/urgencias"

@@ -131,6 +131,9 @@ export function Inicio() {
             Hasta hoy la pantalla de urgencias no estaba enlazada desde ninguna
             parte: solo llegaba quien escribiera la URL. Por eso tuvo durante
             meses el 131 de Chile sin que nadie lo notara.
+
+            Texto aprobado por Alexander el 18-nov-2026. Cambiarlo exige una
+            aprobación nueva; `tests/unidad/textos-aprobados.test.ts` lo guarda.
           */}
           <Link
             href="/dashboard/urgencias"

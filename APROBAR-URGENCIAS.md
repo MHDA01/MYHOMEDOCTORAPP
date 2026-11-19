@@ -149,24 +149,42 @@ verdad, así que **ya los corregí** y quedan así:
   marcaba y el de la cabecera se encendía. De paso eso cerró el pendiente del service worker, abierto
   desde el 18-sep.
 
-## 7. Qué falta aprobar, y es lo único que falta
+## 7. Aprobado el 18-nov-2026
 
-Esto no es código: es una sesión de lectura y firma. **Todo lo de esta lista está visible en
-producción ahora mismo sin aprobación**, contra la regla de `CLAUDE.md` de que todo texto clínico
-visible lo aprueba el fundador.
+**Alexander leyó los 17 textos uno por uno y los aprobó todos**, sin cambios. Con eso se cierra la
+deuda que este archivo venía registrando: hasta ese día todo lo de la tabla estaba visible en
+producción **sin** aprobación, contra la regla de `CLAUDE.md`.
 
-| Qué | Dónde está | Desde |
-|---|---|---|
-| Los 5 textos de urgencias | secciones 2 y 2b de este archivo | 11 y 18-nov-2026 |
-| Los 2 del formulario de la ficha | sección 5 | 11-nov-2026 |
-| Los 2 del registro (edad y sexo) | `register-form.tsx` | 9-nov-2026 |
-| Los de descarga y borrado de datos | `/dashboard/cuenta/mis-datos` | 27-oct-2026 |
-| `AVISO_INFORME` | pie de **cada informe en PDF** | pendiente desde octubre |
+| Qué | Dónde está | Estaba visible desde | Estado |
+|---|---|---|---|
+| Los 5 textos de urgencias | secciones 2 y 2b de este archivo | 11 y 18-nov-2026 | **Aprobado 18-nov-2026** |
+| Los 2 del formulario de la ficha | sección 5 | 11-nov-2026 | **Aprobado 18-nov-2026** |
+| Los 2 del registro (edad y sexo) | `register-form.tsx` | 9-nov-2026 | **Aprobado 18-nov-2026** |
+| Los 7 de descarga y borrado de datos | `/dashboard/cuenta/mis-datos` | 27-oct-2026 | **Aprobado 18-nov-2026** |
+| `AVISO_INFORME` | pie de **cada página de cada informe** | octubre | **Aprobado 18-nov-2026** |
 
-El de abajo es el que más pesa: `AVISO_INFORME` va en el documento que la persona le muestra a un
-médico, y lleva más de un mes esperando.
+**El único que se discutió fue el D7**, el aviso de que no se borra la constancia de quién abrió una
+consulta. Se propuso cambiarlo porque parecía describir algo que no pasa —no hay profesionales
+abriendo consultas en esta app— y la propuesta era **equivocada**: `auditoria_consultas` sí guarda un
+quién, porque cada vez que alguien del panel de administración abre la consulta de un paciente queda
+su nombre y la hora, y hoy ese alguien es el médico fundador leyendo la bandeja. El texto quedó como
+estaba. Si se hubiera "corregido", el aviso habría perdido justo el dato que protege al paciente.
 
-Y en la misma sentada conviene cerrar lo que desbloquea todo lo demás: **el primer activador del
-grafo**. El motor está conectado y corriendo en vacío; en cuanto haya un activador aprobado, la
-alarma determinista empieza a decidir sin tocar el chat, y la página pública de evidencia tiene por
-fin algo que mostrar.
+**Qué lo guarda de aquí en adelante:** `tests/unidad/textos-aprobados.test.ts` compara los 19
+fragmentos con el código y falla si alguno cambia. Importa porque desde el 18-nov un push a `master`
+publica solo: sin esa prueba, un refactor podría reescribir una de estas frases y desplegarla el
+mismo día. Para cambiar un texto: se le pregunta a Alexander, y el código y esa lista se mueven en el
+mismo commit con la fecha nueva.
+
+## 8. Lo que sigue, y ya no es texto
+
+**El primer activador del grafo.** El motor está conectado y corriendo en vacío
+(`BASE_DE_REGLAS = BASE_VACIA`); en cuanto haya un activador aprobado en Administración →
+Protocolos, la alarma determinista empieza a decidir sin tocar el chat, y la página pública de
+evidencia tiene por fin algo que mostrar. Mientras eso no pase, el botón de urgencias del chat lo
+enciende solo el detector de frases, y los 48/48 del evaluador son mérito del modelo, no del
+expediente.
+
+Falta también la prueba con sesión real del informe en PDF: descargarlo y compartirlo desde un
+teléfono. El paso 1 del plan no se cierra con el despliegue, se cierra cuando una persona real se
+lleva un informe.

@@ -13,8 +13,10 @@
  * `src/lib/urgencias-colombia.ts`: en una urgencia la EPS no es la puerta, así
  * que no se le pregunta por ella a nadie que esté llegando aquí.
  *
- * Los dos textos visibles son nuevos y están pendientes de la aprobación de
- * Alexander, como todo texto que lee el paciente.
+ * Los textos visibles de esta pantalla los **aprobó Alexander el 18-nov-2026**,
+ * en la sesión de aprobación que cerró los 17 textos pendientes. Cambiarlos exige
+ * una aprobación nueva: son texto que lee el paciente, y además en una emergencia.
+ * `tests/unidad/textos-aprobados.test.ts` falla si alguno cambia.
  */
 
 import Link from 'next/link';
