@@ -78,6 +78,15 @@ commit, con la fecha nueva.
   sigue existiendo y sirve para relanzar sin un commit nuevo.
   **El automático se queda: decisión de Alexander del 18-nov-2026, no la reabras.** Lo que cambia no
   es la configuración, es la disciplina: la rama es el borrador y `master` es el botón de publicar.
+  - **No es instantáneo, y son dos pasos.** El push dispara primero un **build** y el rollout llega
+    después. Entre uno y otro, producción sigue sirviendo el build anterior, así que un sitio que
+    responde 200 no prueba que lo tuyo ya esté arriba.
+  - **El listado de rollouts NO incluye el más reciente**, así que no sirve para comprobar nada:
+    el 18-nov pareció que un push no se había publicado, y la API contestó `409 "ya existe"` al
+    intentar crear el rollout a mano. **La única señal fiable es a qué revisión va el tráfico**:
+    `gcloud run services describe studio --project myhomedoctorapp --region us-central1
+    --format="value(status.traffic)"`, y mirar el `percent: 100`. El commit de esa revisión se
+    confirma en `.../builds/<id>`, campo `source.codebase.hash`.
 - **No desplegar `firestore.indexes.json` completo sin revisar**: crea el índice `tokens` y activa el
   cobro mensual con riesgo de doble cobro.
 - Los logs de Cloud Functions y Next no traen severity: buscar por texto, no por `ERROR`.
