@@ -86,11 +86,38 @@ describe('Las claves', () => {
     expect(resumirEstado(chequeos)).toBe('caido');
   });
 
-  it('sin la clave de Gemini la app queda degradada, no caída', () => {
+  it('sin la clave de Gemini la app está CAÍDA, no degradada', () => {
+    // Cambiado el 18-nov-2026, y la prueba decía justo lo contrario. El motivo
+    // está en `CLAVES_DE_IA`: con la clave como no esencial, el estado quedaba
+    // en `degradado`, `degradado` contesta 200 y el chequeo de disponibilidad
+    // solo mira el código, así que la alerta no sonaba. Es el fallo del
+    // 21-oct-2026 —Hilda sin contestar en producción durante un mes sin que
+    // nadie se enterara—, que es el fallo para el que se hizo este endpoint.
     const entorno = entornoCompleto();
     delete entorno.GEMINI_API_KEY;
     const chequeos = chequearClaves(entorno);
-    expect(resumirEstado(chequeos)).toBe('degradado');
+    const ia = chequeos.find((c) => c.nombre === 'claves-ia')!;
+    expect(ia.ok).toBe(false);
+    expect(ia.esencial).toBe(true);
+    expect(resumirEstado(chequeos)).toBe('caido');
+    // Lo que de verdad importa: que el chequeo de disponibilidad lo vea.
+    expect(codigoHttp(resumirEstado(chequeos))).toBe(503);
+  });
+
+  it('el chequeo de claves sigue diciendo CUÁL falta, no solo que falta algo', () => {
+    // Los dos son esenciales, pero separados: el log tiene que dejar claro si
+    // hay que mirar en Secret Manager o en la cuenta de Gemini.
+    const sinGemini = entornoCompleto();
+    delete sinGemini.GEMINI_API_KEY;
+    const porIa = chequearClaves(sinGemini);
+    expect(porIa.find((c) => c.nombre === 'claves')!.ok).toBe(true);
+    expect(porIa.find((c) => c.nombre === 'claves-ia')!.ok).toBe(false);
+
+    const sinCifrado = entornoCompleto();
+    delete sinCifrado.MHDA_ENCRYPTION_KEY;
+    const porClaves = chequearClaves(sinCifrado);
+    expect(porClaves.find((c) => c.nombre === 'claves')!.ok).toBe(false);
+    expect(porClaves.find((c) => c.nombre === 'claves-ia')!.ok).toBe(true);
   });
 
   it('una clave en blanco cuenta como ausente', () => {

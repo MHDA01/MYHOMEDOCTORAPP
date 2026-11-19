@@ -118,6 +118,12 @@ export function resumirEstado(chequeos: ReadonlyArray<Chequeo>): EstadoSalud {
  * `degradado` contesta 200 a propósito: la app sirve, y un 503 ahí llenaría de
  * ruido la única alerta que importa. Que algo esté degradado se ve en el cuerpo
  * y en los registros, no en una llamada de madrugada.
+ *
+ * Hoy **ningún chequeo es no esencial**, así que `degradado` no se alcanza: la
+ * clave de Gemini pasó a esencial el 18-nov-2026 por lo que explica
+ * `CLAVES_DE_IA`. El estado se queda porque el siguiente chequeo que se añada
+ * —uno que de verdad el paciente no note— lo va a necesitar, y porque borrarlo
+ * obligaría a reinventarlo con menos cuidado.
  */
 export function codigoHttp(estado: EstadoSalud): number {
   return estado === 'caido' ? 503 : 200;
@@ -137,11 +143,27 @@ export const CLAVES_ESENCIALES = [
 ] as const;
 
 /**
- * Claves que, si faltan, dejan la app en pie pero a media máquina: sin ellas
- * Hilda no contesta, y aun así el paciente puede entrar, ver su ficha y
- * descargar sus informes.
+ * La clave de Gemini. **Esencial, y la razón es la historia de esta app.**
+ *
+ * La primera versión de este archivo la puso como no esencial, con un argumento
+ * razonable: sin ella el paciente todavía puede entrar, ver su ficha y descargar
+ * sus informes. El problema es lo que eso implicaba para la alerta. Un chequeo
+ * no esencial deja el estado en `degradado`, `degradado` contesta 200, y el
+ * chequeo de disponibilidad solo mira el código: la alerta no habría sonado.
+ *
+ * Y ese es exactamente el fallo que ya ocurrió. El 21-oct-2026 se descubrió que
+ * en producción **cualquier consulta a Hilda fallaba** —un secreto sobrescrito
+ * con un token del tipo equivocado y, detrás, los créditos prepagados agotados—,
+ * y que no había "ni un solo log que mencione a Hilda en 30 días". Nadie se
+ * enteró durante un mes. Este endpoint se construyó para que eso no se repita;
+ * con la clave como no esencial, no lo habría detectado.
+ *
+ * El criterio que queda, entonces, no es "¿puede el paciente abrir la app?" sino
+ * **"¿puede la app hacer lo único que la define?"**. Es una app de
+ * teleorientación: si Hilda no contesta, está caída, aunque las pantallas
+ * carguen.
  */
-export const CLAVES_NO_ESENCIALES = [['GEMINI_API_KEY']] as const;
+export const CLAVES_DE_IA = [['GEMINI_API_KEY']] as const;
 
 type Entorno = Record<string, string | undefined>;
 
@@ -158,11 +180,14 @@ function algunaPuesta(nombres: ReadonlyArray<string>, entorno: Entorno): boolean
  */
 export function chequearClaves(entorno: Entorno): Chequeo[] {
   const faltanEsenciales = CLAVES_ESENCIALES.some((grupo) => !algunaPuesta(grupo, entorno));
-  const faltanOpcionales = CLAVES_NO_ESENCIALES.some((grupo) => !algunaPuesta(grupo, entorno));
+  const faltanDeIa = CLAVES_DE_IA.some((grupo) => !algunaPuesta(grupo, entorno));
 
+  // Dos chequeos y los dos esenciales, pero separados a propósito: así la
+  // respuesta dice CUÁL falta sin publicar el nombre de ninguna variable, y
+  // quien mire el log sabe si buscar en Secret Manager o en la cuenta de Gemini.
   return [
     { nombre: 'claves', ok: !faltanEsenciales, esencial: true },
-    { nombre: 'claves-ia', ok: !faltanOpcionales, esencial: false },
+    { nombre: 'claves-ia', ok: !faltanDeIa, esencial: true },
   ];
 }
 
