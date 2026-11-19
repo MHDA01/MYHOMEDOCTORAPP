@@ -337,6 +337,15 @@ export function ModoVoz({ onEnviar, onCerrar, nombrePaciente }: ModoVozProps) {
             <Keyboard className="h-5 w-5" />
             Prefiero escribir
           </button>
+          {/*
+            Texto clínico visible aprobado por Alexander el 19-nov-2026 y
+            guardado en `tests/unidad/textos-aprobados.test.ts` (F2): cambiar una
+            palabra exige una aprobación nueva. Es el equivalente de
+            AVISO_INFORME para esta pantalla, y aquí importa más que en ninguna
+            otra, porque en el modo conversación la voz es toda la experiencia y
+            nadie está leyendo. El único número que se marca en esta app es el
+            123 (ver `src/lib/urgencias-colombia.ts`).
+          */}
           <p className="mt-1 text-center text-[11px] leading-snug text-muted-foreground">
             Hilda no diagnostica ni receta. Si es una emergencia, llama al 123.
           </p>

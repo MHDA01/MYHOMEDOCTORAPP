@@ -17,6 +17,14 @@
  * aprobó. Para cambiar uno: se le pregunta a Alexander, y con su visto bueno se
  * cambian el código y esta lista en el mismo commit, con la fecha nueva.
  *
+ * **Añadidos el 19-nov-2026: los dos textos del modo conversación.** Se
+ * encontraron al revisar esta lista, y se habían escapado de la sesión del
+ * 18-nov por donde viven: no están en una pantalla del panel ni del registro,
+ * sino dentro de `ModoVoz.tsx` y de `voz.ts`, que llegaron a producción con la
+ * rama del avatar y la voz. Eran la misma deuda —texto clínico visible y
+ * publicado sin firma— en una pantalla que nadie miró ese día. Van en su propio
+ * bloque, con su propia fecha, para no inflar el recuento de los 17.
+ *
  * Nota de implementación: se compara con los espacios colapsados, porque en JSX
  * una frase larga queda partida en varias líneas con sangría.
  */
@@ -26,6 +34,7 @@ import { describe, expect, it } from 'vitest';
 
 import { AVISO_INFORME } from '../../src/lib/informe-orientacion-pdf';
 import { FRASE_ESCALADA } from '../../src/lib/senal-de-alarma';
+import { SALUDO_MODO_VOZ } from '../../src/lib/voz';
 
 const RAIZ = join(__dirname, '..', '..');
 
@@ -46,6 +55,7 @@ const CABECERA = 'src/components/chat/ChatHeader.tsx';
 const FICHA = 'src/components/familia/formulario-integrante.tsx';
 const REGISTRO = 'src/components/auth/register-form.tsx';
 const MIS_DATOS = 'src/app/dashboard/cuenta/mis-datos/page.tsx';
+const MODO_VOZ = 'src/components/chat/ModoVoz.tsx';
 
 const APROBADOS: { id: string; ruta: string; texto: string }[] = [
   // A · Urgencias (5 textos, 7 fragmentos)
@@ -149,10 +159,48 @@ describe('Textos clínicos aprobados el 18-nov-2026', () => {
     expect(FRASE_ESCALADA).toContain('requiere atención médica presencial urgente');
   });
 
-  it('están los 19 fragmentos de los 17 textos aprobados', () => {
+  it('están los 19 fragmentos de los 17 textos aprobados el 18-nov', () => {
     // 19 y no 17 porque A3, A5 y C2 llevan título y cuerpo por separado; E1 se
     // comprueba por constante, no leyendo el archivo.
     expect(APROBADOS).toHaveLength(19);
     expect(new Set(APROBADOS.map((a) => a.id)).size).toBe(19);
+  });
+});
+
+describe('Textos clínicos aprobados el 19-nov-2026 (modo conversación)', () => {
+  // Los dos están en producción desde el 18-nov, con la rama del avatar y la
+  // voz. La firma llega después que la publicación, igual que con los 17: se
+  // anota así en vez de fingir que fue al revés.
+
+  it('F1 el saludo del modo conversación es el aprobado, palabra por palabra', () => {
+    // Es lo PRIMERO que oye quien abre el modo voz, y a veces lo único que
+    // alcanza a oír. Se comprueba por constante porque lo es, y porque
+    // `FRASES_FIJAS` lo sintetiza y lo guarda: si cambia, cambia el audio
+    // cacheado.
+    expect(SALUDO_MODO_VOZ).toBe('Te escucho. Cuéntame qué te pasa.');
+  });
+
+  it('F2 el aviso del pie del modo conversación sigue literal', () => {
+    // El equivalente de `AVISO_INFORME` para esta pantalla: dice las dos cosas
+    // que no se pueden perder —que Hilda no diagnostica ni receta, y el 123—
+    // justo donde la voz es toda la experiencia y nadie está leyendo.
+    const esperado = normalizar('Hilda no diagnostica ni receta. Si es una emergencia, llama al 123.');
+    expect(
+      leer(MODO_VOZ).includes(esperado),
+      `Este texto está aprobado y cambió. No lo "arregles" aquí: pídele a Alexander una aprobación nueva y actualiza el código y esta lista en el mismo commit.\n\n  ${esperado}`
+    ).toBe(true);
+  });
+
+  it('el aviso del pie nombra el 123 y no otro número', () => {
+    // La misma regla que `urgencias-colombia.test.ts`: en esta app el único
+    // número que se marca es el 123. Si alguien mete un teléfono de un tercero
+    // en esta pantalla, esto falla.
+    //
+    // Se afirma sobre booleanos a propósito: con `toContain` sobre el archivo,
+    // un fallo vuelca las 400 líneas de ModoVoz.tsx en la salida y el motivo
+    // real se pierde entre ellas.
+    const texto = leer(MODO_VOZ);
+    expect(texto.includes('llama al 123'), 'El aviso del pie dejó de nombrar el 123.').toBe(true);
+    expect(/\b131\b/.test(texto), 'Apareció el 131 en el modo conversación: es el SAMU de Chile.').toBe(false);
   });
 });

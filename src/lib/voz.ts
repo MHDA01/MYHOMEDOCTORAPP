@@ -219,7 +219,14 @@ export const SILENCIO_PARA_ENVIAR_MS = 2500;
 /** Velocidad de lectura. Por debajo de 1 porque se le habla a quien no puede leer. */
 export const VELOCIDAD_VOZ = 0.95;
 
-/** Lo que se dice al entrar al modo conversación, antes de la primera escucha. */
+/**
+ * Lo que se dice al entrar al modo conversación, antes de la primera escucha.
+ *
+ * Texto clínico visible —se oye, no se lee— **aprobado por Alexander el
+ * 19-nov-2026**, y guardado en `tests/unidad/textos-aprobados.test.ts` (F1):
+ * cambiar una palabra aquí exige una aprobación nueva. Ojo además con
+ * `FRASES_FIJAS`, que lo sintetiza una vez y guarda el audio.
+ */
 export const SALUDO_MODO_VOZ = 'Te escucho. Cuéntame qué te pasa.';
 
 /**

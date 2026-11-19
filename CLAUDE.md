@@ -15,10 +15,15 @@ antes de hacerlo.
 "Un médico y su consultorio en el bolsillo." El layout se puede mover; **el comportamiento no, sin
 aprobación de Alexander**. Todo texto clínico visible lo aprueba él. **Lo aprobado y su fecha
 vive en `tests/unidad/textos-aprobados.test.ts`**, que falla si alguno cambia: los de
-`src/lib/textos-chat.ts` y `AVISO_URGENCIAS` (14-sep-2026), y los 17 de la sesión del 18-nov-2026
+`src/lib/textos-chat.ts` y `AVISO_URGENCIAS` (14-sep-2026), los 17 de la sesión del 18-nov-2026
 —urgencias, la ficha, el registro, Mis datos y `AVISO_INFORME`, que llevaba pendiente desde
-octubre—. Para cambiar uno: se le pregunta a él, y el código y esa lista se mueven en el mismo
-commit, con la fecha nueva.
+octubre— y los **dos del modo conversación (19-nov-2026)**: `SALUDO_MODO_VOZ` de `src/lib/voz.ts` y
+el aviso del pie de `ModoVoz.tsx`. Para cambiar uno: se le pregunta a él, y el código y esa lista se
+mueven en el mismo commit, con la fecha nueva.
+
+Esos dos últimos se escaparon de la sesión del 18-nov por donde viven —dentro del modo voz, no en
+una pantalla del panel— y llevaban en producción desde entonces. **Si aparece texto clínico visible
+que no está en esa lista, es deuda, no un borrador**: se firma o se quita, no se deja correr.
 
 ## Marco legal
 
