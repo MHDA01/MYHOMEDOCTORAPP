@@ -163,7 +163,7 @@ export function LandingPage() {
           {/* Firma de la casa. El isotipo va en negativo blanco porque el fondo
               es el azul principal, y sin descriptor por el tamaño: así lo pide
               el manual de identidad de Charis Integra. */}
-          <div className="flex items-center gap-2.5 border-t border-white/15 pt-4">
+          <a href="https://charisintegra.com" target="_blank" rel="noopener" className="flex items-center gap-2.5 border-t border-white/15 pt-4 transition hover:opacity-90">
             <Image
               src="/marca/charis-integra-isotipo-blanco.svg"
               alt=""
@@ -174,7 +174,7 @@ export function LandingPage() {
               aria-hidden
             />
             <span className="text-xs tracking-wide text-white/60">Desarrollado por Charis Integra</span>
-          </div>
+          </a>
         </div>
       </footer>
     </div>
